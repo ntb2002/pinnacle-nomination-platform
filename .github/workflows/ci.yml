@@ -1,0 +1,56 @@
+name: CI
+
+# The authoritative, server-side gate. Runs on every PR + push to main regardless of
+# which machine/agent produced the commits, so it can't be bypassed like a local hook.
+# Make `main` require this check via branch protection (see docs/git-workflow.md).
+#
+# Replace the placeholder job with your stack. Examples below.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Lint + test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # --- replace with your stack's install / lint / test steps ---
+      - run: echo "Add lint + test commands here."
+
+  # --- Python (uv) example ---
+  # check:
+  #   runs-on: ubuntu-latest
+  #   defaults: { run: { working-directory: <pkg-dir> } }
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: astral-sh/setup-uv@v5
+  #       with: { enable-cache: true }
+  #     - run: uv sync
+  #     - run: uv run ruff check .
+  #     - run: uv run ruff format --check .
+  #     - run: uv run pytest -q
+
+  # --- Node example ---
+  # check:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: actions/setup-node@v4
+  #       with: { node-version: 'lts/*', cache: 'npm' }
+  #     - run: npm ci
+  #     - run: npm run lint
+  #     - run: npm test
+
+  # --- iOS example (graduate when ready; needs a test target) ---
+  # ios:
+  #   runs-on: macos-15
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - run: xcodebuild test -project <App>.xcodeproj -scheme <Scheme> -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest'
