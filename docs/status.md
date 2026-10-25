@@ -4,22 +4,28 @@
 
 ## Now
 
-- **Done:** #1
+- **Done:** #1, #2
 - **In progress:** —
-- **Next:** #2 App foundation
+- **Next:** #3 Data model and seeded demo data
 - **Blockers:** none
 
 ## Needs human (collected from issues)
 
+- **Install the CI workflow (#2):** `cp docs/ci/ci.yml .github/workflows/ci.yml` and push. The agent's deny list blocks it from writing `.github/workflows/` (the permission prompt was denied, so I did not work around it). Until then each issue's [CI] evidence is a full `scripts/ci-local.sh` run, with the log committed under `plans/artifacts/`.
+
 - Enable the pre-commit hook once per clone: `git config core.hooksPath .githooks`. The agent's deny list blocks it from doing this itself (by design); until then the agent runs `.githooks/pre-commit` by hand before each commit, and CI will run the same checks once #2 replaces the placeholder workflow.
+
+- **HSTS scope (#2):** production sends `Strict-Transport-Security: max-age=63072000` without `includeSubDomains`/`preload`. Adding those commits the whole parent domain; Syracuse IT decides (LAUNCH_READINESS).
 
 ## Open technical threads
 
-- none yet
+- `drizzle-kit` (dev-only) pulls a deprecated `@esbuild-kit` chain with 4 moderate `npm audit` advisories (esbuild dev-server CORS). Not in production deps; revisit when drizzle-kit 1.0 ships.
+- Deploy-time migrations need `tsx` + `drizzle/` alongside the standalone server; packaging decided in #18.
 
 ## Log
 
 ### 2026-10-25 — v1 build started
 
+- #2 — Next.js 16 foundation: env validation (exits on bad config), nonce CSP + security headers, Drizzle/Postgres (DECISIONS 004 replaced Prisma), health route, accessible layout + tokens, Vitest + Playwright/axe, CI staged at `docs/ci/ci.yml`. Review APPROVE WITH FIXES and evaluator FAIL on the 404 CSP; all fixed.
 - #1 — playbook scaffold, VISION/AGENTS/DECISIONS, status log. Code review: APPROVE WITH FIXES (fixes applied).
 - Spec: issues #1-#18 filed in dependency order. Integration branch `v1` created from `main`.

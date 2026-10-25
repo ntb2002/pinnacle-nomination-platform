@@ -1,0 +1,75 @@
+name: CI
+
+# The authoritative, server-side gate. Runs on every push (issue branches, v1) and PR,
+# regardless of which machine or agent produced the commits.
+#
+# INSTALL (one-time, human): cp docs/ci/ci.yml .github/workflows/ci.yml
+# The agent's deny list blocks agents from editing .github/workflows/ (by design),
+# so this file is staged here. scripts/ci-local.sh runs the same steps locally.
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Lint, typecheck, test, build, e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: pinnacle
+          POSTGRES_PASSWORD: pinnacle
+          POSTGRES_DB: pinnacle_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U pinnacle"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      CI: "true"
+      NEXT_TELEMETRY_DISABLED: "1"
+      NODE_ENV: test
+      APP_URL: http://localhost:3100
+      DATABASE_URL: postgresql://pinnacle:pinnacle@localhost:5432/pinnacle_test
+      TEST_DATABASE_URL: postgresql://pinnacle:pinnacle@localhost:5432/pinnacle_test
+      E2E_DATABASE_URL: postgresql://pinnacle:pinnacle@localhost:5432/pinnacle_e2e
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Create e2e database
+        run: PGPASSWORD=pinnacle psql -h localhost -U pinnacle -d pinnacle_test -c 'CREATE DATABASE pinnacle_e2e'
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm run typecheck
+      - name: Unit + integration tests
+        run: npm test
+      - name: Build
+        run: npm run build
+        env:
+          NODE_ENV: production
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+      - name: E2E tests
+        run: npm run test:e2e
+      - name: Upload Playwright report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 14

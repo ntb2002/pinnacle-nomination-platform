@@ -4,9 +4,16 @@
 >
 > Format: `### NNN — Title (date) — Status` · **Decision** · **Why** · **Rejected** · **Reverse cost**.
 
+### 004 — Drizzle ORM instead of Prisma (2026-10) — Accepted (supersedes the ORM part of 003)
+
+- **Decision:** Use Drizzle ORM 0.45 with `node-postgres` for data access. Schema in TypeScript (`src/server/db/tables/*`); `drizzle-kit generate` writes plain SQL migrations to `drizzle/`; `npm run db:migrate` applies them with drizzle's migrator (no CLI or binary needed at deploy time).
+- **Why:** Prisma 7's migration engine is a native binary downloaded from `binaries.prisma.sh` at install/run time. That host is unreachable from this build environment, and university hosting with restricted egress could hit the same wall at deploy time. Drizzle is pure TypeScript with no engine binaries. Its migrations are plain SQL files that a Syracuse IT reviewer can read, and its queries read like SQL, which makes authorization filters easy to audit. Better Auth ships a Drizzle adapter.
+- **Rejected:** Prisma 7 (binary engine download; the bundled wasm engine is not usable for `migrate` in 7.10); Kysely + hand-written migrations (more boilerplate for the next maintainer); raw `pg` (no typed schema).
+- **Reverse cost:** medium. It touches the data layer only. Services own all queries, so routes and UI do not change.
+
 ### 003 — Application stack (2026-10) — Accepted
 
-- **Decision:** One TypeScript codebase: Next.js 16 (App Router, server components and server actions) on Node 24 LTS (Node 22 reaches end of life 2027-04-30, during the first cycle), PostgreSQL 16 through Prisma 7, Better Auth (email magic link, database sessions), Stripe hosted Checkout with signed webhooks, Tailwind CSS 4, zod 4, Vitest + Playwright + axe-core. Payment, file storage and email each sit behind a small interface with a production driver and a local driver. Ships as a container (Next standalone output) that runs on any Node host with managed Postgres and S3-compatible storage.
+- **Decision:** One TypeScript codebase: Next.js 16 (App Router, server components and server actions) on Node 24 LTS (Node 22 reaches end of life 2027-04-30, during the first cycle), PostgreSQL 16 through Prisma 7 (superseded by 004: Drizzle), Better Auth (email magic link, database sessions), Stripe hosted Checkout with signed webhooks, Tailwind CSS 4, zod 4, Vitest + Playwright + axe-core. Payment, file storage and email each sit behind a small interface with a production driver and a local driver. Ships as a container (Next standalone output) that runs on any Node host with managed Postgres and S3-compatible storage.
 - **Why:**
   - *Maintainable by the next person.* Next.js/React/TypeScript is the most widely taught and hired web stack; a Syracuse student or a contractor can pick it up. One language and one deployable for UI and server means fewer moving parts than a separate API + SPA.
   - *Server-side authority by default.* Server components and server actions keep data access, authorization and pricing on the server; the client gets rendered HTML and minimal JS.

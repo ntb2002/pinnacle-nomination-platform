@@ -1,0 +1,92 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens. Every text/background pair used in the UI meets WCAG 2.1 AA
+ * (ratios noted). Orange (signal) is never used for text on light backgrounds;
+ * use signal-text instead.
+ */
+@theme {
+  --color-ink: #000e54; /* Syracuse navy. 17.6:1 on white */
+  --color-ink-raised: #0b1b6e;
+  --color-on-ink: #ffffff;
+  --color-on-ink-muted: #c9cee0; /* 11.2:1 on ink */
+  --color-paper: #f6f7fa;
+  --color-surface: #ffffff;
+  --color-slate: #4a5170; /* secondary text, 7.3:1 on paper */
+  --color-muted: #626a8b; /* tertiary text, 5.0:1 on paper, 5.3:1 on white */
+  --color-line: #d5d9e5; /* decorative dividers only */
+  --color-control: #7f88ae; /* input borders, >=3:1 non-text contrast */
+  --color-signal: #f76900; /* Syracuse orange: accents, and text on ink (5.9:1) */
+  --color-signal-text: #b54300; /* orange-family text: 5.6:1 on white, 5.2:1 on paper */
+  --color-danger: #b42318; /* 6.6:1 on white */
+  --color-danger-bg: #fdecea;
+  --color-success: #1e6b3a; /* 6.5:1 on white */
+  --color-success-bg: #e8f4ec;
+
+  --font-display: "Bodoni Moda Variable", "Didot", "Bodoni 72", Georgia, serif;
+  --font-sans: "Public Sans Variable", "Helvetica Neue", Arial, sans-serif;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    line-height: 1.55;
+    font-feature-settings: "kern", "liga";
+  }
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+  p {
+    text-wrap: pretty;
+  }
+  a {
+    text-underline-offset: 0.18em;
+  }
+  /* One focus style everywhere: thick, offset, never removed. */
+  :focus-visible {
+    outline: 3px solid var(--color-ink);
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+  .on-ink :focus-visible {
+    outline-color: var(--color-signal);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  .container-page {
+    width: 100%;
+    max-width: 72rem;
+    margin-inline: auto;
+    padding-inline: 1rem;
+  }
+  @media (min-width: 640px) {
+    .container-page {
+      padding-inline: 2rem;
+    }
+  }
+  /* The summit rule: the program's one decorative signature. */
+  .summit-rule {
+    display: block;
+    width: 4.5rem;
+    height: 0.75rem;
+    background: var(--color-signal);
+    clip-path: polygon(0 100%, 38% 100%, 50% 0, 62% 100%, 100% 100%, 100% 100%, 0 100%);
+  }
+}

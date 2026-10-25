@@ -1,0 +1,13 @@
+// Runs once when the server starts. Validating config here makes a misconfigured
+// deploy exit at boot with a readable message instead of serving errors.
+export async function register() {
+  if (process.env.NEXT_RUNTIME === "nodejs") {
+    const { env } = await import("@/lib/env");
+    try {
+      env();
+    } catch (err) {
+      console.error(err instanceof Error ? err.message : err);
+      process.exit(1);
+    }
+  }
+}
