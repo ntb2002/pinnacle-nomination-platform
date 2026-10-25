@@ -1,4 +1,4 @@
-ci-local: 25c96e7 on 3-data-model-seed, node v24.22.1
+ci-local: 84143b2 on 3-data-model-seed, node v24.22.1
 
 ==> lint
 
@@ -16,27 +16,27 @@ Generating route types...
 
 Database reset and migrated.
 
- Test Files  7 passed (7)
-      Tests  24 passed (24)
-   Start at  20:13:53
-   Duration  8.26s (import 52%, tests 39%, transform 8%, worker 1%)
+ Test Files  8 passed (8)
+      Tests  35 passed (35)
+   Start at  20:23:35
+   Duration  9.63s (tests 51%, import 43%, transform 5%, worker 1%)
 
-    Isolate  7 workers spawned · ~164ms startup each (spawn + environment, per file)
-             at least ~983ms faster with isolate: false — reuses workers across files instead of one per file
+    Isolate  8 workers spawned · ~171ms startup each (spawn + environment, per file)
+             at least ~1.20s faster with isolate: false — reuses workers across files instead of one per file
 
 
 ==> build
 ▲ Next.js 16.4.3 (Turbopack)
 - Environments: .env
-✓ Running next.config.ts took 58ms
+✓ Running next.config.ts took 98ms
 
   Creating an optimized production build ...
-✓ Compiled successfully in 1306ms
+✓ Compiled successfully in 1113ms
   Running TypeScript ...
-  Finished TypeScript in 4.8s ...
+  Finished TypeScript in 4.6s ...
   Collecting page data using 3 workers ...
   Generating static pages using 3 workers (0/1) ...
-✓ Generating static pages using 3 workers (1/1) in 115ms
+✓ Generating static pages using 3 workers (1/1) in 149ms
   Finalizing page optimization ...
 
 Route (app)
@@ -60,21 +60,21 @@ Seed complete. Row counts:
   user                 19
   judge_profile        6
   judge_assignment     36
-  entry                30
-  entry_outcome        66
-  entry_reference      39
-  entry_status_event   44
-  payment              25
+  entry                63
+  entry_outcome        148
+  entry_reference      88
+  entry_status_event   105
+  payment              57
 
 Running 6 tests using 1 worker
 
-  ✓  1 [chromium] › tests/e2e/boot.spec.ts:4:1 › the server exits at boot when configuration is invalid (489ms)
-  ✓  2 [chromium] › tests/e2e/home.spec.ts:5:3 › home and base layout › renders the home page with no accessibility violations (1.4s)
-  ✓  3 [chromium] › tests/e2e/home.spec.ts:15:3 › home and base layout › skip link moves focus to main content (463ms)
-  ✓  4 [chromium] › tests/e2e/home.spec.ts:24:3 › home and base layout › sends a nonce-based CSP and security headers (81ms)
-  ✓  5 [chromium] › tests/e2e/home.spec.ts:35:3 › home and base layout › unknown routes get a branded 404 with no CSP violations (1.7s)
-  ✓  6 [chromium] › tests/e2e/home.spec.ts:50:3 › home and base layout › health endpoint reports the database (25ms)
+  ✓  1 [chromium] › tests/e2e/boot.spec.ts:4:1 › the server exits at boot when configuration is invalid (516ms)
+  ✓  2 [chromium] › tests/e2e/home.spec.ts:5:3 › home and base layout › renders the home page with no accessibility violations (1.7s)
+  ✓  3 [chromium] › tests/e2e/home.spec.ts:15:3 › home and base layout › skip link moves focus to main content (493ms)
+  ✓  4 [chromium] › tests/e2e/home.spec.ts:24:3 › home and base layout › sends a nonce-based CSP and security headers (101ms)
+  ✓  5 [chromium] › tests/e2e/home.spec.ts:35:3 › home and base layout › unknown routes get a branded 404 with no CSP violations (1.8s)
+  ✓  6 [chromium] › tests/e2e/home.spec.ts:50:3 › home and base layout › health endpoint reports the database (28ms)
 
-  6 passed (10.0s)
+  6 passed (10.3s)
 
 ci-local: all steps passed

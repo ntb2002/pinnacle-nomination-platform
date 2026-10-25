@@ -4,8 +4,8 @@
 
 ## Now
 
-- **Done:** #1, #2
-- **In progress:** #3 Data model and seeded demo data (branch `3-data-model-seed`)
+- **Done:** #1, #2, #3
+- **In progress:** —
 - **Next:** #4 Authentication, RBAC and audit logging
 - **Blockers:** none
 
@@ -32,6 +32,7 @@
 
 ### 2026-10-25 — v1 build started
 
+- #3 — Drizzle schema for the whole program with policy constraints (composite FKs, restrict deletes, partial unique indexes, CHECKs), append-only audit trigger, idempotent fake seed (63 entries), pricing module, factories. Review APPROVE WITH FIXES; all High fixed.
 - #2 — Next.js 16 foundation: env validation (exits on bad config), nonce CSP + security headers, Drizzle/Postgres (DECISIONS 004 replaced Prisma), health route, accessible layout + tokens, Vitest + Playwright/axe, CI staged at `docs/ci/ci.yml`. Review APPROVE WITH FIXES and evaluator FAIL on the 404 CSP; all fixed.
 - #1 — playbook scaffold, VISION/AGENTS/DECISIONS, status log. Code review: APPROVE WITH FIXES (fixes applied).
 - Spec: issues #1-#18 filed in dependency order. Integration branch `v1` created from `main`.
