@@ -4,9 +4,9 @@
 
 ## Now
 
-- **Done:** #1, #2, #3, #4, #5, #6, #7
-- **In progress:** #8 Secure supporting-file uploads (built and tested; reviews next)
-- **Next:** #9 Entry fee payment
+- **Done:** #1, #2, #3, #4, #5, #6, #7, #8
+- **In progress:** —
+- **Next:** #9 Entry fee payment with Stripe hosted Checkout
 - **Blockers:** none
 
 ## Needs human (collected from issues)
@@ -40,6 +40,7 @@
 
 ### 2026-10-25 — v1 build started
 
+- #8 — Supporting files: multipart upload route (origin + size checked before the body, outside the proxy, fetch with JSON when JS runs so unsaved edits survive), magic-byte types, random keys on local disk or S3 (SSE), 5 x 10 MB, one access rule shared with entry content (`entryAccessFor`), attachment-only downloads with nosniff/no-store/sandbox CSP, audited admin/judge downloads, best-effort byte removal. Metadata now always renders in `<head>` (`htmlLimitedBots`). Review APPROVE WITH FIXES (storage write inside the transaction, lost unsaved edits, removal errors, bidi names) → fixed; evaluator FAIL (bidi names) → fixed → re-evaluation PASS.
 - #7 — Nomination start/edit/review/dashboard with draft and submission schemas, ownership by query, duplicate nominee rule as a field error, self-nomination email locked, stable outcome/reference rows, delete unpaid draft. Review APPROVE WITH FIXES (stale form after save, raw messages, 500 on bad ids) → fixed; evaluator FAIL → fixed → re-evaluation found group-link scroll and typing-during-save → fixed.
 - #6 — Admin dates/fees, categories, rubric weights with phase rules (DECISIONS 006), audited before/after, linked error summaries. Review APPROVE WITH FIXES; evaluator FAIL (audit values, summary links) → fixed → re-evaluation: one aria gap (rubric total) → fixed and covered by e2e.
 - #5 — Public site (home, categories, fees, methodology, panel, COI policy) driven by the live cycle; demo banner; nav current-page state; Eastern-time helpers (`src/lib/zoned-time.ts`). Review APPROVE WITH FIXES: copy now promises only what is enforced, and the spec additions on #9, #11, #12 make the rest enforceable. Evaluator PASS.
