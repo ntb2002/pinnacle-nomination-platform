@@ -6,6 +6,7 @@ const dollars = (label: string) =>
     .string()
     .trim()
     .min(1, `Enter the ${label}`)
+    .regex(/^\d+$/, `Enter the ${label} in whole dollars, digits only`)
     .pipe(
       z.coerce
         .number<string>({ error: `Enter the ${label} in whole dollars` })
@@ -110,11 +111,12 @@ export interface CycleSettings extends FeeCents {
   finalDeadline: Date;
 }
 
-const weight = z.coerce
-  .number()
-  .int("Weights are whole numbers")
-  .min(0, "Weights cannot be negative")
-  .max(100, "A weight cannot exceed 100");
+const weight = z
+  .string()
+  .trim()
+  .min(1, "Enter a weight (0 to 100)")
+  .regex(/^\d+$/, "Weights are whole numbers from 0 to 100")
+  .pipe(z.coerce.number<string>().max(100, "A weight cannot exceed 100"));
 
 export const rubricWeightsSchema = z
   .object({

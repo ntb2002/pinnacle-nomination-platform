@@ -67,6 +67,8 @@ describe("updateCycleSettings", () => {
     await fails({ earlyDate: "2027-01-25" }, "earlyDate");
     await fails({ earlyFee: "499.50" }, "earlyFee");
     await fails({ lateFee: "0" }, "lateFee");
+    await fails({ lateFee: "1e3" }, "lateFee");
+    await fails({ regularFee: "" }, "regularFee");
     await fails({ opensDate: "2027-02-30" }, "opensDate");
   });
 
@@ -178,6 +180,22 @@ describe("updateRubricWeights", () => {
         weightReferences: "20",
       }),
     ).rejects.toBeInstanceOf(ValidationError);
+  });
+
+  it("rejects blank or non-numeric weights", async () => {
+    const { cycle } = await createProgram();
+    const profile = await createRubricProfile(cycle.id);
+    const admin = await createActor("ADMIN");
+    for (const bad of ["", "1e1", "-5"]) {
+      await expect(
+        updateRubricWeights(admin, profile.id, {
+          weightImpact: "60",
+          weightInnovation: "40",
+          weightInfluence: "0",
+          weightReferences: bad,
+        }),
+      ).rejects.toBeInstanceOf(ValidationError);
+    }
   });
 
   it("refuses edits once round one has opened", async () => {
