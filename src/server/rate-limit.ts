@@ -1,6 +1,6 @@
 import "server-only";
 import { createHash } from "node:crypto";
-import { sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/server/db";
 import { rateLimitWindow } from "@/server/db/schema";
 
@@ -21,8 +21,11 @@ export function bucketKey(rule: RateLimitRule, identifier: string): string {
 }
 
 /**
- * Fixed-window counter in Postgres, so the limit holds across app instances.
- * Returns true when the request is allowed (and counts it).
+ * Sliding-window limit, shared across app instances via Postgres. Counts are kept per
+ * fixed window; the estimate for "the last windowSeconds" is the current window's count
+ * plus the previous window's count weighted by how much of it still overlaps. That stops
+ * bursts straddling a window boundary (5 at :14:59 and 5 at :15:00 is 10 in seconds).
+ * Counts the request and returns true when it is allowed.
  */
 export async function consume(
   rule: RateLimitRule,
@@ -30,19 +33,31 @@ export async function consume(
   now = new Date(),
 ): Promise<boolean> {
   const windowMs = rule.windowSeconds * 1000;
-  const windowStart = new Date(Math.floor(now.getTime() / windowMs) * windowMs);
+  const startMs = Math.floor(now.getTime() / windowMs) * windowMs;
+  const key = bucketKey(rule, identifier);
   const [row] = await db
     .insert(rateLimitWindow)
-    .values({ key: bucketKey(rule, identifier), windowStart, count: 1 })
+    .values({ key, windowStart: new Date(startMs), count: 1 })
     .onConflictDoUpdate({
       target: [rateLimitWindow.key, rateLimitWindow.windowStart],
       set: { count: sql`${rateLimitWindow.count} + 1` },
     })
     .returning({ count: rateLimitWindow.count });
-  return (row?.count ?? 1) <= rule.limit;
+  const [previous] = await db
+    .select({ count: rateLimitWindow.count })
+    .from(rateLimitWindow)
+    .where(
+      and(
+        eq(rateLimitWindow.key, key),
+        eq(rateLimitWindow.windowStart, new Date(startMs - windowMs)),
+      ),
+    );
+  const overlap = 1 - (now.getTime() - startMs) / windowMs;
+  const estimate = (row?.count ?? 1) + (previous?.count ?? 0) * overlap;
+  return estimate <= rule.limit;
 }
 
-/** Deletes expired windows. Called opportunistically; old rows are harmless otherwise. */
+/** Deletes old windows. Called occasionally; old rows are harmless otherwise. */
 export async function pruneRateLimits(olderThan: Date): Promise<void> {
   await db.delete(rateLimitWindow).where(sql`${rateLimitWindow.windowStart} < ${olderThan}`);
 }

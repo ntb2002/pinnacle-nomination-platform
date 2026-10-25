@@ -2,7 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { assertRole } from "@/server/auth/actor";
 import { closeDb } from "@/server/db";
-import { auditLog, emailOutbox, user } from "@/server/db/schema";
+import { auditLog, emailOutbox, session, user } from "@/server/db/schema";
 import { ConflictError, ForbiddenError } from "@/server/errors";
 import { grantRole, setUserDisabled } from "@/server/services/users";
 import { createActor } from "../support/actors";
@@ -56,6 +56,18 @@ describe("role-based authorization in services", () => {
     const admin = await createActor("ADMIN");
     await expect(grantRole(admin, admin.email, "NOMINATOR")).rejects.toBeInstanceOf(ConflictError);
     await expect(setUserDisabled(admin, admin.id, true)).rejects.toBeInstanceOf(ConflictError);
+  });
+
+  it("signs a disabled user out of every session", async () => {
+    const admin = await createActor("ADMIN");
+    const target = await createActor("JUDGE");
+    const now = new Date(Date.now() + 3600_000);
+    await db.insert(session).values([
+      { id: "s1", token: "t1", userId: target.id, expiresAt: now },
+      { id: "s2", token: "t2", userId: target.id, expiresAt: now },
+    ]);
+    await setUserDisabled(admin, target.id, true);
+    expect(await db.select().from(session).where(eq(session.userId, target.id))).toHaveLength(0);
   });
 
   it("disables a user and audits it", async () => {

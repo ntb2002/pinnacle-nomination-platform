@@ -26,13 +26,14 @@ function smtp(): Transporter {
 /**
  * Sends one email. Call it after the database transaction that caused it commits.
  * - outbox transport (dev/test): the email_outbox row is the delivered mail (/dev/mailbox).
- * - smtp transport: the row is a delivery record only; bodies are not stored, so
- *   tokens and personal details do not accumulate in the database.
+ * - smtp transport: the row is a delivery record only (recipient, subject, template,
+ *   status); bodies are not stored, so sign-in tokens and entry details do not accumulate.
  */
 export async function sendEmail(msg: OutgoingEmail): Promise<void> {
   const rendered = renderEmail(msg.content);
   const to = msg.to.trim().toLowerCase();
-  const { EMAIL_TRANSPORT, EMAIL_FROM } = env();
+  const { EMAIL_TRANSPORT } = env();
+  const from = env().EMAIL_FROM ?? "Pinnacle Awards <no-reply@example.edu>";
 
   if (EMAIL_TRANSPORT === "outbox") {
     await db
@@ -51,7 +52,7 @@ export async function sendEmail(msg: OutgoingEmail): Promise<void> {
     return;
   }
 
-  const [row] = await db
+  let [row] = await db
     .insert(emailOutbox)
     .values({
       toAddress: to,
@@ -63,11 +64,20 @@ export async function sendEmail(msg: OutgoingEmail): Promise<void> {
     })
     .onConflictDoNothing({ target: emailOutbox.dedupeKey })
     .returning({ id: emailOutbox.id });
-  if (!row) return; // already sent under this dedupe key
+  if (!row && msg.dedupeKey) {
+    // Same key seen before: skip only if it was delivered; retry a PENDING/FAILED one.
+    const [prior] = await db
+      .select({ id: emailOutbox.id, status: emailOutbox.status })
+      .from(emailOutbox)
+      .where(eq(emailOutbox.dedupeKey, msg.dedupeKey));
+    if (!prior || prior.status === "SENT") return;
+    row = { id: prior.id };
+  }
+  if (!row) return;
 
   try {
     await smtp().sendMail({
-      from: EMAIL_FROM,
+      from,
       to,
       subject: rendered.subject,
       text: rendered.text,
@@ -78,7 +88,9 @@ export async function sendEmail(msg: OutgoingEmail): Promise<void> {
       .set({ status: "SENT", sentAt: new Date() })
       .where(eq(emailOutbox.id, row.id));
   } catch (err) {
-    const message = err instanceof Error ? err.message.slice(0, 500) : "unknown error";
+    // Record the failure class only: SMTP error text usually contains the recipient address.
+    const e = err as { name?: string; code?: string; responseCode?: number };
+    const message = [e.name, e.code, e.responseCode].filter(Boolean).join(" ") || "send failed";
     await db
       .update(emailOutbox)
       .set({ status: "FAILED", error: message })

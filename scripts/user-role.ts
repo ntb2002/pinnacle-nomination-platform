@@ -3,6 +3,7 @@
 // account if the person has never signed in. Writes an audit row (actor: CLI).
 import "dotenv/config";
 import { randomUUID } from "node:crypto";
+import { userInfo } from "node:os";
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
@@ -40,7 +41,13 @@ async function main() {
         action: "user.role_changed",
         targetType: "user",
         targetId: id,
-        metadata: { from: existing?.role ?? null, to: role, created: !existing, via: "cli" },
+        metadata: {
+          from: existing?.role ?? null,
+          to: role,
+          created: !existing,
+          via: "cli",
+          osUser: userInfo().username,
+        },
       });
     });
     console.log(`${email.data} is now ${role}.`);

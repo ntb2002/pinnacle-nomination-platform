@@ -9,6 +9,7 @@ import { env } from "@/lib/env";
 import { audit } from "@/server/audit";
 import { db } from "@/server/db";
 import { account, session, user, verification } from "@/server/db/schema";
+import { clientIpFrom } from "@/server/request";
 import { deliverSignInLink } from "./sign-in-link";
 
 export const SESSION_COOKIE_PREFIX = "pinnacle";
@@ -20,6 +21,8 @@ function createAuth() {
     appName: "Pinnacle Awards",
     baseURL: APP_URL,
     secret: BETTER_AUTH_SECRET,
+    // Redirect targets must be on APP_URL. (env.ts refuses BETTER_AUTH_TRUSTED_ORIGINS.)
+    trustedOrigins: [APP_URL],
     database: drizzleAdapter(db, {
       provider: "pg",
       schema: { user, session, account, verification },
@@ -41,11 +44,24 @@ function createAuth() {
       cookiePrefix: SESSION_COOKIE_PREFIX,
       useSecureCookies: APP_URL.startsWith("https://"),
       database: { generateId: () => randomUUID() },
+      // Explicit: Better Auth otherwise skips origin checks whenever NODE_ENV=test or TEST is set.
+      disableOriginCheck: false,
+      disableCSRFCheck: false,
+      // Better Auth would read the spoofable leftmost X-Forwarded-For; we record IPs ourselves.
+      ipAddress: { disableIpTracking: true },
     },
     databaseHooks: {
       session: {
         create: {
-          after: async (s) => {
+          // A link issued before an account was disabled must not produce a session.
+          before: async (s) => {
+            const [u] = await db
+              .select({ disabledAt: user.disabledAt })
+              .from(user)
+              .where(eq(user.id, s.userId));
+            return !u?.disabledAt;
+          },
+          after: async (s, ctx) => {
             const [u] = await db
               .select({ role: user.role })
               .from(user)
@@ -55,7 +71,7 @@ function createAuth() {
               action: "auth.signed_in",
               targetType: "user",
               targetId: s.userId,
-              ip: s.ipAddress ?? null,
+              ip: ctx?.headers ? clientIpFrom(ctx.headers) : null,
             });
           },
         },

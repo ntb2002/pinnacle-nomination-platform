@@ -30,7 +30,17 @@ const envSchema = z
       .string()
       .regex(/^smtps?:\/\/.+/, "must be an smtp:// or smtps:// URL")
       .optional(),
-    EMAIL_FROM: z.string().min(3).default("Pinnacle Awards <no-reply@example.edu>"),
+    /** Sender, e.g. "Pinnacle Awards <pinnacle@syr.edu>". Required in production (SPF/DMARC). */
+    EMAIL_FROM: z.string().min(3).optional(),
+    /**
+     * Number of proxies in front of the app that append to X-Forwarded-For. The client IP
+     * is that many entries from the right. 1 = one load balancer (typical).
+     */
+    TRUSTED_PROXY_HOPS: z.coerce.number().int().min(0).max(5).default(1),
+    /** Must stay unset: Better Auth would silently trust extra origins from it. */
+    BETTER_AUTH_TRUSTED_ORIGINS: z
+      .undefined({ error: "must not be set; trusted origin is APP_URL" })
+      .optional(),
   })
   .superRefine((cfg, ctx) => {
     if (!URL.canParse(cfg.APP_URL)) return; // already reported by the field check
@@ -43,6 +53,17 @@ const envSchema = z
         code: "custom",
         path: ["EMAIL_TRANSPORT"],
         message: "must be smtp in production (the outbox never delivers mail)",
+      });
+    }
+    if (realProduction && !cfg.EMAIL_FROM) {
+      ctx.addIssue({ code: "custom", path: ["EMAIL_FROM"], message: "is required in production" });
+    }
+    if (realProduction && cfg.SMTP_URL && !cfg.SMTP_URL.startsWith("smtps://")) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["SMTP_URL"],
+        message:
+          "must use smtps:// (implicit TLS) in production so tokens never cross the wire unencrypted",
       });
     }
     if (cfg.EMAIL_TRANSPORT === "smtp" && !cfg.SMTP_URL) {

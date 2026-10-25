@@ -5,7 +5,7 @@ export function signInEmail(link: string): EmailContent {
   return {
     subject: "Your Pinnacle Awards sign-in link",
     paragraphs: [
-      "Use the button below to sign in to the Pinnacle Awards. The link works once and expires in 15 minutes.",
+      "Use this link to sign in to the Pinnacle Awards. It works once and expires in 15 minutes.",
     ],
     action: { label: "Sign in", url: link },
     footnote:

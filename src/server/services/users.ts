@@ -6,7 +6,7 @@ import { emailSchema } from "@/lib/validation/common";
 import { audit } from "@/server/audit";
 import { assertRole, type Actor, type Role } from "@/server/auth/actor";
 import { db } from "@/server/db";
-import { user } from "@/server/db/schema";
+import { session, user } from "@/server/db/schema";
 import { sendEmail } from "@/server/email";
 import { roleGrantedEmail } from "@/server/email/templates";
 import { ConflictError, NotFoundError, ValidationError } from "@/server/errors";
@@ -81,6 +81,8 @@ export async function setUserDisabled(
       .where(eq(user.id, userId))
       .returning({ id: user.id });
     if (updated.length === 0) throw new NotFoundError("user");
+    // Sign the person out everywhere at once.
+    if (disabled) await tx.delete(session).where(eq(session.userId, userId));
     await audit(
       {
         actor,

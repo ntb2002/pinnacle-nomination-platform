@@ -15,9 +15,10 @@ export async function requestSignInAction(
   form: FormData,
 ): Promise<ActionState> {
   const h = await headers();
+  const email = String(form.get("email") ?? "").slice(0, 320);
   try {
     await requestSignIn({
-      email: String(form.get("email") ?? ""),
+      email,
       next: String(form.get("next") ?? "/"),
       ip: clientIpFrom(h),
       headers: h,
@@ -28,7 +29,7 @@ export async function requestSignInAction(
         "Check your email. If the address can receive mail, a sign-in link is on its way. It expires in 15 minutes.",
     };
   } catch (err) {
-    return toActionState(err);
+    return { ...toActionState(err), values: { email } };
   }
 }
 

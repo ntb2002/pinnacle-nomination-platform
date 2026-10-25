@@ -1,18 +1,18 @@
 import { desc } from "drizzle-orm";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { env } from "@/lib/env";
+import { env, isRealProduction } from "@/lib/env";
 import { db } from "@/server/db";
 import { emailOutbox } from "@/server/db/schema";
 
 export const metadata: Metadata = { title: "Dev mailbox", robots: { index: false } };
 
 /**
- * Development mailbox: the latest outbox messages. Exists only with
- * EMAIL_TRANSPORT=outbox, which env validation refuses in real production.
+ * Development mailbox: the latest outbox messages, including live sign-in links, with
+ * no authentication. Exists only with EMAIL_TRANSPORT=outbox outside real production.
  */
 export default async function DevMailboxPage() {
-  if (env().EMAIL_TRANSPORT !== "outbox") notFound();
+  if (isRealProduction() || env().EMAIL_TRANSPORT !== "outbox") notFound();
   const messages = await db
     .select()
     .from(emailOutbox)
@@ -38,12 +38,25 @@ export default async function DevMailboxPage() {
                 className="mt-3 whitespace-pre-wrap break-words font-sans text-sm"
                 data-testid="email-text"
               >
-                {m.textBody}
+                {linkify(m.textBody)}
               </pre>
             </li>
           ))}
         </ol>
       )}
     </div>
+  );
+}
+
+/** Renders URLs in a plain-text email body as links. */
+function linkify(text: string) {
+  return text.split(/(https?:\/\/\S+)/g).map((part, i) =>
+    /^https?:\/\//.test(part) ? (
+      <a key={i} href={part} className="font-semibold text-ink underline">
+        {part}
+      </a>
+    ) : (
+      part
+    ),
   );
 }

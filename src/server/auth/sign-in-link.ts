@@ -1,9 +1,10 @@
 import "server-only";
-import { eq } from "drizzle-orm";
+import { createHash } from "node:crypto";
+import { and, eq, gt } from "drizzle-orm";
 import { env } from "@/lib/env";
 import { safeNextPath } from "@/lib/paths";
 import { db } from "@/server/db";
-import { user } from "@/server/db/schema";
+import { user, verification } from "@/server/db/schema";
 import { sendEmail } from "@/server/email";
 import { signInEmail } from "@/server/email/templates";
 
@@ -29,4 +30,26 @@ export async function deliverSignInLink(email: string, verifyUrl: string): Promi
   confirm.searchParams.set("next", safeNextPath(verify.searchParams.get("callbackURL")));
 
   await sendEmail({ to: email, template: "sign-in", content: signInEmail(confirm.toString()) });
+}
+
+/**
+ * The email a pending (unexpired, unused) sign-in token belongs to, or null.
+ * Better Auth stores magic-link tokens as "magic-link:" + base64url(SHA-256(token)).
+ * Shown on the confirmation page so a person can see which account a link signs into
+ * (a link someone else sent them would name the other person's address).
+ */
+export async function pendingSignInEmail(token: string, now = new Date()): Promise<string | null> {
+  if (!token || token.length > 200) return null;
+  const hash = createHash("sha256").update(token).digest("base64url");
+  const [row] = await db
+    .select({ value: verification.value })
+    .from(verification)
+    .where(and(eq(verification.identifier, `magic-link:${hash}`), gt(verification.expiresAt, now)));
+  if (!row) return null;
+  try {
+    const parsed = JSON.parse(row.value) as { email?: unknown };
+    return typeof parsed.email === "string" ? parsed.email : null;
+  } catch {
+    return null;
+  }
 }

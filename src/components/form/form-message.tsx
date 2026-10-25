@@ -3,14 +3,12 @@
 import { useEffect, useRef } from "react";
 import type { ActionState } from "@/lib/action-state";
 
-/**
- * Announces a form's result. Errors take focus so keyboard and screen-reader users
- * land on the problem; successes are announced politely.
- */
+/** Announces a form's result (alert for errors, status for success) and takes focus. */
 export function FormMessage({ state }: { state: ActionState }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (state.status === "error") ref.current?.focus();
+    // Move focus to the result so keyboard and screen-reader users hear it.
+    if (state.status !== "idle") ref.current?.focus();
   }, [state]);
   if (state.status === "idle" || !state.message) return null;
   const error = state.status === "error";

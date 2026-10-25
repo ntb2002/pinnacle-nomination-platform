@@ -21,6 +21,8 @@ export function SignInForm({ next }: { next: string }) {
         hint="We'll email you a link to sign in. No password needed."
         autoComplete="email"
         required
+        defaultValue={state.values?.email ?? ""}
+        key={state.values?.email ?? "empty"}
         errors={state.fieldErrors?.email}
       />
       <div>

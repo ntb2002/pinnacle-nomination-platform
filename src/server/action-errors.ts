@@ -14,6 +14,8 @@ export function toActionState(err: unknown): ActionState {
     return { status: "error", message: err.publicMessage, fieldErrors: err.fieldErrors };
   }
   if (err instanceof AppError) return { status: "error", message: err.publicMessage };
-  console.error("Unhandled action error:", err instanceof Error ? err.message : err);
+  // Log the error class only: messages from drivers and SMTP can contain personal data.
+  const e = err as { name?: string; code?: string };
+  console.error("Unhandled action error:", e?.name ?? typeof err, e?.code ?? "");
   return { status: "error", message: "Something went wrong. Please try again." };
 }

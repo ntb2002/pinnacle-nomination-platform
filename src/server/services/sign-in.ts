@@ -3,7 +3,8 @@ import { safeNextPath } from "@/lib/paths";
 import { emailSchema } from "@/lib/validation/common";
 import { getAuth } from "@/server/auth/auth";
 import { RateLimitedError, ValidationError } from "@/server/errors";
-import { consume, type RateLimitRule } from "@/server/rate-limit";
+import { consume, pruneRateLimits, type RateLimitRule } from "@/server/rate-limit";
+import { ipBucket } from "@/server/request";
 
 export const SIGN_IN_PER_EMAIL: RateLimitRule = {
   name: "signin:email",
@@ -35,11 +36,13 @@ export async function requestSignIn(req: SignInRequest): Promise<void> {
     });
   }
   const email = parsed.data;
-  const [byEmail, byIp] = [
-    await consume(SIGN_IN_PER_EMAIL, email),
-    await consume(SIGN_IN_PER_IP, req.ip),
-  ];
-  if (!byEmail || !byIp) throw new RateLimitedError();
+  // IP first, so requests refused for the IP do not use up the address's allowance.
+  // An unknown IP (no trusted proxy header) is not bucketed: everyone would share it.
+  if (req.ip !== "unknown" && !(await consume(SIGN_IN_PER_IP, ipBucket(req.ip)))) {
+    throw new RateLimitedError();
+  }
+  if (!(await consume(SIGN_IN_PER_EMAIL, email))) throw new RateLimitedError();
+  if (Math.random() < 0.01) await pruneRateLimits(new Date(Date.now() - 24 * 3600_000));
 
   await getAuth().api.signInMagicLink({
     body: {
