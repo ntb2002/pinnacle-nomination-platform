@@ -1,4 +1,4 @@
-ci-local: b3d50d5 on 3-data-model-seed, node v24.22.1
+ci-local: 25c96e7 on 3-data-model-seed, node v24.22.1
 
 ==> lint
 
@@ -9,29 +9,72 @@ All matched files use Prettier code style!
 ==> typecheck
 Generating route types...
 ✓ Types generated successfully
-tests/e2e/global-setup.ts(7,75): error TS2769: No overload matches this call.
-  Overload 1 of 8, '(file: string, args: readonly string[], options: ExecFileSyncOptionsWithStringEncoding): string', gave the following error.
-    Type '{ NODE_ENV: string; DATABASE_URL: string; }' is not assignable to type 'ProcessEnv'.
-      Types of property 'NODE_ENV' are incompatible.
-        Type 'string' is not assignable to type '"development" | "production" | "test"'.
-  Overload 2 of 8, '(file: string, args: readonly string[], options: ExecFileSyncOptionsWithBufferEncoding): NonSharedBuffer', gave the following error.
-    Type '{ NODE_ENV: string; DATABASE_URL: string; }' is not assignable to type 'ProcessEnv'.
-      Types of property 'NODE_ENV' are incompatible.
-        Type 'string' is not assignable to type '"development" | "production" | "test"'.
-  Overload 3 of 8, '(file: string, args?: readonly string[] | undefined, options?: ExecFileSyncOptions | undefined): string | NonSharedBuffer', gave the following error.
-    Type '{ NODE_ENV: string; DATABASE_URL: string; }' is not assignable to type 'ProcessEnv'.
-      Types of property 'NODE_ENV' are incompatible.
-        Type 'string' is not assignable to type '"development" | "production" | "test"'.
-tests/e2e/global-setup.ts(8,85): error TS2769: No overload matches this call.
-  Overload 1 of 8, '(file: string, args: readonly string[], options: ExecFileSyncOptionsWithStringEncoding): string', gave the following error.
-    Type '{ NODE_ENV: string; DATABASE_URL: string; }' is not assignable to type 'ProcessEnv'.
-      Types of property 'NODE_ENV' are incompatible.
-        Type 'string' is not assignable to type '"development" | "production" | "test"'.
-  Overload 2 of 8, '(file: string, args: readonly string[], options: ExecFileSyncOptionsWithBufferEncoding): NonSharedBuffer', gave the following error.
-    Type '{ NODE_ENV: string; DATABASE_URL: string; }' is not assignable to type 'ProcessEnv'.
-      Types of property 'NODE_ENV' are incompatible.
-        Type 'string' is not assignable to type '"development" | "production" | "test"'.
-  Overload 3 of 8, '(file: string, args?: readonly string[] | undefined, options?: ExecFileSyncOptions | undefined): string | NonSharedBuffer', gave the following error.
-    Type '{ NODE_ENV: string; DATABASE_URL: string; }' is not assignable to type 'ProcessEnv'.
-      Types of property 'NODE_ENV' are incompatible.
-        Type 'string' is not assignable to type '"development" | "production" | "test"'.
+
+==> unit + integration tests
+
+ RUN  v5.0.5 /home/user/pinnacle-nomination-platform
+
+Database reset and migrated.
+
+ Test Files  7 passed (7)
+      Tests  24 passed (24)
+   Start at  20:13:53
+   Duration  8.26s (import 52%, tests 39%, transform 8%, worker 1%)
+
+    Isolate  7 workers spawned · ~164ms startup each (spawn + environment, per file)
+             at least ~983ms faster with isolate: false — reuses workers across files instead of one per file
+
+
+==> build
+▲ Next.js 16.4.3 (Turbopack)
+- Environments: .env
+✓ Running next.config.ts took 58ms
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 1306ms
+  Running TypeScript ...
+  Finished TypeScript in 4.8s ...
+  Collecting page data using 3 workers ...
+  Generating static pages using 3 workers (0/1) ...
+✓ Generating static pages using 3 workers (1/1) in 115ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ƒ /
+├ ƒ /_not-found
+└ ƒ /api/health
+
+
+ƒ Proxy (Middleware)
+
+ƒ  (Dynamic)  server-rendered on demand
+
+Standalone output prepared.
+
+==> e2e
+Database reset and migrated.
+Seed complete. Row counts:
+  award_cycle          1
+  rubric_profile       2
+  category             9
+  user                 19
+  judge_profile        6
+  judge_assignment     36
+  entry                30
+  entry_outcome        66
+  entry_reference      39
+  entry_status_event   44
+  payment              25
+
+Running 6 tests using 1 worker
+
+  ✓  1 [chromium] › tests/e2e/boot.spec.ts:4:1 › the server exits at boot when configuration is invalid (489ms)
+  ✓  2 [chromium] › tests/e2e/home.spec.ts:5:3 › home and base layout › renders the home page with no accessibility violations (1.4s)
+  ✓  3 [chromium] › tests/e2e/home.spec.ts:15:3 › home and base layout › skip link moves focus to main content (463ms)
+  ✓  4 [chromium] › tests/e2e/home.spec.ts:24:3 › home and base layout › sends a nonce-based CSP and security headers (81ms)
+  ✓  5 [chromium] › tests/e2e/home.spec.ts:35:3 › home and base layout › unknown routes get a branded 404 with no CSP violations (1.7s)
+  ✓  6 [chromium] › tests/e2e/home.spec.ts:50:3 › home and base layout › health endpoint reports the database (25ms)
+
+  6 passed (10.0s)
+
+ci-local: all steps passed
