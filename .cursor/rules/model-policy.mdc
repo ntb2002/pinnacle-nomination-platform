@@ -1,0 +1,72 @@
+---
+description: Model + tool selection policy for agentic work (planning vs execution, parallelism, subagents)
+alwaysApply: true
+---
+
+# Model & tool policy
+
+A small, reusable policy so model/tool choice is a default, not a per-task improvisation.
+
+## Match the model to the work
+
+| Work type | Model | Reasoning |
+|---|---|---|
+| Planning, architecture, decomposing a project into issues (`/spec <project>`), Deep-lane specs, design trade-offs | strongest available | medium, raised only if it visibly falls short |
+| Executing an ambiguous or cross-cutting unit (schema, auth, multi-system refactor) | strongest available | high |
+| Debugging anything gnarly (cheap-model attempts have failed or the bug spans systems) | strongest available | high |
+| Executing a well-specified plan unit | fast/mid model | medium |
+| Mechanical edits (rename, move, formatting, doc sync) | fast model | low |
+| Cheap classification / lightweight in-app helpers | smallest model | low |
+
+The spec quality sets the model floor: a tight unit spec with a clear gate makes cheap execution safe; an underdetermined unit means decisions get made during execution, so use the strong model even though it's "just execution." If the reverse cost is high (a `DECISIONS.md`-worthy call), the model cost is noise.
+
+## Route by tier, not by tool loyalty
+
+Cursor and Claude Code are both primary drivers; the tier picks the surface. As of Sep 2026:
+
+| Tier | Surface | Model |
+|---|---|---|
+| `fast` / `mid` | **Cursor** — execution, phone Remote Control, tracker → cloud-agent delegation | Composer 2 / Grok 4.7 (or Auto) |
+| `strong` | **Claude Code** — planning, architecture, Deep-lane specs, gnarly debugging | Opus 5.5 at **medium** effort; go `high`/`xhigh` only when medium visibly falls short (5.5 thinks longer per turn than 5 at the same label) |
+| overflow | **Codex** — spare execution capacity and second-opinion PR review only | not structural; don't build workflow on it |
+
+Planning tokens are the expensive ones. Do planning where the budget resets often (Claude Code session limits), not on monthly-capped credits.
+
+## Where the choice gets made
+
+The tier is decided when the issue is specified, not when it's dispatched. `/spec` ends each spec with a **Model:** line (`fast`, `mid`, or `strong`, with one clause of reasoning) using the table above; the human sees it at approval. Whoever dispatches honors it:
+
+- **Linear → Cursor cloud agent:** put `[model=<id>]` in the delegation comment (`@Cursor /build SS-42 [model=…]`, pointing at the plan file if Deep lane). Set a sensible dashboard default too, but don't rely on it — Linear-triggered agents have been observed ignoring it.
+- **Coordinator (Cursor Project):** picks the model per subagent from the issue's tier.
+- **You, driving directly:** Auto is fine for `fast`/`mid`; pick the strongest model explicitly for `strong`.
+- **Claude Code:** set the session model (desktop model picker or `/model`) from the tier — `fast` → Haiku, `mid` → Sonnet, `strong` → Opus (current generation; as of Sep 2026: Haiku 4.5 / Sonnet 5 / Opus 5.5). Subagents take a `model:` in their frontmatter the same way.
+- **Tracker labels:** keep the tier as a label group (`tier` → `fast` / `mid` / `strong`) and the lane as another (`lane` → `standard` / `deep`), so exactly one of each applies to every *specified* issue. Thin issues carry neither until `/spec <id>` specs them; Fast-lane issues carry a tier but no lane. Lane asks *does it need a plan first*; model asks *who builds it*. Neither is inferred from the other. After a Deep-lane plan re-rates the build, update the `tier` label to match.
+
+Default tier for a well-specified unit is `mid`. Anything touching prompts that ship to users, safety behavior, schema, auth, or a `DECISIONS.md` call is `strong` regardless of size, for planning and for any build without a plan.
+
+**A Deep-lane plan re-rates its build.** `/spec <issue-id>` writes the plan's own **Model:** line for the builder. If the plan leaves no judgment calls, it may say `mid` even for schema or data-model work, because the strong model's judgment is already in the plan. **Auth, safety behavior, and prompts that ship to users stay `strong`** for the build regardless. If a `mid` build escalates, the rerun goes to `strong` (below).
+
+## Escalate tiers after a failed run
+
+Inside a run, red tests and correction rounds are normal work, bounded by the loop bounds in `AGENTS.md`. A run **fails** when it hits a loop bound and escalates, or when its PR gets a `BLOCK`. Then hand the unit to the strongest model — don't re-run the same cheap tier. A second cheap run has worse odds than the first (it's working around its own mess, or the spec was underdetermined), and two failed cheap runs plus review time cost more than one strong run.
+
+## Planning is a reviewed deliverable, not a side effect
+
+When decomposing a project (`/spec <project>`): file the issues into the tracker — the first one or two fully specified with entry deps + verification gates, the rest thin — **and stop**. Never move status. When specifying a Deep-lane issue (`/spec <issue-id>`): write `plans/features/<issue-id>-<slug>.md` **and stop**. A human accepts, promotes, and approves before any execution agent builds. Don't let a planning run drift into implementation.
+
+## Parallelism
+
+- The WIP limit comes first: one issue being built per repo unless a coordinator exists to own parallel cloud-delegated units (`AGENTS.md` landing pad).
+- Within that, parallelize **only independent** units (neither's entry dependency includes the other).
+- Anything with a chain dependency runs **serially**: build → verify gate → update `docs/status.md` + landing pad → PR → next.
+- Prefer one deliberate action + verification over speculative parallel edits to the same files.
+
+## Subagents
+
+- Use a specialized subagent with restricted tools for a scoped job (read-only `code-review`, live-app `evaluator`). Executors call them without asking — that's inside the box.
+- Keep subagents aligned with `AGENTS.md`; a stale subagent is worse than none.
+- Give a subagent the full context it needs — it doesn't see the parent conversation.
+
+## Gates must be phone-checkable
+
+Every issue's gate item is tagged `[CI]` / `[ARTIFACT]` / `[MANUAL]`. Favor `[CI]`. See `plans/README.md`.
