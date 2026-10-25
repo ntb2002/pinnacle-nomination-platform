@@ -49,6 +49,13 @@
   a {
     text-underline-offset: 0.18em;
   }
+  /* Targets of in-page links keep some space above them. */
+  fieldset[id],
+  input[id],
+  textarea[id],
+  select[id] {
+    scroll-margin-top: 1.5rem;
+  }
   /* One focus style everywhere: thick, offset, never removed. */
   :focus-visible {
     outline: 3px solid var(--color-ink);

@@ -22,7 +22,10 @@ export function EntryForm({
   initial: Record<string, string>;
   selfNomination: boolean;
 }) {
-  const [serverState, action] = useActionState(saveEntryAction.bind(null, entryId), idleState);
+  const [serverState, action, pending] = useActionState(
+    saveEntryAction.bind(null, entryId),
+    idleState,
+  );
   const [clientState, setClientState] = useState<ActionState | null>(null);
   const state = clientState ?? serverState;
   const v = state.values ?? initial;
@@ -57,16 +60,25 @@ export function EntryForm({
       noValidate
     >
       <FormMessage state={state} labelFor={entryFieldLabel} />
-      <NomineeSection v={v} e={e} selfNomination={selfNomination} />
-      <NarrativeSection v={v} e={e} />
-      <OutcomesSection v={v} e={e} />
-      <ReferencesSection v={v} e={e} />
+      {/* Locked while saving: anything typed now would be replaced by the saved values. */}
+      <fieldset disabled={pending} aria-busy={pending} className="flex flex-col gap-8">
+        <NomineeSection v={v} e={e} selfNomination={selfNomination} />
+        <NarrativeSection v={v} e={e} />
+        <OutcomesSection v={v} e={e} />
+        <ReferencesSection v={v} e={e} />
+      </fieldset>
+      {pending && (
+        <p role="status" className="font-semibold">
+          Saving…
+        </p>
+      )}
       <div className="flex flex-wrap gap-4">
         {/* First in source order, so pressing Enter in a field saves without leaving. */}
         <button
           type="submit"
           name="intent"
           value="save"
+          disabled={pending}
           className="rounded border-2 border-ink px-5 py-3 font-semibold text-ink hover:bg-surface"
         >
           Save draft
@@ -75,6 +87,7 @@ export function EntryForm({
           type="submit"
           name="intent"
           value="review"
+          disabled={pending}
           className="rounded bg-ink px-5 py-3 font-semibold text-on-ink hover:bg-ink-raised"
         >
           Save and review

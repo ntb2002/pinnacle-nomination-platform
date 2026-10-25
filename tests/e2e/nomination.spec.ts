@@ -53,6 +53,15 @@ test.describe("nomination form", () => {
     ).toBeVisible();
     await expectNoAxeViolations(page);
 
+    // A group link shows the group's legend.
+    await page.getByRole("link", { name: /^Outcomes:/ }).click();
+    await expect(page.locator("#outcomes")).toBeFocused();
+    const top = await page
+      .locator("#outcomes legend")
+      .first()
+      .evaluate((el) => el.getBoundingClientRect().top);
+    expect(top).toBeGreaterThanOrEqual(0);
+    await page.goBack();
     // Following a problem link lands focused on that field.
     await page.getByRole("link", { name: /Nominee's company/ }).click();
     await expect(page.getByLabel("Company or organization")).toBeFocused();

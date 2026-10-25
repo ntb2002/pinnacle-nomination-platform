@@ -13,7 +13,8 @@ export function FocusFromHash() {
     if (!id) return;
     const el = document.getElementById(id);
     if (!el) return;
-    el.scrollIntoView({ block: "center" });
+    // A group (fieldset) can be taller than the screen: show its legend at the top.
+    el.scrollIntoView({ block: el.tagName === "FIELDSET" ? "start" : "center" });
     el.focus({ preventScroll: true });
   }, []);
   return null;
