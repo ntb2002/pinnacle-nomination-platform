@@ -20,6 +20,7 @@ const envSchema = z
   })
   .superRefine((cfg, ctx) => {
     // Loopback is exempt so the production build can be tested locally (e2e).
+    if (!URL.canParse(cfg.APP_URL)) return; // already reported by the field check
     const host = new URL(cfg.APP_URL).hostname;
     const loopback = host === "localhost" || host === "127.0.0.1" || host === "[::1]";
     if (cfg.NODE_ENV === "production" && !cfg.APP_URL.startsWith("https://") && !loopback) {

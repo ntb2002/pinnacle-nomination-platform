@@ -1,4 +1,4 @@
-ci-local: 3ace71d on 2-app-foundation, node v24.22.1
+ci-local: 9120782 on 2-app-foundation, node v24.22.1
 
 ==> lint
 
@@ -15,45 +15,37 @@ Generating route types...
  RUN  v5.0.5 /home/user/pinnacle-nomination-platform
 
 Database reset and migrated.
+ ❯ tests/unit/env.test.ts (5 tests | 1 failed) 21ms
+   ❯ parseEnv (5)
+     × rejects an invalid APP_URL 8ms
 
- Test Files  5 passed (5)
-      Tests  12 passed (12)
-   Start at  20:06:16
-   Duration  4.17s (import 55%, tests 32%, transform 12%, worker 2%)
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
 
-    Isolate  5 workers spawned · ~144ms startup each (spawn + environment, per file)
-             at least ~574ms faster with isolate: false — reuses workers across files instead of one per file
+ FAIL  tests/unit/env.test.ts > parseEnv > rejects an invalid APP_URL
+AssertionError: expected [Function] to throw error matching /APP_URL/ but got 'Invalid URL'
 
+- Expected:
+/APP_URL/
 
-==> build
-▲ Next.js 16.4.3 (Turbopack)
-- Environments: .env
-✓ Running next.config.ts took 52ms
++ Received:
+"Invalid URL"
 
-  Creating an optimized production build ...
-✓ Compiled successfully in 1133ms
-  Running TypeScript ...
-  Finished TypeScript in 3.8s ...
-  Collecting page data using 3 workers ...
-  Generating static pages using 3 workers (0/1) ...
-✓ Generating static pages using 3 workers (1/1) in 115ms
-  Finalizing page optimization ...
+ ❯ tests/unit/env.test.ts:22:64
+     20|
+     21|   it("rejects an invalid APP_URL", () => {
+     22|     expect(() => parseEnv({ ...valid, APP_URL: "not a url" })).toThrow…
+       |                                                                ^
+     23|     expect(() => parseEnv({ ...valid, APP_URL: "ftp://example.com" }))…
+     24|   });
 
-Route (app)
-┌ ƒ /
-├ ƒ /_not-found
-└ ƒ /api/health
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
 
 
-ƒ Proxy (Middleware)
+ Test Files  1 failed | 4 passed (5)
+      Tests  1 failed | 11 passed (12)
+   Start at  20:06:56
+   Duration  3.95s (import 53%, tests 34%, transform 11%, worker 2%)
 
-ƒ  (Dynamic)  server-rendered on demand
-
-Standalone output prepared.
-
-==> e2e
-[WebServer] Invalid environment configuration (see .env.example):
-[WebServer] ✖ must use https in production
-[WebServer]   → at APP_URL
-Error: Process from config.webServer was not able to start. Exit code: 1
+    Isolate  5 workers spawned · ~151ms startup each (spawn + environment, per file)
+             at least ~602ms faster with isolate: false — reuses workers across files instead of one per file
 
