@@ -81,12 +81,20 @@
       padding-inline: 2rem;
     }
   }
-  /* The summit rule: the program's one decorative signature. */
+  /* The summit rule: the program's one decorative signature, a line rising to a peak. */
   .summit-rule {
     display: block;
-    width: 4.5rem;
-    height: 0.75rem;
+    width: 5rem;
+    height: 0.875rem;
     background: var(--color-signal);
-    clip-path: polygon(0 100%, 38% 100%, 50% 0, 62% 100%, 100% 100%, 100% 100%, 0 100%);
+    clip-path: polygon(
+      0 100%,
+      0 calc(100% - 3px),
+      18% calc(100% - 3px),
+      30% 0,
+      42% calc(100% - 3px),
+      100% calc(100% - 3px),
+      100% 100%
+    );
   }
 }

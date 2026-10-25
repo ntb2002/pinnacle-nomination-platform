@@ -37,6 +37,8 @@ const envSchema = z
      * is that many entries from the right. 1 = one load balancer (typical).
      */
     TRUSTED_PROXY_HOPS: z.coerce.number().int().min(0).max(5).default(1),
+    /** "true" shows a banner saying people and entries are fictional (demo deployments). */
+    DEMO_MODE: z.enum(["true", "false"]).default("false"),
     /** Must stay unset: Better Auth would silently trust extra origins from it. */
     BETTER_AUTH_TRUSTED_ORIGINS: z
       .undefined({ error: "must not be set; trusted origin is APP_URL" })

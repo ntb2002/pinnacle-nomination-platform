@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import Link from "next/link";
 import { signOutAction } from "@/app/actions/auth";
 import { getActor } from "@/server/auth/session";
@@ -9,10 +10,21 @@ const ROLE_HOME = {
   ADMIN: { href: "/admin", label: "Admin" },
 } as const;
 
-const linkClass = "text-on-ink underline-offset-4 hover:underline";
+const PUBLIC_LINKS = [
+  { href: "/categories", label: "Categories" },
+  { href: "/fees", label: "Fees and deadlines" },
+  { href: "/methodology", label: "Methodology" },
+  { href: "/judges", label: "Judges" },
+];
+
+const linkClass =
+  "text-on-ink underline-offset-4 hover:underline aria-[current=page]:underline aria-[current=page]:decoration-signal aria-[current=page]:decoration-2";
 
 export async function SiteHeader() {
   const actor = await getActor();
+  const path = ((await headers()).get("x-pathname") ?? "/").split("?")[0] ?? "/";
+  const current = (href: string) =>
+    path === href || path.startsWith(`${href}/`) ? "page" : undefined;
   return (
     <header className="on-ink bg-ink text-on-ink">
       <div className="container-page flex flex-wrap items-center justify-between gap-4 py-4">
@@ -29,11 +41,13 @@ export async function SiteHeader() {
         </Link>
         <nav aria-label="Main">
           <ul className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
-            <li>
-              <Link href="/" className={linkClass}>
-                Home
-              </Link>
-            </li>
+            {PUBLIC_LINKS.map((l) => (
+              <li key={l.href}>
+                <Link href={l.href} className={linkClass} aria-current={current(l.href)}>
+                  {l.label}
+                </Link>
+              </li>
+            ))}
             {actor ? (
               <>
                 <li>
