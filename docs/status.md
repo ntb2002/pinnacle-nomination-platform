@@ -4,9 +4,9 @@
 
 ## Now
 
-- **Done:** #1, #2
+- **Done:** #1, #2, #3
 - **In progress:** —
-- **Next:** #3 Data model and seeded demo data
+- **Next:** #4 Authentication, RBAC and audit logging
 - **Blockers:** none
 
 ## Needs human (collected from issues)
@@ -17,8 +17,14 @@
 
 - **HSTS scope (#2):** production sends `Strict-Transport-Security: max-age=63072000` without `includeSubDomains`/`preload`. Adding those commits the whole parent domain; Syracuse IT decides (LAUNCH_READINESS).
 
+- **Program dates and finalist fee (#3):** nominations open 2027-01-26 (given). The early/regular/final deadlines (Feb 26 / Mar 26 / Apr 23, 2027) and the $1,500 finalist package fee are placeholders in `src/lib/program-defaults.ts`. Admins can change all of them in the app (#6). CCE to confirm.
+- **Category descriptions (#3):** placeholder copy marked `TODO(copy)` for CCE staff.
+
 ## Open technical threads
 
+- #8 must delete stored files when an attachment row goes (entry cascade deletes rows, not bytes).
+- #5: show a "demo data" banner when the demo seed is loaded, so invented judges are never mistaken for the real panel.
+- `src/lib/pricing.ts` landed early in #3 (the seed needs it); #6 adds the admin UI around it.
 - `drizzle-kit` (dev-only) pulls a deprecated `@esbuild-kit` chain with 4 moderate `npm audit` advisories (esbuild dev-server CORS). Not in production deps; revisit when drizzle-kit 1.0 ships.
 - Deploy-time migrations need `tsx` + `drizzle/` alongside the standalone server; packaging decided in #18.
 
@@ -26,6 +32,7 @@
 
 ### 2026-10-25 — v1 build started
 
+- #3 — Drizzle schema for the whole program with policy constraints (composite FKs, restrict deletes, partial unique indexes, CHECKs), append-only audit trigger, idempotent fake seed (63 entries), pricing module, factories. Review APPROVE WITH FIXES; all High fixed.
 - #2 — Next.js 16 foundation: env validation (exits on bad config), nonce CSP + security headers, Drizzle/Postgres (DECISIONS 004 replaced Prisma), health route, accessible layout + tokens, Vitest + Playwright/axe, CI staged at `docs/ci/ci.yml`. Review APPROVE WITH FIXES and evaluator FAIL on the 404 CSP; all fixed.
 - #1 — playbook scaffold, VISION/AGENTS/DECISIONS, status log. Code review: APPROVE WITH FIXES (fixes applied).
 - Spec: issues #1-#18 filed in dependency order. Integration branch `v1` created from `main`.
