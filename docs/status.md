@@ -4,8 +4,8 @@
 
 ## Now
 
-- **Done:** —
-- **In progress:** #1 Bootstrap the repo from agent-playbook (branch `1-bootstrap-playbook`)
+- **Done:** #1
+- **In progress:** —
 - **Next:** #2 App foundation
 - **Blockers:** none
 
@@ -21,4 +21,5 @@
 
 ### 2026-10-25 — v1 build started
 
+- #1 — playbook scaffold, VISION/AGENTS/DECISIONS, status log. Code review: APPROVE WITH FIXES (fixes applied).
 - Spec: issues #1-#18 filed in dependency order. Integration branch `v1` created from `main`.
