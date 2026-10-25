@@ -25,6 +25,7 @@ export default defineConfig({
       DATABASE_URL: testDatabaseUrl,
       BETTER_AUTH_SECRET: "test-only-secret-not-for-production-000000",
       EMAIL_TRANSPORT: "outbox",
+      STORAGE_DIR: path.resolve(import.meta.dirname, "storage/test"),
     },
   },
 });

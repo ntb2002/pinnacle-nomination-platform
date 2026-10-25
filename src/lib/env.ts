@@ -37,6 +37,14 @@ const envSchema = z
      * is that many entries from the right. 1 = one load balancer (typical).
      */
     TRUSTED_PROXY_HOPS: z.coerce.number().int().min(0).max(5).default(1),
+    /** Where supporting files are stored: local disk (dev, single server) or S3-compatible. */
+    STORAGE_DRIVER: z.enum(["local", "s3"]).default("local"),
+    /** Local driver: directory outside public/. Must be on a backed-up volume in production. */
+    STORAGE_DIR: z.string().min(1).default("./storage"),
+    S3_BUCKET: z.string().min(3).optional(),
+    S3_REGION: z.string().min(2).optional(),
+    /** Only for S3-compatible services (MinIO, Wasabi, …); omit for AWS S3. */
+    S3_ENDPOINT: z.url().optional(),
     /** "true" shows a banner saying people and entries are fictional (demo deployments). */
     DEMO_MODE: z.enum(["true", "false"]).default("false"),
     /** Must stay unset: Better Auth would silently trust extra origins from it. */
@@ -66,6 +74,13 @@ const envSchema = z
         path: ["SMTP_URL"],
         message:
           "must use smtps:// (implicit TLS) in production so tokens never cross the wire unencrypted",
+      });
+    }
+    if (cfg.STORAGE_DRIVER === "s3" && (!cfg.S3_BUCKET || !cfg.S3_REGION)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["S3_BUCKET"],
+        message: "S3_BUCKET and S3_REGION are required when STORAGE_DRIVER=s3",
       });
     }
     if (cfg.EMAIL_TRANSPORT === "smtp" && !cfg.SMTP_URL) {

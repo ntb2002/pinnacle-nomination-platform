@@ -6,6 +6,7 @@ import type { ActionState } from "@/lib/action-state";
 import { draftToFormValues, entryFormToDraft } from "@/lib/entry-form";
 import { toActionState } from "@/server/action-errors";
 import { requireRole } from "@/server/auth/session";
+import { deleteAttachment } from "@/server/services/attachments";
 import { deleteDraft, saveDraft } from "@/server/services/entry-drafts";
 import { startEntry } from "@/server/services/entries";
 
@@ -55,4 +56,18 @@ export async function deleteDraftAction(entryId: string, _prev: ActionState): Pr
     return toActionState(err);
   }
   redirect("/entries");
+}
+
+/** Removes a supporting file, then returns to the edit page with the result. */
+export async function removeAttachmentAction(entryId: string, attachmentId: string) {
+  const actor = await requireRole("NOMINATOR");
+  let result = "removed=1";
+  try {
+    await deleteAttachment(actor, attachmentId);
+  } catch (err) {
+    toActionState(err);
+    result = "uploadError=closed";
+  }
+  revalidatePath(`/entries/${entryId}`, "layout");
+  redirect(`/entries/${entryId}/edit?${result}#files-message`);
 }

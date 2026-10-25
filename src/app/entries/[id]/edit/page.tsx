@@ -6,12 +6,17 @@ import { PageHeader } from "@/components/page-header";
 import { RELATIONSHIP_LABEL } from "@/lib/entry-status";
 import { requireRole } from "@/server/auth/session";
 import { NotFoundError } from "@/server/errors";
+import { listAttachments } from "@/server/services/attachments";
 import { EDITABLE_STATUSES, getMyEntry } from "@/server/services/entries";
 import { EntryForm } from "./entry-form";
+import { FilesSection } from "./files-section";
 
 export const metadata: Metadata = { title: "Edit entry" };
 
-export default async function EditEntryPage({ params }: PageProps<"/entries/[id]/edit">) {
+export default async function EditEntryPage({
+  params,
+  searchParams,
+}: PageProps<"/entries/[id]/edit">) {
   const actor = await requireRole("NOMINATOR");
   const { id } = await params;
   const entry = await getMyEntry(actor, id).catch((err) => {
@@ -19,6 +24,7 @@ export default async function EditEntryPage({ params }: PageProps<"/entries/[id]
     throw err;
   });
   if (!(EDITABLE_STATUSES as readonly string[]).includes(entry.status)) redirect(`/entries/${id}`);
+  const [files, query] = await Promise.all([listAttachments(actor, id), searchParams]);
 
   const initial: Record<string, string> = {
     nomineeName: entry.nomineeName ?? "",
@@ -63,6 +69,7 @@ export default async function EditEntryPage({ params }: PageProps<"/entries/[id]
         initial={initial}
         selfNomination={entry.relationship === "SELF"}
       />
+      <FilesSection entryId={entry.id} files={files} query={query} />
     </div>
   );
 }

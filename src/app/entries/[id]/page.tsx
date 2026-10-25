@@ -9,7 +9,9 @@ import { entryFieldLabel } from "@/lib/entry-form";
 import { readinessProblems, toSubmissionInput } from "@/lib/validation/entry";
 import { requireRole } from "@/server/auth/session";
 import { NotFoundError } from "@/server/errors";
+import { listAttachments } from "@/server/services/attachments";
 import { EDITABLE_STATUSES, getMyEntry, getNominationWindow } from "@/server/services/entries";
+import { AttachmentList } from "./attachment-list";
 import { DeleteDraft } from "./delete-draft";
 import { EntrySummary } from "./entry-summary";
 
@@ -28,7 +30,7 @@ export default async function EntryPage({ params }: PageProps<"/entries/[id]">) 
     problems.category = ["This category is no longer offered. Contact the program team."];
   }
   const ready = editable && Object.keys(problems).length === 0;
-  const fee = await getNominationWindow();
+  const [fee, files] = await Promise.all([getNominationWindow(), listAttachments(actor, id)]);
   const status = NOMINATOR_STATUS[entry.status];
 
   return (
@@ -81,6 +83,12 @@ export default async function EntryPage({ params }: PageProps<"/entries/[id]">) 
         </section>
       )}
       <EntrySummary entry={entry} />
+      <section aria-labelledby="sum-files" className="mt-10">
+        <h2 id="sum-files" className="font-display text-2xl font-semibold">
+          Supporting files
+        </h2>
+        <AttachmentList files={files} />
+      </section>
     </div>
   );
 }

@@ -44,7 +44,9 @@ export function proxy(request: NextRequest) {
 export const config = {
   matcher: [
     {
-      source: "/((?!_next/static|_next/image|favicon.ico).*)",
+      // Uploads skip the proxy so their bodies are not buffered here; the route
+      // handler checks origin, size and session itself.
+      source: "/((?!_next/static|_next/image|favicon.ico|api/entries/[^/]+/attachments$).*)",
       missing: [
         { type: "header", key: "next-router-prefetch" },
         { type: "header", key: "purpose", value: "prefetch" },

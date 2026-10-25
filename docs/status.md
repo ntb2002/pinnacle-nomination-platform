@@ -5,8 +5,8 @@
 ## Now
 
 - **Done:** #1, #2, #3, #4, #5, #6, #7
-- **In progress:** —
-- **Next:** #8 Secure supporting-file uploads
+- **In progress:** #8 Secure supporting-file uploads (built and tested; reviews next)
+- **Next:** #9 Entry fee payment
 - **Blockers:** none
 
 ## Needs human (collected from issues)
@@ -29,7 +29,8 @@
 - #7/#9: the submit/fulfil path must read the entry's category `FOR SHARE` and refuse a withdrawn (disabled) category, to serialize with category withdrawal.
 - Rate limiting and audit IPs use the `TRUSTED_PROXY_HOPS`-th `X-Forwarded-For` entry from the right; production must sit behind a proxy that appends it (LAUNCH_READINESS). The per-email sign-in limit (5 per sliding 15 minutes) means someone who knows an address can keep that person from requesting new links for as long as they keep sending about 5 requests every 15 minutes. Accepted trade-off against email bombing; LAUNCH_READINESS lists mitigations (admin SSO, a CAPTCHA after failures).
 - Shorter sessions for admins/judges are scheduled for #16 (all roles get 7 days today).
-- #8 must delete stored files when an attachment row goes (entry cascade deletes rows, not bytes).
+- Supporting files are not malware-scanned (#8). LAUNCH_READINESS: add a scanning step (e.g. ClamAV or the bucket provider's scanner) before judges download. Files are only ever served as downloads with `nosniff`.
+- #11 judge pages must use `entryAccessFor` (`src/server/services/entry-access.ts`) for every read of entry content, so files and entries follow one rule.
 - `src/lib/pricing.ts` landed early in #3 (the seed needs it); #6 adds the admin UI around it.
 - `drizzle-kit` (dev-only) pulls a deprecated `@esbuild-kit` chain with 4 moderate `npm audit` advisories (esbuild dev-server CORS). Not in production deps; revisit when drizzle-kit 1.0 ships.
 - Deploy-time migrations need `tsx` + `drizzle/` alongside the standalone server; packaging decided in #18.
