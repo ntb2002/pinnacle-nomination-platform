@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clientIpFrom, ipBucket } from "@/server/request";
+import { clientIpFrom, ipBucket, normalizeIp } from "@/server/request";
 
 const h = (xff?: string) => new Headers(xff ? { "x-forwarded-for": xff } : {});
 
@@ -22,5 +22,20 @@ describe("ipBucket", () => {
     expect(ipBucket("203.0.113.7")).toBe("203.0.113.7");
     expect(ipBucket("2001:db8:1:2:aaaa::1")).toBe("2001:db8:1:2::/64");
     expect(ipBucket("2001:db8:1:2:bbbb:cccc:dddd:eeee")).toBe("2001:db8:1:2::/64");
+  });
+});
+
+describe("normalizeIp", () => {
+  it("strips ports and canonicalizes IPv6", () => {
+    expect(normalizeIp("203.0.113.7:5678")).toBe("203.0.113.7");
+    expect(normalizeIp("[2001:db8::1]:443")).toBe("2001:db8::1");
+    expect(normalizeIp("2001:0db8:0000:0000::1")).toBe("2001:db8::1");
+    expect(normalizeIp("::ffff:203.0.113.7")).toBe("203.0.113.7");
+    expect(normalizeIp("nonsense")).toBeNull();
+  });
+  it("is used for the client IP", () => {
+    expect(clientIpFrom(new Headers({ "x-forwarded-for": "6.6.6.6, 203.0.113.7:5678" }), 1)).toBe(
+      "203.0.113.7",
+    );
   });
 });

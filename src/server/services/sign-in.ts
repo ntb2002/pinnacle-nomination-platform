@@ -11,6 +11,11 @@ export const SIGN_IN_PER_EMAIL: RateLimitRule = {
   limit: 5,
   windowSeconds: 15 * 60,
 };
+export const SIGN_IN_UNKNOWN_IP: RateLimitRule = {
+  name: "signin:ip-unknown",
+  limit: 200,
+  windowSeconds: 15 * 60,
+};
 export const SIGN_IN_PER_IP: RateLimitRule = {
   name: "signin:ip",
   limit: 20,
@@ -37,10 +42,13 @@ export async function requestSignIn(req: SignInRequest): Promise<void> {
   }
   const email = parsed.data;
   // IP first, so requests refused for the IP do not use up the address's allowance.
-  // An unknown IP (no trusted proxy header) is not bucketed: everyone would share it.
-  if (req.ip !== "unknown" && !(await consume(SIGN_IN_PER_IP, ipBucket(req.ip)))) {
-    throw new RateLimitedError();
-  }
+  // Requests whose IP cannot be determined share one generous bucket, so a proxy
+  // misconfiguration never switches IP limiting off entirely.
+  const ipAllowed =
+    req.ip === "unknown"
+      ? await consume(SIGN_IN_UNKNOWN_IP, "unknown")
+      : await consume(SIGN_IN_PER_IP, ipBucket(req.ip));
+  if (!ipAllowed) throw new RateLimitedError();
   if (!(await consume(SIGN_IN_PER_EMAIL, email))) throw new RateLimitedError();
   if (Math.random() < 0.01) await pruneRateLimits(new Date(Date.now() - 24 * 3600_000));
 

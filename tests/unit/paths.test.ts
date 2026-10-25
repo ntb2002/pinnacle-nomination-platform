@@ -31,5 +31,6 @@ describe("safeNextPath", () => {
       expect(out, bad).toBe("/");
     }
     expect(safeNextPath(null)).toBe("/");
+    expect(safeNextPath("/%0d%0aSet-Cookie:x")).not.toMatch(/[\r\n]/);
   });
 });
