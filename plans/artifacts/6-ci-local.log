@@ -1,4 +1,4 @@
-ci-local: dbf60e1 on 6-admin-settings, node v24.22.1
+ci-local: d845690 on 6-admin-settings, node v24.22.1
 
 ==> lint
 
@@ -15,39 +15,112 @@ Generating route types...
  RUN  v5.0.5 /home/user/pinnacle-nomination-platform
 
 Database reset and migrated.
- ❯ tests/integration/program-settings.test.ts (17 tests | 1 failed) 2646ms
-   ❯ updateCategory (6)
-     × never disables a core category 151ms
 
-⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+ Test Files  16 passed (16)
+      Tests  88 passed (88)
+   Start at  21:37:05
+   Duration  23.16s (tests 58%, import 37%, transform 4%, worker 1%)
 
- FAIL  tests/integration/program-settings.test.ts > updateCategory > never disables a core category
-AssertionError: promise resolved "undefined" instead of rejecting
-
-- Expected:
-Error {
-  "message": "rejected promise",
-}
-
-+ Received:
-undefined
-
- ❯ tests/integration/program-settings.test.ts:266:6
-    264|     await expect(
-    265|       updateCategory(admin, cat.id, { ...base(cat.rubricProfileId), en…
-    266|     ).rejects.toBeInstanceOf(ConflictError);
-       |      ^
-    267|     void cycle;
-    268|   });
-
-⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+    Isolate  16 workers spawned · ~156ms startup each (spawn + environment, per file)
+             at least ~2.34s faster with isolate: false — reuses workers across files instead of one per file
 
 
- Test Files  1 failed | 15 passed (16)
-      Tests  1 failed | 87 passed (88)
-   Start at  21:36:11
-   Duration  23.52s (tests 54%, import 42%, transform 4%, worker 1%)
+==> build
+▲ Next.js 16.4.3 (Turbopack)
+- Environments: .env
+✓ Running next.config.ts took 56ms
+- Experiments (use with caution):
+  ✓ authInterrupts
 
-    Isolate  16 workers spawned · ~169ms startup each (spawn + environment, per file)
-             at least ~2.53s faster with isolate: false — reuses workers across files instead of one per file
+  Creating an optimized production build ...
+✓ Compiled successfully in 2.4s
+  Running TypeScript ...
+  Finished TypeScript in 6.1s ...
+  Collecting page data using 3 workers ...
+  Generating static pages using 3 workers (0/1) ...
+✓ Generating static pages using 3 workers (1/1) in 130ms
+  Finalizing page optimization ...
 
+Route (app)
+┌ ƒ /
+├ ƒ /_not-found
+├ ƒ /admin
+├ ƒ /admin/categories
+├ ƒ /admin/rubrics
+├ ƒ /admin/settings
+├ ƒ /api/auth/[...all]
+├ ƒ /api/health
+├ ƒ /categories
+├ ƒ /conflict-of-interest
+├ ƒ /dev/mailbox
+├ ƒ /entries
+├ ƒ /fees
+├ ƒ /judge
+├ ƒ /judges
+├ ƒ /methodology
+├ ƒ /sign-in
+└ ƒ /sign-in/confirm
+
+
+ƒ Proxy (Middleware)
+
+ƒ  (Dynamic)  server-rendered on demand
+
+Standalone output prepared.
+
+==> e2e
+Database reset and migrated.
+Seed complete. Row counts:
+  award_cycle          1
+  rubric_profile       2
+  category             9
+  user                 19
+  judge_profile        6
+  judge_assignment     36
+  entry                63
+  entry_outcome        148
+  entry_reference      88
+  entry_status_event   105
+  payment              57
+
+Running 34 tests using 1 worker
+
+  ✓   1 [chromium] › tests/e2e/admin-settings.spec.ts:11:3 › admin program settings › changing the regular fee updates the public fees page (4.1s)
+  ✓   2 [chromium] › tests/e2e/admin-settings.spec.ts:35:3 › admin program settings › shows linked errors for out-of-order deadlines and keeps the typed values (2.3s)
+  ✓   3 [chromium] › tests/e2e/admin-settings.spec.ts:55:3 › admin program settings › rubric weights must total 100 and lock once judging starts (2.4s)
+  ✓   4 [chromium] › tests/e2e/admin-settings.spec.ts:78:3 › admin program settings › withdrawing an optional category with submitted entries is refused, keeping the typed text (3.1s)
+  ✓   5 [chromium] › tests/e2e/admin-settings.spec.ts:103:3 › admin program settings › non-admins cannot reach admin settings (2.5s)
+  ✓   6 [chromium] › tests/e2e/auth.spec.ts:7:3 › authentication and role gates › sign-in page is accessible (2.2s)
+  ✓   7 [chromium] › tests/e2e/auth.spec.ts:17:3 › authentication and role gates › a nominator signs in with an emailed link and lands where they were going (2.1s)
+  ✓   8 [chromium] › tests/e2e/auth.spec.ts:30:3 › authentication and role gates › the emailed link works once; opening it does not spend it (3.3s)
+  ✓   9 [chromium] › tests/e2e/auth.spec.ts:46:3 › authentication and role gates › an expired link is refused (862ms)
+  ✓  10 [chromium] › tests/e2e/auth.spec.ts:55:3 › authentication and role gates › a link for a since-disabled account creates no session (1.1s)
+[WebServer] 2026-10-25T21:38:12.933Z ERROR [Better Auth]: Invalid callbackURL: https://evil.example/
+  ✓  11 [chromium] › tests/e2e/auth.spec.ts:75:3 › authentication and role gates › verify refuses cross-site requests and foreign redirect targets (729ms)
+  ✓  12 [chromium] › tests/e2e/auth.spec.ts:104:3 › authentication and role gates › a signed-in user is never redirected off-site by next (2.0s)
+  ✓  13 [chromium] › tests/e2e/auth.spec.ts:113:3 › authentication and role gates › the confirmation page warns before switching accounts (1.9s)
+  ✓  14 [chromium] › tests/e2e/auth.spec.ts:125:3 › authentication and role gates › a nominator gets 403 on /admin and /judge (2.6s)
+  ✓  15 [chromium] › tests/e2e/auth.spec.ts:137:3 › authentication and role gates › anonymous visitors to protected areas are sent to sign-in (868ms)
+  ✓  16 [chromium] › tests/e2e/auth.spec.ts:146:3 › authentication and role gates › an admin reaches the admin area and the sign-in is audited (1.1s)
+  ✓  17 [chromium] › tests/e2e/auth.spec.ts:158:3 › authentication and role gates › Better Auth endpoints other than verify are not exposed (41ms)
+  ✓  18 [chromium] › tests/e2e/boot.spec.ts:4:1 › the server exits at boot when configuration is invalid (489ms)
+  ✓  19 [chromium] › tests/e2e/home.spec.ts:5:3 › home and base layout › renders the home page with no accessibility violations (1.7s)
+  ✓  20 [chromium] › tests/e2e/home.spec.ts:15:3 › home and base layout › skip link moves focus to main content (536ms)
+  ✓  21 [chromium] › tests/e2e/home.spec.ts:24:3 › home and base layout › sends a nonce-based CSP and security headers (36ms)
+  ✓  22 [chromium] › tests/e2e/home.spec.ts:35:3 › home and base layout › unknown routes get a branded 404 with no CSP violations (2.0s)
+  ✓  23 [chromium] › tests/e2e/home.spec.ts:50:3 › home and base layout › health endpoint reports the database (27ms)
+  ✓  24 [chromium] › tests/e2e/public-site.spec.ts:16:5 › public program site › / renders and is accessible (1.4s)
+  ✓  25 [chromium] › tests/e2e/public-site.spec.ts:16:5 › public program site › /categories renders and is accessible (1.4s)
+  ✓  26 [chromium] › tests/e2e/public-site.spec.ts:16:5 › public program site › /fees renders and is accessible (1.4s)
+  ✓  27 [chromium] › tests/e2e/public-site.spec.ts:16:5 › public program site › /methodology renders and is accessible (1.6s)
+  ✓  28 [chromium] › tests/e2e/public-site.spec.ts:16:5 › public program site › /judges renders and is accessible (1.4s)
+  ✓  29 [chromium] › tests/e2e/public-site.spec.ts:16:5 › public program site › /conflict-of-interest renders and is accessible (1.5s)
+  ✓  30 [chromium] › tests/e2e/public-site.spec.ts:25:3 › public program site › every page has a unique title and is reachable from the nav (1.9s)
+  ✓  31 [chromium] › tests/e2e/public-site.spec.ts:49:3 › public program site › categories lists enabled categories only (495ms)
+  ✓  32 [chromium] › tests/e2e/public-site.spec.ts:63:3 › public program site › fees come from the live cycle settings (534ms)
+  ✓  33 [chromium] › tests/e2e/public-site.spec.ts:86:3 › public program site › methodology shows the weights stored for each rubric profile (563ms)
+  ✓  34 [chromium] › tests/e2e/public-site.spec.ts:108:3 › public program site › a judge without a public profile is not listed (856ms)
+
+  34 passed (58.5s)
+
+ci-local: all steps passed
