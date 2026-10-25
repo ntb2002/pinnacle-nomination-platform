@@ -1,6 +1,6 @@
 import "server-only";
 import { and, asc, eq, ne, sql } from "drizzle-orm";
-import { z } from "zod";
+import { isUuid } from "@/lib/ids";
 import {
   categoryUpdateSchema,
   parseCycleSettings,
@@ -13,8 +13,6 @@ import { db, type DbExecutor } from "@/server/db";
 import { awardCycle, category, entry, rubricProfile } from "@/server/db/schema";
 import { ConflictError, NotFoundError, ValidationError } from "@/server/errors";
 import { fieldErrorsOf } from "@/server/validation";
-
-const isUuid = (v: string) => z.uuid().safeParse(v).success;
 
 /** Rubric weights and category scoring are frozen once round one opens. */
 export const isJudgingStarted = (phase: string) => phase !== "NOMINATION";

@@ -12,9 +12,12 @@ export function FormMessage({
   state,
   labels = {},
   idPrefix = "",
+  labelFor,
 }: {
   state: ActionState;
   labels?: Record<string, string>;
+  /** Label lookup for field names not in `labels` (e.g. "outcomes.1.dataPoint"). */
+  labelFor?: (field: string) => string;
   /** Prefix of the form's field ids, when they are not the bare field names. */
   idPrefix?: string;
 }) {
@@ -49,7 +52,9 @@ export function FormMessage({
                   }
                 }}
               >
-                {labels[field] ? `${labels[field]}: ` : ""}
+                {(labels[field] ?? labelFor?.(field))
+                  ? `${labels[field] ?? labelFor?.(field)}: `
+                  : ""}
                 {messages[0]}
               </a>
             </li>
