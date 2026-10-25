@@ -1,0 +1,67 @@
+ci-local: 5b82d73 on 2-app-foundation, node v24.22.1
+
+==> lint
+
+==> format:check
+Checking formatting...
+All matched files use Prettier code style!
+
+==> typecheck
+Generating route types...
+✓ Types generated successfully
+
+==> unit + integration tests
+
+ RUN  v5.0.5 /home/user/pinnacle-nomination-platform
+
+Migrations applied.
+
+ Test Files  3 passed (3)
+      Tests  7 passed (7)
+   Start at  19:58:46
+   Duration  4.06s (import 68%, transform 23%, tests 7%, worker 1%)
+
+    Isolate  3 workers spawned · ~147ms startup each (spawn + environment, per file)
+             at least ~294ms faster with isolate: false — reuses workers across files instead of one per file
+
+
+==> build
+▲ Next.js 16.4.3 (Turbopack)
+- Environments: .env
+✓ Running next.config.ts took 57ms
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 1012ms
+  Running TypeScript ...
+  Finished TypeScript in 5.3s ...
+  Collecting page data using 3 workers ...
+  Generating static pages using 3 workers (0/3) ...
+✓ Generating static pages using 3 workers (3/3) in 177ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ƒ /
+├ ○ /_not-found
+└ ƒ /api/health
+
+
+ƒ Proxy (Middleware)
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
+Standalone output prepared.
+
+==> e2e
+Migrations applied.
+
+Running 4 tests using 1 worker
+
+  ✓  1 [chromium] › tests/e2e/home.spec.ts:5:3 › home and base layout › renders the home page with no accessibility violations (1.7s)
+  ✓  2 [chromium] › tests/e2e/home.spec.ts:15:3 › home and base layout › skip link moves focus to main content (490ms)
+  ✓  3 [chromium] › tests/e2e/home.spec.ts:24:3 › home and base layout › sends a nonce-based CSP and security headers (82ms)
+  ✓  4 [chromium] › tests/e2e/home.spec.ts:32:3 › home and base layout › health endpoint reports the database (25ms)
+
+  4 passed (6.8s)
+
+ci-local: all steps passed

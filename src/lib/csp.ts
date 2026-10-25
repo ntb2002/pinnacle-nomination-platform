@@ -13,7 +13,9 @@ export function buildCsp(nonce: string, opts: { dev: boolean; https: boolean }):
       "'strict-dynamic'",
       ...(opts.dev ? ["'unsafe-eval'"] : []),
     ],
-    "style-src": ["'self'", `'nonce-${nonce}'`],
+    // Dev only: Next's dev tools inject un-nonced <style> tags. A nonce would make
+    // browsers ignore 'unsafe-inline', so dev uses 'unsafe-inline' alone.
+    "style-src": opts.dev ? ["'self'", "'unsafe-inline'"] : ["'self'", `'nonce-${nonce}'`],
     "style-src-attr": ["'unsafe-inline'"],
     "img-src": ["'self'", "data:", "blob:"],
     "font-src": ["'self'"],

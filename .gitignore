@@ -12,6 +12,7 @@
 
 # Logs
 *.log
+!plans/artifacts/*.log
 
 # Node
 node_modules/

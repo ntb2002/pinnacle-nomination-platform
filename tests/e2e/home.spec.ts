@@ -27,6 +27,24 @@ test.describe("home and base layout", () => {
     expect(csp).toMatch(/script-src 'self' 'nonce-[A-Za-z0-9+/=]+' 'strict-dynamic'/);
     expect(res.headers()["x-content-type-options"]).toBe("nosniff");
     expect(res.headers()["x-frame-options"]).toBe("DENY");
+    expect(csp).toContain("frame-ancestors 'none'");
+    expect(res.headers()["referrer-policy"]).toBe("strict-origin-when-cross-origin");
+    expect(res.headers()["permissions-policy"]).toContain("camera=()");
+  });
+
+  test("unknown routes get a branded 404 with no CSP violations", async ({ page }) => {
+    const violations: string[] = [];
+    page.on("console", (msg) => {
+      if (msg.type() === "error" && /Content Security Policy/i.test(msg.text())) {
+        violations.push(msg.text());
+      }
+    });
+    const res = await page.goto("/does-not-exist");
+    expect(res?.status()).toBe(404);
+    await expect(page.getByRole("heading", { level: 1, name: "Page not found" })).toBeVisible();
+    await page.waitForLoadState("networkidle");
+    expect(violations).toEqual([]);
+    await expectNoAxeViolations(page);
   });
 
   test("health endpoint reports the database", async ({ request }) => {

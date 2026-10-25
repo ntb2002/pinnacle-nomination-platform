@@ -13,11 +13,11 @@
   --color-paper: #f6f7fa;
   --color-surface: #ffffff;
   --color-slate: #4a5170; /* secondary text, 7.3:1 on paper */
-  --color-muted: #6b7394; /* tertiary text, 4.7:1 on white */
+  --color-muted: #626a8b; /* tertiary text, 5.0:1 on paper, 5.3:1 on white */
   --color-line: #d5d9e5; /* decorative dividers only */
   --color-control: #7f88ae; /* input borders, >=3:1 non-text contrast */
   --color-signal: #f76900; /* Syracuse orange: accents, and text on ink (5.9:1) */
-  --color-signal-text: #b54300; /* orange-family text on white, 5.6:1 */
+  --color-signal-text: #b54300; /* orange-family text: 5.6:1 on white, 5.2:1 on paper */
   --color-danger: #b42318; /* 6.6:1 on white */
   --color-danger-bg: #fdecea;
   --color-success: #1e6b3a; /* 6.5:1 on white */

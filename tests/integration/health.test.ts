@@ -1,9 +1,9 @@
 import { afterAll, describe, expect, it } from "vitest";
 import { GET } from "@/app/api/health/route";
-import { pool } from "@/server/db";
+import { closeDb } from "@/server/db";
 
 afterAll(async () => {
-  await pool.end();
+  await closeDb();
 });
 
 describe("GET /api/health", () => {

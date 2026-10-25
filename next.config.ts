@@ -9,10 +9,11 @@ const securityHeaders = [
   { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
   {
     key: "Permissions-Policy",
-    value: "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()",
+    value: "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
   },
   ...(process.env.NODE_ENV === "production"
-    ? [{ key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" }]
+    ? // includeSubDomains/preload are a domain-wide commitment for Syracuse IT (LAUNCH_READINESS).
+      [{ key: "Strict-Transport-Security", value: "max-age=63072000" }]
     : []),
 ];
 

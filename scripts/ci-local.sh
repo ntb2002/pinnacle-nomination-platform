@@ -2,7 +2,7 @@
 # Runs the same steps as docs/ci/ci.yml against a local Postgres.
 # Usage: scripts/ci-local.sh [log-file]
 # Needs: Node 24, Postgres with role pinnacle/pinnacle and databases
-# pinnacle_test + pinnacle_e2e (see README → Local setup).
+# pinnacle_test + pinnacle_e2e (see AGENTS.md → How to run).
 set -euo pipefail
 
 log="${1:-}"

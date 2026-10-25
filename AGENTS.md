@@ -73,13 +73,13 @@ npm run db:generate           # after editing src/server/db/tables/*: writes a n
 
 - **Layers.** `src/app/**` routes are thin: read input, get the actor, call a service, render. Business rules live in `src/server/services/*` (server-only). Pure logic (pricing, scoring, word counts, validation schemas) lives in `src/lib/*` and is unit tested. UI components in `src/components/*`.
 - **Authorization on every request, server side.** Every page, server action and route handler outside the public site calls `requireUser()` / `requireRole()` from `src/server/auth/guards.ts`. Services take an `Actor` and assert permission again (`assertRole`, ownership checks). `proxy.ts` redirects early for UX but is never the authority.
-- **Ownership by query, not by trust.** Load records by id **and** owner/assignment (`where: { id, nominatorId: actor.id }`). Never accept a user id, role, price or status from the client.
-- **Confidential data is least-privilege.** Nominee outcomes, references and files: the entry's nominator, admins, and assigned, unrecused judges only. Judges never see reference contact details, nominator identity or payments. Use the explicit `select` shapes in each service; never return whole Prisma rows to the client.
+- **Ownership by query, not by trust.** Load records by id **and** owner/assignment (`where(and(eq(entry.id, id), eq(entry.nominatorId, actor.id)))`). Never accept a user id, role, price or status from the client.
+- **Confidential data is least-privilege.** Nominee outcomes, references and files: the entry's nominator, admins, and assigned, unrecused judges only. Judges never see reference contact details, nominator identity or payments. Use the explicit `select` shapes in each service; never return whole table rows to the client.
 - **Audit everything privileged.** Every admin and judge mutation, and every admin read of reference contact details or files, calls `audit()` (`src/server/audit.ts`). Audit rows are append-only.
 - **Config only through `src/lib/env.ts`.** It validates with zod at boot. No `process.env` in app code (ESLint enforces it; build/test config files are exempt). Every variable is in `.env.example`.
 - **Money is integer cents**, formatted only at render. **Times are stored UTC**, shown in America/New_York (`src/lib/dates.ts`).
 - **Errors.** Services throw `AppError` subclasses (`ForbiddenError`, `NotFoundError`, `ValidationError`, `ConflictError`). Actions map them to user-safe messages. Never send stack traces or internal ids to the client.
-- **Status changes go through the service state machines** (`docs/architecture.md`), never `db.entry.update({ status })` from a route.
+- **Status changes go through the service state machines** (`docs/architecture.md`), never `db.update(entry).set({ status })` from a route.
 - **Accessibility is a requirement (WCAG 2.1 AA).** Use the shared form primitives (`Field`, `ErrorSummary`), real labels, `aria-describedby` for hints/errors, visible focus, colour tokens from `globals.css`. Every new page gets an axe check in e2e.
 - **Files under ~300 lines.** Split by responsibility when a file grows.
 - **Tests with every unit.** Pure logic → unit test; service rules → integration test on Postgres; user flow → Playwright. Seed and fixtures use fake data only (`example.com`/`example.org`).

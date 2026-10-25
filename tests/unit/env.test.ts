@@ -23,6 +23,14 @@ describe("parseEnv", () => {
     expect(() => parseEnv({ ...valid, APP_URL: "ftp://example.com" })).toThrow(/APP_URL/);
   });
 
+  it("rejects a trailing slash and plain http in production", () => {
+    expect(() => parseEnv({ ...valid, APP_URL: "http://localhost:3000/" })).toThrow(/APP_URL/);
+    expect(() => parseEnv({ ...valid, NODE_ENV: "production" })).toThrow(/https/);
+    expect(
+      parseEnv({ ...valid, NODE_ENV: "production", APP_URL: "https://pinnacle.example.edu" }),
+    ).toMatchObject({ NODE_ENV: "production" });
+  });
+
   it("rejects a non-postgres DATABASE_URL", () => {
     expect(() => parseEnv({ ...valid, DATABASE_URL: "mysql://x" })).toThrow(/DATABASE_URL/);
   });

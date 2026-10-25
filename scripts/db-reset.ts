@@ -1,13 +1,14 @@
 // Drops and recreates the public and drizzle schemas, then re-applies migrations.
-// Development and test only: refuses to run when NODE_ENV=production.
+// Local dev/test databases only (scripts/lib/db-guard.ts).
 import "dotenv/config";
-import { execFileSync } from "node:child_process";
 import { Pool } from "pg";
+import { assertSafeToReset } from "./lib/db-guard";
+import { runMigrations } from "./lib/migrate";
 
 async function main() {
-  if (process.env.NODE_ENV === "production") throw new Error("db:reset refused in production");
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error("DATABASE_URL is not set");
+  assertSafeToReset(url, process.env);
   const pool = new Pool({ connectionString: url, max: 1 });
   try {
     await pool.query(
@@ -16,10 +17,11 @@ async function main() {
   } finally {
     await pool.end();
   }
-  execFileSync("npx", ["tsx", "scripts/db-migrate.ts"], { stdio: "inherit" });
+  await runMigrations(url);
+  console.log("Database reset and migrated.");
 }
 
 main().catch((err) => {
-  console.error(err);
+  console.error(err instanceof Error ? err.message : err);
   process.exit(1);
 });

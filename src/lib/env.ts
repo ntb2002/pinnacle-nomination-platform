@@ -9,12 +9,20 @@ const postgresUrl = z
   .string()
   .regex(/^postgres(ql)?:\/\/.+/, "must be a postgres:// or postgresql:// connection string");
 
-const envSchema = z.object({
-  NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
-  /** Public base URL of the app, e.g. https://pinnacle.example.edu. Used in emails and redirects. */
-  APP_URL: z.url({ protocol: /^https?$/ }),
-  DATABASE_URL: postgresUrl,
-});
+const envSchema = z
+  .object({
+    NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+    /** Public base URL, no trailing slash, e.g. https://pinnacle.example.edu. Used in emails and redirects. */
+    APP_URL: z
+      .url({ protocol: /^https?$/ })
+      .refine((v) => !v.endsWith("/"), "must not end with a slash"),
+    DATABASE_URL: postgresUrl,
+  })
+  .superRefine((cfg, ctx) => {
+    if (cfg.NODE_ENV === "production" && !cfg.APP_URL.startsWith("https://")) {
+      ctx.addIssue({ code: "custom", path: ["APP_URL"], message: "must use https in production" });
+    }
+  });
 
 export type Env = z.infer<typeof envSchema>;
 
