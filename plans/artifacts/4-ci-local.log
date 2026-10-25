@@ -1,4 +1,4 @@
-ci-local: 56d5f07 on 4-auth-rbac-audit, node v24.22.1
+ci-local: e6f7e17 on 4-auth-rbac-audit, node v24.22.1
 
 ==> lint
 
@@ -16,29 +16,29 @@ Generating route types...
 
 Database reset and migrated.
 
- Test Files  12 passed (12)
-      Tests  51 passed (51)
-   Start at  20:33:39
-   Duration  14.91s (tests 52%, import 42%, transform 5%, worker 1%)
+ Test Files  14 passed (14)
+      Tests  62 passed (62)
+   Start at  20:50:24
+   Duration  16.02s (import 49%, tests 46%, transform 4%, worker 1%)
 
-    Isolate  12 workers spawned · ~165ms startup each (spawn + environment, per file)
-             at least ~1.82s faster with isolate: false — reuses workers across files instead of one per file
+    Isolate  14 workers spawned · ~158ms startup each (spawn + environment, per file)
+             at least ~2.05s faster with isolate: false — reuses workers across files instead of one per file
 
 
 ==> build
 ▲ Next.js 16.4.3 (Turbopack)
 - Environments: .env
-✓ Running next.config.ts took 49ms
+✓ Running next.config.ts took 66ms
 - Experiments (use with caution):
   ✓ authInterrupts
 
   Creating an optimized production build ...
-✓ Compiled successfully in 893ms
+✓ Compiled successfully in 756ms
   Running TypeScript ...
-  Finished TypeScript in 3.8s ...
+  Finished TypeScript in 3.7s ...
   Collecting page data using 3 workers ...
   Generating static pages using 3 workers (0/1) ...
-✓ Generating static pages using 3 workers (1/1) in 112ms
+✓ Generating static pages using 3 workers (1/1) in 179ms
   Finalizing page optimization ...
 
 Route (app)
@@ -75,22 +75,28 @@ Seed complete. Row counts:
   entry_status_event   105
   payment              57
 
-Running 13 tests using 1 worker
+Running 18 tests using 1 worker
 
-  ✓   1 [chromium] › tests/e2e/auth.spec.ts:7:3 › authentication and role gates › sign-in page is accessible (2.5s)
-  ✓   2 [chromium] › tests/e2e/auth.spec.ts:17:3 › authentication and role gates › a nominator signs in with an emailed link and lands where they were going (2.0s)
-  ✓   3 [chromium] › tests/e2e/auth.spec.ts:26:3 › authentication and role gates › the emailed link works once; opening it does not spend it (2.6s)
-  ✓   4 [chromium] › tests/e2e/auth.spec.ts:48:3 › authentication and role gates › a nominator gets 403 on /admin and /judge (2.4s)
-  ✓   5 [chromium] › tests/e2e/auth.spec.ts:60:3 › authentication and role gates › anonymous visitors to protected areas are sent to sign-in (891ms)
-  ✓   6 [chromium] › tests/e2e/auth.spec.ts:69:3 › authentication and role gates › an admin reaches the admin area and the sign-in is audited (1.1s)
-  ✓   7 [chromium] › tests/e2e/auth.spec.ts:80:3 › authentication and role gates › Better Auth endpoints other than verify are not exposed (50ms)
-  ✓   8 [chromium] › tests/e2e/boot.spec.ts:4:1 › the server exits at boot when configuration is invalid (529ms)
-  ✓   9 [chromium] › tests/e2e/home.spec.ts:5:3 › home and base layout › renders the home page with no accessibility violations (1.4s)
-  ✓  10 [chromium] › tests/e2e/home.spec.ts:15:3 › home and base layout › skip link moves focus to main content (470ms)
-  ✓  11 [chromium] › tests/e2e/home.spec.ts:24:3 › home and base layout › sends a nonce-based CSP and security headers (30ms)
-  ✓  12 [chromium] › tests/e2e/home.spec.ts:35:3 › home and base layout › unknown routes get a branded 404 with no CSP violations (1.7s)
-  ✓  13 [chromium] › tests/e2e/home.spec.ts:50:3 › home and base layout › health endpoint reports the database (25ms)
+  ✓   1 [chromium] › tests/e2e/auth.spec.ts:7:3 › authentication and role gates › sign-in page is accessible (2.4s)
+  ✓   2 [chromium] › tests/e2e/auth.spec.ts:17:3 › authentication and role gates › a nominator signs in with an emailed link and lands where they were going (2.1s)
+  ✓   3 [chromium] › tests/e2e/auth.spec.ts:30:3 › authentication and role gates › the emailed link works once; opening it does not spend it (2.9s)
+  ✓   4 [chromium] › tests/e2e/auth.spec.ts:46:3 › authentication and role gates › an expired link is refused (793ms)
+  ✓   5 [chromium] › tests/e2e/auth.spec.ts:55:3 › authentication and role gates › a link for a since-disabled account creates no session (1.1s)
+[WebServer] 2026-10-25T20:51:04.384Z ERROR [Better Auth]: Invalid callbackURL: https://evil.example/
+  ✓   6 [chromium] › tests/e2e/auth.spec.ts:75:3 › authentication and role gates › verify refuses cross-site requests and foreign redirect targets (628ms)
+  ✓   7 [chromium] › tests/e2e/auth.spec.ts:97:3 › authentication and role gates › a signed-in user is never redirected off-site by next (1.6s)
+  ✓   8 [chromium] › tests/e2e/auth.spec.ts:106:3 › authentication and role gates › the confirmation page warns before switching accounts (1.6s)
+  ✓   9 [chromium] › tests/e2e/auth.spec.ts:118:3 › authentication and role gates › a nominator gets 403 on /admin and /judge (2.3s)
+  ✓  10 [chromium] › tests/e2e/auth.spec.ts:130:3 › authentication and role gates › anonymous visitors to protected areas are sent to sign-in (695ms)
+  ✓  11 [chromium] › tests/e2e/auth.spec.ts:139:3 › authentication and role gates › an admin reaches the admin area and the sign-in is audited (982ms)
+  ✓  12 [chromium] › tests/e2e/auth.spec.ts:151:3 › authentication and role gates › Better Auth endpoints other than verify are not exposed (49ms)
+  ✓  13 [chromium] › tests/e2e/boot.spec.ts:4:1 › the server exits at boot when configuration is invalid (469ms)
+  ✓  14 [chromium] › tests/e2e/home.spec.ts:5:3 › home and base layout › renders the home page with no accessibility violations (1.3s)
+  ✓  15 [chromium] › tests/e2e/home.spec.ts:15:3 › home and base layout › skip link moves focus to main content (494ms)
+  ✓  16 [chromium] › tests/e2e/home.spec.ts:24:3 › home and base layout › sends a nonce-based CSP and security headers (32ms)
+  ✓  17 [chromium] › tests/e2e/home.spec.ts:35:3 › home and base layout › unknown routes get a branded 404 with no CSP violations (1.8s)
+  ✓  18 [chromium] › tests/e2e/home.spec.ts:50:3 › home and base layout › health endpoint reports the database (20ms)
 
-  13 passed (21.9s)
+  18 passed (27.2s)
 
 ci-local: all steps passed
