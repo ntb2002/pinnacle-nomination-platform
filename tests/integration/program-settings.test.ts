@@ -259,12 +259,12 @@ describe("updateCategory", () => {
   });
 
   it("never disables a core category", async () => {
-    const { cycle, category: cat } = await createProgram();
+    const { cycle } = await createProgram();
+    const cat = await createCategory(cycle.id, { kind: "CORE" });
     const admin = await createActor("ADMIN");
     await expect(
       updateCategory(admin, cat.id, { ...base(cat.rubricProfileId), enabled: false }),
     ).rejects.toBeInstanceOf(ConflictError);
-    void cycle;
   });
 
   it("withdraws an optional category only while it has no submitted entries", async () => {

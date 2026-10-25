@@ -82,7 +82,7 @@ export async function createCategory(
       slug: `${def.slug}-${next()}`,
       name: def.name,
       description: def.description,
-      kind: def.kind,
+      kind: "CORE",
       rubricProfileId: profileId,
       ...overrides,
     })
