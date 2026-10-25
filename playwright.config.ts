@@ -1,3 +1,4 @@
+import path from "node:path";
 import { defineConfig, devices } from "@playwright/test";
 
 // E2E runs against the production build (`npm run build` first; CI does).
@@ -35,6 +36,7 @@ export default defineConfig({
       BETTER_AUTH_SECRET: "test-only-secret-not-for-production-000000",
       EMAIL_TRANSPORT: "outbox",
       DEMO_MODE: "true",
+      STORAGE_DIR: path.resolve(import.meta.dirname, "storage/e2e"),
     },
   },
 });

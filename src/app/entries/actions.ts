@@ -5,7 +5,10 @@ import { redirect } from "next/navigation";
 import type { ActionState } from "@/lib/action-state";
 import { draftToFormValues, entryFormToDraft } from "@/lib/entry-form";
 import { toActionState } from "@/server/action-errors";
+import { isUuid } from "@/lib/ids";
 import { requireRole } from "@/server/auth/session";
+import { NotFoundError } from "@/server/errors";
+import { deleteAttachment } from "@/server/services/attachments";
 import { deleteDraft, saveDraft } from "@/server/services/entry-drafts";
 import { startEntry } from "@/server/services/entries";
 
@@ -55,4 +58,21 @@ export async function deleteDraftAction(entryId: string, _prev: ActionState): Pr
     return toActionState(err);
   }
   redirect("/entries");
+}
+
+/** Removes a supporting file, then returns to the edit page with the result. */
+export async function removeAttachmentAction(entryId: string, attachmentId: string) {
+  const actor = await requireRole("NOMINATOR");
+  let result = "removed=1";
+  // Redirect to the file's own entry; the bound entryId is only a fallback.
+  let target = isUuid(entryId) ? entryId : null;
+  try {
+    target = await deleteAttachment(actor, attachmentId);
+  } catch (err) {
+    toActionState(err); // logs unexpected errors, rethrows Next's signals
+    result = err instanceof NotFoundError ? "uploadError=closed" : "uploadError=remove_failed";
+  }
+  if (!target) redirect("/entries");
+  revalidatePath(`/entries/${target}`, "layout");
+  redirect(`/entries/${target}/edit?${result}#files-message`);
 }

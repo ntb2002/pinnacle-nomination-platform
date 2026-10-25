@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { FlashNotice } from "@/components/flash-notice";
 import { PageHeader } from "@/components/page-header";
 import { formatDeadline } from "@/lib/dates";
 import { NOMINATOR_STATUS, RELATIONSHIP_LABEL } from "@/lib/entry-status";
@@ -9,13 +10,15 @@ import { entryFieldLabel } from "@/lib/entry-form";
 import { readinessProblems, toSubmissionInput } from "@/lib/validation/entry";
 import { requireRole } from "@/server/auth/session";
 import { NotFoundError } from "@/server/errors";
+import { listAttachments } from "@/server/services/attachments";
 import { EDITABLE_STATUSES, getMyEntry, getNominationWindow } from "@/server/services/entries";
+import { AttachmentList } from "./attachment-list";
 import { DeleteDraft } from "./delete-draft";
 import { EntrySummary } from "./entry-summary";
 
 export const metadata: Metadata = { title: "Your entry" };
 
-export default async function EntryPage({ params }: PageProps<"/entries/[id]">) {
+export default async function EntryPage({ params, searchParams }: PageProps<"/entries/[id]">) {
   const actor = await requireRole("NOMINATOR");
   const { id } = await params;
   const entry = await getMyEntry(actor, id).catch((err) => {
@@ -28,8 +31,9 @@ export default async function EntryPage({ params }: PageProps<"/entries/[id]">) 
     problems.category = ["This category is no longer offered. Contact the program team."];
   }
   const ready = editable && Object.keys(problems).length === 0;
-  const fee = await getNominationWindow();
+  const [fee, files] = await Promise.all([getNominationWindow(), listAttachments(actor, id)]);
   const status = NOMINATOR_STATUS[entry.status];
+  const locked = !editable && (await searchParams).locked === "1";
 
   return (
     <div className="container-page max-w-3xl py-12">
@@ -43,6 +47,15 @@ export default async function EntryPage({ params }: PageProps<"/entries/[id]">) 
         intro={`${RELATIONSHIP_LABEL[entry.relationship]}. Status: ${status.label}. ${status.next}`}
       />
 
+      {locked && (
+        <div className="mb-8">
+          <FlashNotice
+            id="locked-message"
+            error
+            text="This entry has been submitted, so it and its files can no longer be changed."
+          />
+        </div>
+      )}
       {editable && (
         <section
           aria-labelledby="ready-heading"
@@ -81,6 +94,12 @@ export default async function EntryPage({ params }: PageProps<"/entries/[id]">) 
         </section>
       )}
       <EntrySummary entry={entry} />
+      <section aria-labelledby="sum-files" className="mt-10">
+        <h2 id="sum-files" className="font-display text-2xl font-semibold">
+          Supporting files
+        </h2>
+        <AttachmentList files={files} />
+      </section>
     </div>
   );
 }

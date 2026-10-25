@@ -1,0 +1,230 @@
+# #8 re-evaluation at 8f22032: download response headers (curl -sS -D - -o /dev/null; Cookie request header redacted)
+
+## GET /api/attachments/764d37dd-d390-4c45-b9bf-51e0e3db93fa as owner nominator01 (PNG uploaded as png-renamed.pdf)
+HTTP/1.1 200 OK
+X-Content-Type-Options: nosniff
+Referrer-Policy: strict-origin-when-cross-origin
+X-Frame-Options: DENY
+Cross-Origin-Opener-Policy: same-origin
+Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+Strict-Transport-Security: max-age=63072000
+vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch
+cache-control: private, no-store
+content-disposition: attachment; filename="png-renamed.pdf.png"; filename*=UTF-8''png-renamed.pdf.png
+content-length: 73
+content-security-policy: default-src 'none'; sandbox
+content-type: image/png
+Date: Sun, 25 Oct 2026 23:05:54 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+
+## GET /api/attachments/8de81ed1-677c-473a-89ce-03f04ec48354 as owner nominator01 (name uploaded as invoice<U+202E>gpj.pdf)
+HTTP/1.1 200 OK
+X-Content-Type-Options: nosniff
+Referrer-Policy: strict-origin-when-cross-origin
+X-Frame-Options: DENY
+Cross-Origin-Opener-Policy: same-origin
+Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+Strict-Transport-Security: max-age=63072000
+vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch
+cache-control: private, no-store
+content-disposition: attachment; filename="invoicegpj.pdf"; filename*=UTF-8''invoicegpj.pdf
+content-length: 125
+content-security-policy: default-src 'none'; sandbox
+content-type: application/pdf
+Date: Sun, 25 Oct 2026 23:05:54 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+
+## GET /api/attachments/17781f62-973e-45ce-addd-629dcbd97ff0 as owner nominator03 (name with path, quotes, control chars)
+HTTP/1.1 200 OK
+X-Content-Type-Options: nosniff
+Referrer-Policy: strict-origin-when-cross-origin
+X-Frame-Options: DENY
+Cross-Origin-Opener-Policy: same-origin
+Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+Strict-Transport-Security: max-age=63072000
+vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch
+cache-control: private, no-store
+content-disposition: attachment; filename="b injectname.pdf"; filename*=UTF-8''b%20injectname.pdf
+content-length: 125
+content-security-policy: default-src 'none'; sandbox
+content-type: application/pdf
+Date: Sun, 25 Oct 2026 23:05:54 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+
+## GET /api/attachments/8de81ed1-677c-473a-89ce-03f04ec48354 as admin@example.org (ADMIN)
+HTTP/1.1 200 OK
+X-Content-Type-Options: nosniff
+Referrer-Policy: strict-origin-when-cross-origin
+X-Frame-Options: DENY
+Cross-Origin-Opener-Policy: same-origin
+Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+Strict-Transport-Security: max-age=63072000
+vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch
+cache-control: private, no-store
+content-disposition: attachment; filename="invoicegpj.pdf"; filename*=UTF-8''invoicegpj.pdf
+content-length: 125
+content-security-policy: default-src 'none'; sandbox
+content-type: application/pdf
+Date: Sun, 25 Oct 2026 23:06:17 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+
+## GET /api/attachments/aaaaaaaa-0000-4000-8000-0000000000c2 as judge1 (assigned category, no conflict, APPROVED entry)
+HTTP/1.1 200 OK
+X-Content-Type-Options: nosniff
+Referrer-Policy: strict-origin-when-cross-origin
+X-Frame-Options: DENY
+Cross-Origin-Opener-Policy: same-origin
+Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+Strict-Transport-Security: max-age=63072000
+vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch
+cache-control: private, no-store
+content-disposition: attachment; filename="assigned.pdf"; filename*=UTF-8''assigned.pdf
+content-length: 125
+content-security-policy: default-src 'none'; sandbox
+content-type: application/pdf
+Date: Sun, 25 Oct 2026 23:05:54 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+
+## GET /api/attachments/8de81ed1-677c-473a-89ce-03f04ec48354 as nominator02 (other nominator)
+HTTP/1.1 404 Not Found
+X-Content-Type-Options: nosniff
+Referrer-Policy: strict-origin-when-cross-origin
+X-Frame-Options: DENY
+Cross-Origin-Opener-Policy: same-origin
+Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+Strict-Transport-Security: max-age=63072000
+vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch
+content-type: text/plain;charset=UTF-8
+Date: Sun, 25 Oct 2026 23:05:54 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+Transfer-Encoding: chunked
+
+
+## GET /api/attachments/8de81ed1-677c-473a-89ce-03f04ec48354 signed out
+HTTP/1.1 404 Not Found
+X-Content-Type-Options: nosniff
+Referrer-Policy: strict-origin-when-cross-origin
+X-Frame-Options: DENY
+Cross-Origin-Opener-Policy: same-origin
+Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+Strict-Transport-Security: max-age=63072000
+vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch
+content-type: text/plain;charset=UTF-8
+Date: Sun, 25 Oct 2026 23:05:54 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+Transfer-Encoding: chunked
+
+
+## GET /api/attachments/aaaaaaaa-0000-4000-8000-0000000000e1 as judge1 (APPROVED entry in a category judge1 is not assigned to, no-conflict declared)
+HTTP/1.1 404 Not Found
+X-Content-Type-Options: nosniff
+Referrer-Policy: strict-origin-when-cross-origin
+X-Frame-Options: DENY
+Cross-Origin-Opener-Policy: same-origin
+Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+Strict-Transport-Security: max-age=63072000
+vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch
+content-type: text/plain;charset=UTF-8
+Date: Sun, 25 Oct 2026 23:05:54 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+Transfer-Encoding: chunked
+
+
+## GET /api/attachments/8de81ed1-677c-473a-89ce-03f04ec48354 as judge1 (DRAFT entry)
+HTTP/1.1 404 Not Found
+X-Content-Type-Options: nosniff
+Referrer-Policy: strict-origin-when-cross-origin
+X-Frame-Options: DENY
+Cross-Origin-Opener-Policy: same-origin
+Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+Strict-Transport-Security: max-age=63072000
+vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch
+content-type: text/plain;charset=UTF-8
+Date: Sun, 25 Oct 2026 23:05:54 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+Transfer-Encoding: chunked
+
+
+## GET /api/attachments/00000000-0000-4000-8000-000000000000 as nominator01 (nonexistent)
+HTTP/1.1 404 Not Found
+X-Content-Type-Options: nosniff
+Referrer-Policy: strict-origin-when-cross-origin
+X-Frame-Options: DENY
+Cross-Origin-Opener-Policy: same-origin
+Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+Strict-Transport-Security: max-age=63072000
+vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch
+content-type: text/plain;charset=UTF-8
+Date: Sun, 25 Oct 2026 23:05:54 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+Transfer-Encoding: chunked
+
+
+## GET /api/attachments/not-a-uuid as nominator01
+HTTP/1.1 404 Not Found
+X-Content-Type-Options: nosniff
+Referrer-Policy: strict-origin-when-cross-origin
+X-Frame-Options: DENY
+Cross-Origin-Opener-Policy: same-origin
+Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+Strict-Transport-Security: max-age=63072000
+vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch
+content-type: text/plain;charset=UTF-8
+Date: Sun, 25 Oct 2026 23:05:54 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+Transfer-Encoding: chunked
+
+
+## Normal page for comparison: GET /entries/fe5a946e-824e-4f43-9edb-697ebe0d114e/edit as nominator01
+HTTP/1.1 200 OK
+X-Content-Type-Options: nosniff
+Referrer-Policy: strict-origin-when-cross-origin
+X-Frame-Options: DENY
+Cross-Origin-Opener-Policy: same-origin
+Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+Strict-Transport-Security: max-age=63072000
+content-security-policy: default-src 'self'; script-src 'self' 'nonce-ZGNmMWQ2ZTEtMDQxYi00ZjdiLTk1NDctMzFlNjY0M2Y1Y2U2' 'strict-dynamic'; style-src 'self' 'nonce-ZGNmMWQ2ZTEtMDQxYi00ZjdiLTk1NDctMzFlNjY0M2Y1Y2U2'; style-src-attr 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self' https://checkout.stripe.com; frame-ancestors 'none'
+Vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch, Accept-Encoding
+Link: </>; rel=preconnect; crossorigin="", </_next/static/chunks/1wacbyyd5gch-.css>; rel=preload; as="style"; nonce="ZGNmMWQ2ZTEtMDQxYi00ZjdiLTk1NDctMzFlNjY0M2Y1Y2U2"
+Cache-Control: private, no-cache, no-store, max-age=0, must-revalidate
+Content-Type: text/html; charset=utf-8
+Date: Sun, 25 Oct 2026 23:05:54 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+Transfer-Encoding: chunked
+
+
+## Normal page: GET / signed out
+HTTP/1.1 200 OK
+X-Content-Type-Options: nosniff
+Referrer-Policy: strict-origin-when-cross-origin
+X-Frame-Options: DENY
+Cross-Origin-Opener-Policy: same-origin
+Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+Strict-Transport-Security: max-age=63072000
+content-security-policy: default-src 'self'; script-src 'self' 'nonce-MDBiYzA5OWYtZDgzYy00Y2QzLTgyZDMtZTc3YzA2MjhkYjky' 'strict-dynamic'; style-src 'self' 'nonce-MDBiYzA5OWYtZDgzYy00Y2QzLTgyZDMtZTc3YzA2MjhkYjky'; style-src-attr 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self' https://checkout.stripe.com; frame-ancestors 'none'
+Vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch, Accept-Encoding
+Link: </>; rel=preconnect; crossorigin="", </_next/static/chunks/1wacbyyd5gch-.css>; rel=preload; as="style"; nonce="MDBiYzA5OWYtZDgzYy00Y2QzLTgyZDMtZTc3YzA2MjhkYjky"
+Cache-Control: private, no-cache, no-store, max-age=0, must-revalidate
+Content-Type: text/html; charset=utf-8
+Date: Sun, 25 Oct 2026 23:05:54 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+Transfer-Encoding: chunked
+

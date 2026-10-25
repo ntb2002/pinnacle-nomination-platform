@@ -4,6 +4,13 @@
 >
 > Format: `### NNN — Title (date) — Status` · **Decision** · **Why** · **Rejected** · **Reverse cost**.
 
+### 007 — Supporting files: private storage, sniffed types, download only (2026-10) — Accepted
+
+- **Decision:** Uploads go to a dedicated multipart route handler (not a server action) that checks origin and size before reading the body. Only PDF, PNG and JPEG are accepted, identified by their first bytes. Files are stored under random server-chosen keys on local disk (`STORAGE_DRIVER=local`) or any S3-compatible bucket (`s3`), never in `public/`. Every download goes through the app, is authorized per request with the same rule as entry content (`entryAccessFor`), and is always served as an attachment with `nosniff`, `no-store` and a sandbox CSP. Nothing is rendered inline and there are no presigned URLs.
+- **Why:** Server actions share one body-size limit; raising it to 10 MB for uploads would raise it for every action. Magic bytes are the only part of a file the uploader cannot simply relabel. Download-only removes the stored-XSS and PDF-in-browser risks. Streaming through the app keeps authorization and audit logging in one place; at 5 files of 10 MB per entry the bandwidth is small. Presigned URLs would outlive a judge's recusal.
+- **Rejected:** Server action with a raised body limit; trusting the file extension or browser MIME type; inline previews; public bucket or presigned URLs; Office documents (macro and parser risk; PDF covers the need).
+- **Reverse cost:** low. Storage sits behind the `FileStorage` interface; adding a type is one signature in `src/lib/file-rules.ts`.
+
 ### 006 — When dates and fees can change (2026-10) — Accepted
 
 - **Decision:** During nominations, admins may change any date or fee, including extending a deadline that has passed. Opening cannot move later than an entry that was already submitted. Fees must not decrease from early to regular to late. Once round one opens, the nomination window and entry fees are frozen. Once finalists are announced, the finalist package fee is frozen. Rubric weights and category rubrics are frozen once round one opens. Every change is audited with before/after values. An entry keeps the fee stored on its payment.

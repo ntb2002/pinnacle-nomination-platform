@@ -4,9 +4,10 @@ import { isUuid } from "@/lib/ids";
 import { draftSchema, type EntryDraft } from "@/lib/validation/entry";
 import { assertRole, type Actor } from "@/server/auth/actor";
 import { db, type Transaction } from "@/server/db";
-import { entry, entryOutcome, entryReference, payment } from "@/server/db/schema";
+import { attachment, entry, entryOutcome, entryReference, payment } from "@/server/db/schema";
 import { ConflictError, NotFoundError, ValidationError } from "@/server/errors";
 import { fieldErrorsOf } from "@/server/validation";
+import { removeBytes } from "./attachments";
 import { EDITABLE_STATUSES } from "./entries";
 
 const blankToNull = (v: string | undefined) => (v && v.trim() !== "" ? v.trim() : null);
@@ -107,7 +108,7 @@ async function syncReferences(tx: Transaction, entryId: string, rows: EntryDraft
 export async function deleteDraft(actor: Actor, entryId: string) {
   assertRole(actor, "NOMINATOR");
   if (!isUuid(entryId)) throw new NotFoundError("draft");
-  await db.transaction(async (tx) => {
+  const keys = await db.transaction(async (tx) => {
     const [row] = await tx
       .select({ id: entry.id })
       .from(entry)
@@ -123,6 +124,13 @@ export async function deleteDraft(actor: Actor, entryId: string) {
       throw new ConflictError(
         "This draft has a payment attempt, so it cannot be deleted. Contact the program team.",
       );
+    const files = await tx
+      .select({ key: attachment.storageKey })
+      .from(attachment)
+      .where(eq(attachment.entryId, entryId));
     await tx.delete(entry).where(eq(entry.id, entryId));
+    return files.map((f) => f.key);
   });
+  // The rows went with the entry; now the stored bytes (best effort).
+  await removeBytes(keys);
 }

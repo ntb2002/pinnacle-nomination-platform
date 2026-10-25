@@ -26,6 +26,7 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "3.1156.0",
     "@fontsource-variable/bodoni-moda": "5.3.0",
     "@fontsource-variable/public-sans": "5.3.0",
     "better-auth": "1.7.13",

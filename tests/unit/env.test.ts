@@ -19,6 +19,14 @@ describe("parseEnv", () => {
     expect(() => parseEnv(rest)).toThrow(/DATABASE_URL/);
   });
 
+  it("defaults to local file storage and requires a bucket and region for S3", () => {
+    expect(parseEnv(valid)).toMatchObject({ STORAGE_DRIVER: "local", STORAGE_DIR: "./storage" });
+    expect(() => parseEnv({ ...valid, STORAGE_DRIVER: "s3" })).toThrow(/S3_BUCKET/);
+    expect(
+      parseEnv({ ...valid, STORAGE_DRIVER: "s3", S3_BUCKET: "uploads", S3_REGION: "us-east-1" }),
+    ).toMatchObject({ STORAGE_DRIVER: "s3" });
+  });
+
   it("rejects an invalid APP_URL", () => {
     expect(() => parseEnv({ ...valid, APP_URL: "not a url" })).toThrow(/APP_URL/);
     expect(() => parseEnv({ ...valid, APP_URL: "ftp://example.com" })).toThrow(/APP_URL/);

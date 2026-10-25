@@ -4,9 +4,9 @@
 
 ## Now
 
-- **Done:** #1, #2, #3, #4, #5, #6, #7
+- **Done:** #1, #2, #3, #4, #5, #6, #7, #8
 - **In progress:** —
-- **Next:** #8 Secure supporting-file uploads
+- **Next:** #9 Entry fee payment with Stripe hosted Checkout
 - **Blockers:** none
 
 ## Needs human (collected from issues)
@@ -29,7 +29,9 @@
 - #7/#9: the submit/fulfil path must read the entry's category `FOR SHARE` and refuse a withdrawn (disabled) category, to serialize with category withdrawal.
 - Rate limiting and audit IPs use the `TRUSTED_PROXY_HOPS`-th `X-Forwarded-For` entry from the right; production must sit behind a proxy that appends it (LAUNCH_READINESS). The per-email sign-in limit (5 per sliding 15 minutes) means someone who knows an address can keep that person from requesting new links for as long as they keep sending about 5 requests every 15 minutes. Accepted trade-off against email bombing; LAUNCH_READINESS lists mitigations (admin SSO, a CAPTCHA after failures).
 - Shorter sessions for admins/judges are scheduled for #16 (all roles get 7 days today).
-- #8 must delete stored files when an attachment row goes (entry cascade deletes rows, not bytes).
+- Supporting files are not malware-scanned (#8). LAUNCH_READINESS: add a scanning step (e.g. ClamAV or the bucket provider's scanner) before judges download. Files are only ever served as downloads with `nosniff`.
+- **#11 (blocking requirement from the #8 review):** judge pages must use `entryAccessFor` (`src/server/services/entry-access.ts`) for every read of entry content, so files and entries follow one rule, and #11 must tighten its judge branch: a round-1 assignment covers APPROVED entries; a round-2 assignment covers only finalists (`is_finalist`); access starts when that round opens (phase); the judge's profile must be active. Today the rule is "assigned to the category, declared no conflict, entry APPROVED"; no judge can declare until #11, so nothing is exposed yet.
+- Supporting files, for LAUNCH_READINESS: no sweep for orphaned stored bytes (crash between storage write and commit, or a failed post-commit delete; both are logged); uploads need a `Content-Length` (chunked request bodies get 411; check the load balancer); the local driver's `STORAGE_DIR` must be an absolute path on a backed-up volume in production (not enforced: existing env tests treat a production config without it as valid); S3 encryption is fixed to SSE-S3 (`AES256`), so a bucket policy that requires KMS needs a code change; no rate limit on upload/download beyond sign-in.
 - `src/lib/pricing.ts` landed early in #3 (the seed needs it); #6 adds the admin UI around it.
 - `drizzle-kit` (dev-only) pulls a deprecated `@esbuild-kit` chain with 4 moderate `npm audit` advisories (esbuild dev-server CORS). Not in production deps; revisit when drizzle-kit 1.0 ships.
 - Deploy-time migrations need `tsx` + `drizzle/` alongside the standalone server; packaging decided in #18.
@@ -38,6 +40,7 @@
 
 ### 2026-10-25 — v1 build started
 
+- #8 — Supporting files: multipart upload route (origin + size checked before the body, outside the proxy, fetch with JSON when JS runs so unsaved edits survive), magic-byte types, random keys on local disk or S3 (SSE), 5 x 10 MB, one access rule shared with entry content (`entryAccessFor`), attachment-only downloads with nosniff/no-store/sandbox CSP, audited admin/judge downloads, best-effort byte removal. Metadata now always renders in `<head>` (`htmlLimitedBots`). Review APPROVE WITH FIXES (storage write inside the transaction, lost unsaved edits, removal errors, bidi names) → fixed; evaluator FAIL (bidi names) → fixed → re-evaluation PASS.
 - #7 — Nomination start/edit/review/dashboard with draft and submission schemas, ownership by query, duplicate nominee rule as a field error, self-nomination email locked, stable outcome/reference rows, delete unpaid draft. Review APPROVE WITH FIXES (stale form after save, raw messages, 500 on bad ids) → fixed; evaluator FAIL → fixed → re-evaluation found group-link scroll and typing-during-save → fixed.
 - #6 — Admin dates/fees, categories, rubric weights with phase rules (DECISIONS 006), audited before/after, linked error summaries. Review APPROVE WITH FIXES; evaluator FAIL (audit values, summary links) → fixed → re-evaluation: one aria gap (rubric total) → fixed and covered by e2e.
 - #5 — Public site (home, categories, fees, methodology, panel, COI policy) driven by the live cycle; demo banner; nav current-page state; Eastern-time helpers (`src/lib/zoned-time.ts`). Review APPROVE WITH FIXES: copy now promises only what is enforced, and the spec additions on #9, #11, #12 make the rest enforceable. Evaluator PASS.

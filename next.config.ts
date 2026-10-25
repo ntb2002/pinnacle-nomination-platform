@@ -20,6 +20,10 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   output: "standalone",
   poweredByHeader: false,
+  // Always render metadata in <head> (no streaming into <body>), so every page has its
+  // <title> from the first byte: assistive tech announces it, and axe never sees a gap.
+  // Our metadata is static, so blocking on it costs nothing.
+  htmlLimitedBots: /.*/,
   reactStrictMode: true,
   // forbidden() → src/app/forbidden.tsx with HTTP 403 (used by requireRole).
   experimental: { authInterrupts: true },
