@@ -4,8 +4,8 @@
 
 ## Now
 
-- **Done:** #1, #2, #3, #4, #5
-- **In progress:** #6 Admin program settings (branch `6-admin-settings`)
+- **Done:** #1, #2, #3, #4, #5, #6
+- **In progress:** —
 - **Next:** #7 Nomination form and nominator dashboard
 - **Blockers:** none
 
@@ -34,6 +34,7 @@
 
 ### 2026-10-25 — v1 build started
 
+- #6 — Admin dates/fees, categories, rubric weights with phase rules (DECISIONS 006), audited before/after, linked error summaries. Review APPROVE WITH FIXES; evaluator FAIL (audit values, summary links) → fixed → re-evaluation: one aria gap (rubric total) → fixed and covered by e2e.
 - #5 — Public site (home, categories, fees, methodology, panel, COI policy) driven by the live cycle; demo banner; nav current-page state; Eastern-time helpers (`src/lib/zoned-time.ts`). Review APPROVE WITH FIXES: copy now promises only what is enforced, and the spec additions on #9, #11, #12 make the rest enforceable. Evaluator PASS.
 - #4 — Magic-link auth (confirm step, single-use hashed 15-min tokens, login-CSRF and open-redirect defenses, allow-listed auth HTTP surface), DB sessions, requireUser/requireRole + assertRole, grantRole/setUserDisabled + CLI, audit service, sliding-window Postgres rate limits with trusted-proxy IPs, email outbox/SMTP. Review BLOCK → all fixed → re-review APPROVE; evaluator FAIL (rate-limit window) → fixed.
 - #3 — Drizzle schema for the whole program with policy constraints (composite FKs, restrict deletes, partial unique indexes, CHECKs), append-only audit trigger, idempotent fake seed (63 entries), pricing module, factories. Review APPROVE WITH FIXES; all High fixed.
