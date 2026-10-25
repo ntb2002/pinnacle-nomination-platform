@@ -2,8 +2,9 @@ import { and, eq } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { closeDb } from "@/server/db";
 import { auditLog, awardCycle, category, rubricProfile } from "@/server/db/schema";
-import { ConflictError, ForbiddenError, ValidationError } from "@/server/errors";
+import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from "@/server/errors";
 import {
+  getAdminProgram,
   updateCategory,
   updateCycleSettings,
   updateRubricWeights,
@@ -69,6 +70,60 @@ describe("updateCycleSettings", () => {
     await fails({ opensDate: "2027-02-30" }, "opensDate");
   });
 
+  it("requires fees to escalate by deadline", async () => {
+    await createProgram();
+    const admin = await createActor("ADMIN");
+    const err = await updateCycleSettings(admin, {
+      ...settings,
+      regularFee: "450",
+      lateFee: "400",
+    }).catch((e) => e);
+    expect(err).toBeInstanceOf(ValidationError);
+    expect(Object.keys((err as ValidationError).fieldErrors).sort()).toEqual([
+      "lateFee",
+      "regularFee",
+    ]);
+  });
+
+  it("freezes the window and entry fees once judging starts, and the finalist fee once finalists are announced", async () => {
+    const { cycle } = await createProgram();
+    const admin = await createActor("ADMIN");
+    await updateCycleSettings(admin, settings);
+    await db.update(awardCycle).set({ phase: "ROUND1_OPEN" }).where(eq(awardCycle.id, cycle.id));
+    await expect(
+      updateCycleSettings(admin, { ...settings, finalDate: "2027-05-01" }),
+    ).rejects.toBeInstanceOf(ConflictError);
+    // The finalist fee may still change during round one.
+    await updateCycleSettings(admin, { ...settings, finalistFee: "1600" });
+    await db
+      .update(awardCycle)
+      .set({ phase: "FINALISTS_ANNOUNCED" })
+      .where(eq(awardCycle.id, cycle.id));
+    await expect(
+      updateCycleSettings(admin, { ...settings, finalistFee: "1700" }),
+    ).rejects.toBeInstanceOf(ConflictError);
+  });
+
+  it("does not let opening move later than an entry already submitted", async () => {
+    const { cycle, category: cat, nominator } = await createProgram();
+    const admin = await createActor("ADMIN");
+    await updateCycleSettings(admin, settings);
+    await createEntry({
+      cycleId: cycle.id,
+      categoryId: cat.id,
+      nominatorId: nominator.id,
+      status: "SUBMITTED",
+      submittedAt: new Date("2027-02-01T15:00:00Z"),
+    });
+    const err = await updateCycleSettings(admin, { ...settings, opensDate: "2027-02-05" }).catch(
+      (e) => e,
+    );
+    expect(err).toBeInstanceOf(ValidationError);
+    expect((err as ValidationError).fieldErrors.opensDate).toBeDefined();
+    // Extending a deadline during nominations is allowed.
+    await updateCycleSettings(admin, { ...settings, finalDate: "2027-05-07" });
+  });
+
   it("is forbidden to non-admins", async () => {
     await createProgram();
     for (const role of ["NOMINATOR", "JUDGE"] as const) {
@@ -97,7 +152,10 @@ describe("updateRubricWeights", () => {
       .select()
       .from(auditLog)
       .where(eq(auditLog.action, "rubric.weights_updated"));
-    expect(log?.metadata).toEqual({ before: [40, 20, 20, 20], after: [50, 20, 15, 15] });
+    expect(log?.metadata).toEqual({
+      before: { weightImpact: 40, weightInnovation: 20, weightInfluence: 20, weightReferences: 20 },
+      after: { weightImpact: 50, weightInnovation: 20, weightInfluence: 15, weightReferences: 15 },
+    });
   });
 
   it("rejects weights that do not sum to 100", async () => {
@@ -156,6 +214,30 @@ describe("updateCategory", () => {
     description: "A description that is long enough to publish.",
     rubricProfileId: profileId,
     enabled: true,
+  });
+
+  it("is forbidden to non-admins and audits description before/after", async () => {
+    const { category: cat } = await createProgram();
+    const judge = await createActor("JUDGE");
+    await expect(updateCategory(judge, cat.id, base(cat.rubricProfileId))).rejects.toBeInstanceOf(
+      ForbiddenError,
+    );
+    await expect(getAdminProgram(judge)).rejects.toBeInstanceOf(ForbiddenError);
+    const admin = await createActor("ADMIN");
+    await updateCategory(admin, cat.id, base(cat.rubricProfileId));
+    const [log] = await db.select().from(auditLog).where(eq(auditLog.action, "category.updated"));
+    expect(log?.metadata).toMatchObject({
+      before: { description: cat.description },
+      after: { description: "A description that is long enough to publish." },
+    });
+  });
+
+  it("treats a malformed id as not found", async () => {
+    await createProgram();
+    const admin = await createActor("ADMIN");
+    await expect(updateCategory(admin, "not-a-uuid", base("x"))).rejects.toBeInstanceOf(
+      NotFoundError,
+    );
   });
 
   it("never disables a core category", async () => {

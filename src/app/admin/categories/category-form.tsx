@@ -20,9 +20,16 @@ export interface CategoryFormProps {
 
 export function CategoryForm(p: CategoryFormProps) {
   const [state, action] = useActionState(updateCategoryAction.bind(null, p.id), idleState);
-  const prefix = `cat-${p.id.slice(0, 8)}`;
+  const prefix = `cat-${p.id}-`;
+  // React resets the form after each action: show what the admin typed after an error.
+  const v = {
+    description: state.values?.description ?? p.description,
+    rubricProfileId: state.values?.rubricProfileId ?? p.rubricProfileId,
+    enabled: state.values ? state.values.enabled === "on" : p.enabled,
+  };
   return (
     <form
+      key={JSON.stringify(state)}
       action={action}
       className="flex flex-col gap-5 rounded border border-line bg-surface p-6"
       noValidate
@@ -33,21 +40,25 @@ export function CategoryForm(p: CategoryFormProps) {
           {p.kind === "CORE" ? "Core category" : "Optional category"}
         </span>
       </div>
-      <FormMessage state={state} />
+      <FormMessage
+        state={state}
+        idPrefix={prefix}
+        labels={{ description: "Public description", rubricProfileId: "Rubric" }}
+      />
       <TextArea
-        id={`${prefix}-description`}
+        id={`${prefix}description`}
         name="description"
         label="Public description"
         rows={3}
-        defaultValue={p.description}
+        defaultValue={v.description}
         errors={state.fieldErrors?.description}
       />
       <Select
-        id={`${prefix}-rubric`}
+        id={`${prefix}rubricProfileId`}
         name="rubricProfileId"
         label="Rubric"
         hint={p.locked ? "Locked because judging has started." : undefined}
-        defaultValue={p.rubricProfileId}
+        defaultValue={v.rubricProfileId}
         options={p.profiles.map((r) => ({ value: r.id, label: r.name }))}
         disabled={p.locked}
         errors={state.fieldErrors?.rubricProfileId}
@@ -55,11 +66,11 @@ export function CategoryForm(p: CategoryFormProps) {
       {p.locked && <input type="hidden" name="rubricProfileId" value={p.rubricProfileId} />}
       {p.kind === "OPTIONAL" ? (
         <Checkbox
-          id={`${prefix}-enabled`}
+          id={`${prefix}enabled`}
           name="enabled"
           label="Offer this category"
           hint="Unchecked categories are hidden from the public site and the nomination form."
-          defaultChecked={p.enabled}
+          defaultChecked={v.enabled}
         />
       ) : (
         <input type="hidden" name="enabled" value="on" />

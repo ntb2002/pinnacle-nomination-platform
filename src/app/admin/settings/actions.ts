@@ -59,6 +59,9 @@ export async function updateCategoryAction(
     revalidatePath("/", "layout");
     return { status: "success", message: "Category saved." };
   } catch (err) {
-    return toActionState(err);
+    return {
+      ...toActionState(err),
+      values: { ...values, enabled: values.enabled ? "on" : "" },
+    };
   }
 }

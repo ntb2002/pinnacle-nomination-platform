@@ -25,7 +25,9 @@ export default async function AdminHomePage() {
     <div className="container-page py-12">
       <PageHeader title="Program administration" intro={`Signed in as ${actor.email}.`} />
       {!program ? (
-        <p>No active award cycle. Load one with `npm run db:seed -- --program-only`.</p>
+        <p>
+          No active award cycle. Load one with <code>npm run db:seed -- --program-only</code>.
+        </p>
       ) : (
         <dl className="grid gap-px overflow-hidden rounded border border-line bg-line sm:grid-cols-3">
           {[

@@ -4,6 +4,14 @@
 >
 > Format: `### NNN — Title (date) — Status` · **Decision** · **Why** · **Rejected** · **Reverse cost**.
 
+### 006 — When dates and fees can change (2026-10) — Accepted
+
+- **Decision:** During nominations, admins may change any date or fee, including extending a deadline that has passed. Opening cannot move later than an entry that was already submitted. Fees must not decrease from early to regular to late. Once round one opens, the nomination window and entry fees are frozen. Once finalists are announced, the finalist package fee is frozen. Rubric weights and category rubrics are frozen once round one opens. Every change is audited with before/after values. An entry keeps the fee stored on its payment.
+- **Why:** Extensions are routine for awards programs, and they are audited. Changing the window or fees after judging starts would let the public fees page show nominations as open while judging runs, and would make finalist-fee charges differ between finalists. A fee that drops at a later deadline would contradict the published "escalating by deadline" structure.
+- **Rejected:** Freezing dates once nominations open (too rigid for extensions); no rules at all (the reviewer showed the inconsistent states it allows).
+- **Reverse cost:** low. The rules live in one function (`assertSettingsChangeAllowed`) plus the validation module.
+- **Needs human:** CCE to confirm extensions are acceptable policy, and to decide whether extensions should also extend the early tier (today only the deadline the admin moves changes).
+
 ### 005 — Passwordless sign-in with a confirmation step and a minimal auth surface (2026-10) — Accepted
 
 - **Decision:** Magic-link sign-in only (no passwords). Emailed links open a confirmation page; the single-use token is spent only by its button. Better Auth's HTTP API is allow-listed to the verify endpoint; sign-in requests and sign-out are server actions; rate limits live in Postgres. Roles are read from the database on every request.

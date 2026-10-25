@@ -2,18 +2,24 @@ import { z } from "zod";
 import { endOfDayDeadline, zonedToUtc } from "@/lib/zoned-time";
 
 const dollars = (label: string) =>
-  z.coerce
-    .number({ error: `Enter the ${label} in whole dollars` })
-    .int(`Enter the ${label} in whole dollars`)
-    .min(1, `The ${label} must be at least $1`)
-    .max(100_000, `The ${label} must be $100,000 or less`);
+  z
+    .string()
+    .trim()
+    .min(1, `Enter the ${label}`)
+    .pipe(
+      z.coerce
+        .number<string>({ error: `Enter the ${label} in whole dollars` })
+        .int(`Enter the ${label} in whole dollars`)
+        .min(1, `The ${label} must be at least $1`)
+        .max(100_000, `The ${label} must be $100,000 or less`),
+    );
 
 const dateField = (label: string) =>
   z.string().regex(/^\d{4}-\d{2}-\d{2}$/, `Enter the ${label} as a date`);
 
 const datesSchema = z.object({
   opensDate: dateField("opening date"),
-  opensTime: z.string().regex(/^\d{2}:\d{2}$/, "Enter the opening time"),
+  opensTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Enter the opening time, like 09:00"),
   earlyDate: dateField("early deadline"),
   regularDate: dateField("regular deadline"),
   finalDate: dateField("final deadline"),
@@ -66,6 +72,14 @@ export function parseCycleSettings(
     if (nominationsOpenAt && earlyDeadline && regularDeadline && finalDeadline) {
       window = { nominationsOpenAt, earlyDeadline, regularDeadline, finalDeadline };
     }
+  }
+  // Fees escalate by deadline: a later tier never costs less than an earlier one.
+  if (fees.success) {
+    const f = fees.data;
+    if (f.regularFee < f.earlyFee)
+      add("regularFee", "The regular fee cannot be lower than the early fee");
+    if (f.lateFee < f.regularFee)
+      add("lateFee", "The late fee cannot be lower than the regular fee");
   }
   if (Object.keys(errors).length > 0 || !window || !fees.success) {
     return { success: false, fieldErrors: errors };

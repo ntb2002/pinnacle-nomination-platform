@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { expectNoAxeViolations } from "./support/axe";
-import { signIn, signInAs } from "./support/auth";
+import { signInAs } from "./support/auth";
 import { e2eDb } from "./support/db";
 
 test.describe("admin program settings", () => {
@@ -59,7 +59,11 @@ test.describe("admin program settings", () => {
     await form.getByLabel("Impact & Results (%)").fill("45");
     await expect(form.getByText("Total: 105% (must be 100%)")).toBeVisible();
     await form.getByRole("button", { name: "Save weights" }).click();
-    await expect(form.getByRole("alert")).toContainText("Check the weights.");
+    const alert = form.getByRole("alert");
+    await expect(alert).toContainText("Check the weights.");
+    const totalHref = await alert.getByRole("link", { name: /Total/ }).getAttribute("href");
+    await expect(page.locator(totalHref!)).toHaveCount(1);
+    await expect(form.getByLabel("Impact & Results (%)")).toHaveAttribute("aria-invalid", "true");
     await e2eDb().query(`UPDATE award_cycle SET phase = 'ROUND1_OPEN' WHERE is_active`);
     try {
       await page.reload();
@@ -71,7 +75,9 @@ test.describe("admin program settings", () => {
     }
   });
 
-  test("an optional category can be withdrawn and restored", async ({ page }) => {
+  test("withdrawing an optional category with submitted entries is refused, keeping the typed text", async ({
+    page,
+  }) => {
     await page.goto("/admin/categories");
     await expectNoAxeViolations(page);
     const form = page.locator("form").filter({ hasText: "Best Use of GenAI" });
@@ -79,6 +85,16 @@ test.describe("admin program settings", () => {
     await form.getByLabel("Offer this category").uncheck();
     await form.getByRole("button", { name: "Save Best Use of GenAI" }).click();
     await expect(form.getByRole("alert")).toContainText("cannot be withdrawn");
+    await expect(form.getByLabel("Offer this category")).not.toBeChecked();
+    // A too-short description: the summary links to the field, and the typed text survives.
+    await form.getByLabel("Public description").fill("Too short");
+    await form.getByRole("button", { name: "Save Best Use of GenAI" }).click();
+    const link = form.getByRole("alert").getByRole("link", { name: /Public description/ });
+    const href = await link.getAttribute("href");
+    await expect(page.locator(href!)).toHaveCount(1);
+    await link.click();
+    await expect(form.getByLabel("Public description")).toBeFocused();
+    await expect(form.getByLabel("Public description")).toHaveValue("Too short");
     await expect(
       page.locator("form").filter({ hasText: "CEO of the Year" }).getByLabel("Offer this category"),
     ).toHaveCount(0);
@@ -87,8 +103,10 @@ test.describe("admin program settings", () => {
   test("non-admins cannot reach admin settings", async ({ browser }) => {
     const ctx = await browser.newContext();
     const page = await ctx.newPage();
-    await signIn(page, "judge1@example.org");
-    expect((await page.goto("/admin/settings"))?.status()).toBe(403);
+    await signInAs(page, "judge1@example.org");
+    for (const path of ["/admin/settings", "/admin/categories", "/admin/rubrics"]) {
+      expect((await page.goto(path))?.status(), path).toBe(403);
+    }
     await ctx.close();
   });
 });

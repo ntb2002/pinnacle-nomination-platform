@@ -11,9 +11,12 @@ import type { ActionState } from "@/lib/action-state";
 export function FormMessage({
   state,
   labels = {},
+  idPrefix = "",
 }: {
   state: ActionState;
   labels?: Record<string, string>;
+  /** Prefix of the form's field ids, when they are not the bare field names. */
+  idPrefix?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -34,7 +37,18 @@ export function FormMessage({
         <ul className="mt-2 list-disc pl-5">
           {fieldErrors.map(([field, messages]) => (
             <li key={field}>
-              <a href={`#${field}`} className="underline">
+              <a
+                href={`#${idPrefix}${field}`}
+                className="underline"
+                onClick={(e) => {
+                  // Move focus to the field itself, not just scroll to it.
+                  const target = document.getElementById(`${idPrefix}${field}`);
+                  if (target) {
+                    e.preventDefault();
+                    target.focus();
+                  }
+                }}
+              >
                 {labels[field] ? `${labels[field]}: ` : ""}
                 {messages[0]}
               </a>

@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { expectNoAxeViolations } from "./support/axe";
-import { requestLink, signIn, signInAs } from "./support/auth";
+import { requestLink, signIn } from "./support/auth";
 import { e2eDb } from "./support/db";
 
 test.describe("authentication and role gates", () => {
@@ -144,7 +144,7 @@ test.describe("authentication and role gates", () => {
   });
 
   test("an admin reaches the admin area and the sign-in is audited", async ({ page }) => {
-    await signInAs(page, "admin@example.org", "/admin");
+    await signIn(page, "admin@example.org", "/admin");
     await expect(
       page.getByRole("heading", { level: 1, name: "Program administration" }),
     ).toBeVisible();

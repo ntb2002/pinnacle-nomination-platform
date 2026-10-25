@@ -25,7 +25,12 @@ export function RubricForm({
   const [state, action] = useActionState(updateRubricAction.bind(null, profileId), idleState);
   const [values, setValues] = useState<Weights>(weights);
   const total = Object.values(values).reduce((a, b) => a + (Number.isFinite(b) ? b : 0), 0);
-  const prefix = `rubric-${profileId.slice(0, 8)}`;
+  const prefix = `rubric-${profileId}-`;
+  const labels = Object.fromEntries([
+    ...RUBRIC_CRITERIA.map((c) => [c.weightKey, c.label]),
+    ["total", "Total"],
+  ]);
+  const totalError = state.fieldErrors?.total;
   return (
     <form
       action={action}
@@ -33,13 +38,13 @@ export function RubricForm({
       noValidate
     >
       <h2 className="font-display text-2xl font-semibold">{name}</h2>
-      <FormMessage state={state} />
+      <FormMessage state={state} labels={labels} idPrefix={prefix} />
       <fieldset disabled={locked} className="grid gap-5 sm:grid-cols-2">
         <legend className="sr-only">Weights for {name}</legend>
         {RUBRIC_CRITERIA.map((c) => (
           <Field
             key={c.key}
-            id={`${prefix}-${c.weightKey}`}
+            id={`${prefix}${c.weightKey}`}
             name={c.weightKey}
             label={`${c.label} (%)`}
             type="number"
@@ -50,10 +55,13 @@ export function RubricForm({
             value={Number.isFinite(values[c.weightKey]) ? values[c.weightKey] : ""}
             onChange={(e) => setValues({ ...values, [c.weightKey]: e.target.valueAsNumber })}
             errors={state.fieldErrors?.[c.weightKey]}
+            aria-invalid={totalError || state.fieldErrors?.[c.weightKey] ? true : undefined}
           />
         ))}
       </fieldset>
       <p
+        id={`${prefix}total`}
+        tabIndex={-1}
         aria-live="polite"
         className={`font-semibold ${total === 100 ? "text-success" : "text-danger"}`}
       >

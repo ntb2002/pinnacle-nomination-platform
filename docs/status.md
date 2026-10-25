@@ -22,6 +22,7 @@
 
 ## Open technical threads
 
+- #7/#9: the submit/fulfil path must read the entry's category `FOR SHARE` and refuse a withdrawn (disabled) category, to serialize with category withdrawal.
 - Rate limiting and audit IPs use the `TRUSTED_PROXY_HOPS`-th `X-Forwarded-For` entry from the right; production must sit behind a proxy that appends it (LAUNCH_READINESS). The per-email sign-in limit (5 per sliding 15 minutes) means someone who knows an address can keep that person from requesting new links for as long as they keep sending about 5 requests every 15 minutes. Accepted trade-off against email bombing; LAUNCH_READINESS lists mitigations (admin SSO, a CAPTCHA after failures).
 - Shorter sessions for admins/judges are scheduled for #16 (all roles get 7 days today).
 - #8 must delete stored files when an attachment row goes (entry cascade deletes rows, not bytes).
