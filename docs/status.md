@@ -5,8 +5,8 @@
 ## Now
 
 - **Done:** #1, #2, #3, #4, #5, #6
-- **In progress:** —
-- **Next:** #7 Nomination form and nominator dashboard
+- **In progress:** #7 Nomination form and nominator dashboard (branch `7-nomination-form`)
+- **Next:** #8 Secure supporting-file uploads
 - **Blockers:** none
 
 ## Needs human (collected from issues)
