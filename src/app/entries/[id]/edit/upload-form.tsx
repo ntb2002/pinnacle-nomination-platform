@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { CLEAR_EVENT } from "@/components/flash-notice";
 import { isUploadErrorCode, UPLOAD_ERRORS, UPLOAD_RULES } from "@/lib/file-rules";
 
 /**
@@ -43,6 +44,7 @@ export function UploadForm({
             ? UPLOAD_ERRORS.size
             : null;
         if (problem) {
+          window.dispatchEvent(new Event(CLEAR_EVENT)); // hide an older server message
           setError(problem);
           input?.focus();
           return;

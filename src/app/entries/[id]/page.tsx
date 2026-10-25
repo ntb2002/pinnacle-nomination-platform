@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { FlashNotice } from "@/components/flash-notice";
 import { PageHeader } from "@/components/page-header";
 import { formatDeadline } from "@/lib/dates";
 import { NOMINATOR_STATUS, RELATIONSHIP_LABEL } from "@/lib/entry-status";
@@ -17,7 +18,7 @@ import { EntrySummary } from "./entry-summary";
 
 export const metadata: Metadata = { title: "Your entry" };
 
-export default async function EntryPage({ params }: PageProps<"/entries/[id]">) {
+export default async function EntryPage({ params, searchParams }: PageProps<"/entries/[id]">) {
   const actor = await requireRole("NOMINATOR");
   const { id } = await params;
   const entry = await getMyEntry(actor, id).catch((err) => {
@@ -32,6 +33,7 @@ export default async function EntryPage({ params }: PageProps<"/entries/[id]">) 
   const ready = editable && Object.keys(problems).length === 0;
   const [fee, files] = await Promise.all([getNominationWindow(), listAttachments(actor, id)]);
   const status = NOMINATOR_STATUS[entry.status];
+  const locked = !editable && (await searchParams).locked === "1";
 
   return (
     <div className="container-page max-w-3xl py-12">
@@ -45,6 +47,15 @@ export default async function EntryPage({ params }: PageProps<"/entries/[id]">) 
         intro={`${RELATIONSHIP_LABEL[entry.relationship]}. Status: ${status.label}. ${status.next}`}
       />
 
+      {locked && (
+        <div className="mb-8">
+          <FlashNotice
+            id="locked-message"
+            error
+            text="This entry has been submitted, so it and its files can no longer be changed."
+          />
+        </div>
+      )}
       {editable && (
         <section
           aria-labelledby="ready-heading"

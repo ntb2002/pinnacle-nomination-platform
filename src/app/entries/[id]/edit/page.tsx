@@ -23,7 +23,11 @@ export default async function EditEntryPage({
     if (err instanceof NotFoundError) notFound();
     throw err;
   });
-  if (!(EDITABLE_STATUSES as readonly string[]).includes(entry.status)) redirect(`/entries/${id}`);
+  // Arriving here for an entry that can no longer change (e.g. a remove clicked on a
+  // stale page) lands on its review page with a notice saying so.
+  if (!(EDITABLE_STATUSES as readonly string[]).includes(entry.status)) {
+    redirect(`/entries/${id}?locked=1`);
+  }
   const [files, query] = await Promise.all([listAttachments(actor, id), searchParams]);
 
   const initial: Record<string, string> = {

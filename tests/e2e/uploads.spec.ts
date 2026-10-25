@@ -29,7 +29,7 @@ test.describe("supporting files", () => {
       buffer: PDF,
     });
     await files.getByRole("button", { name: "Upload the file" }).click();
-    await expect(page).toHaveURL(/upload=ok#files-message$/);
+    await expect(page).toHaveURL(/upload=ok&t=\d+#files-message$/);
     await expect(page.getByRole("status").filter({ hasText: "File uploaded." })).toBeFocused();
     const link = files.getByRole("link", { name: "Q3 results.pdf" });
     await expect(link).toBeVisible();
@@ -72,7 +72,7 @@ test.describe("supporting files", () => {
   });
 
   test("uploading keeps unsaved changes in the entry form", async ({ page }) => {
-    await startDraft(page, "nominator17@example.com");
+    await startDraft(page, "nominator13@example.com");
     await page.getByLabel("Full name").first().fill("Not Yet Saved");
     const files = page.locator("#files");
     await files.getByLabel("Add a file").setInputFiles({
@@ -87,7 +87,7 @@ test.describe("supporting files", () => {
   });
 
   test("an oversized file is stopped before it is sent", async ({ page }) => {
-    await startDraft(page, "nominator14@example.com");
+    await startDraft(page, "nominator13@example.com");
     const files = page.locator("#files");
     await files.getByLabel("Add a file").setInputFiles({
       name: "huge.pdf",
@@ -101,7 +101,7 @@ test.describe("supporting files", () => {
   });
 
   test("cross-origin uploads and other people's files are refused", async ({ page, browser }) => {
-    const entryId = await startDraft(page, "nominator15@example.com");
+    const entryId = await startDraft(page, "nominator13@example.com");
     const files = page.locator("#files");
     await files.getByLabel("Add a file").setInputFiles({
       name: "proof.pdf",
@@ -149,6 +149,12 @@ test.describe("supporting files", () => {
     );
     expect(closed.status()).toBe(303);
     expect(closed.headers()["location"]).toContain("uploadError=closed");
+    // A stale edit page lands on the review page, which says why.
+    await page.goto(`/entries/${id}/edit`);
+    await expect(page).toHaveURL(new RegExp(`/entries/${id}\\?locked=1$`));
+    await expect(
+      page.getByRole("alert").filter({ hasText: "can no longer be changed" }),
+    ).toBeFocused();
     const big = await post(Buffer.alloc(11 * 1024 * 1024, 0x25));
     expect(big.status()).toBe(303);
     expect(big.headers()["location"]).toContain("uploadError=size");
