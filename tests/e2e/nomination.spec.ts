@@ -53,7 +53,9 @@ test.describe("nomination form", () => {
     ).toBeVisible();
     await expectNoAxeViolations(page);
 
-    await page.getByRole("link", { name: "Edit the entry" }).click();
+    // Following a problem link lands focused on that field.
+    await page.getByRole("link", { name: /Nominee's company/ }).click();
+    await expect(page.getByLabel("Company or organization")).toBeFocused();
     await page.getByLabel("Job title").first().fill("Chief Strategy Officer");
     await page.getByLabel("Company or organization").fill("Quillfeather Partners");
     await page.getByLabel("Email address").first().fill("robin.testcase@example.com");
@@ -99,4 +101,16 @@ test.describe("nomination form", () => {
     await signInAs(page, "judge2@example.org");
     expect((await page.goto("/entries/new"))?.status()).toBe(403);
   });
+});
+
+test("the dashboard fits a phone screen", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await signInAs(page, "nominator04@example.com", "/entries");
+  await expect(page.getByRole("heading", { level: 1, name: "Your entries" })).toBeVisible();
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - window.innerWidth,
+  );
+  expect(overflow).toBeLessThanOrEqual(0);
+  await expect(page.getByText("Next step").first()).toBeVisible();
+  await expectNoAxeViolations(page);
 });

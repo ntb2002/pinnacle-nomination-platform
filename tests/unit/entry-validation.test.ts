@@ -65,7 +65,7 @@ describe("readinessProblems", () => {
 });
 
 describe("entryFormToDraft", () => {
-  it("builds rows from flat fields and drops blank optional rows", () => {
+  it("builds rows from flat fields and drops trailing blank rows", () => {
     const draft = entryFormToDraft([
       ["nomineeName", "Pat"],
       ["outcomes.0.description", "A"],
@@ -78,8 +78,10 @@ describe("entryFormToDraft", () => {
       ["references.5.name", "ignored"],
       ["role", "ADMIN"],
     ]);
+    // The blank middle row is kept so outcome 3 never shifts into slot 2.
     expect(draft.outcomes).toEqual([
       { description: "A", dataPoint: "1" },
+      { description: " ", dataPoint: "" },
       { description: "C", dataPoint: "3" },
     ]);
     expect(draft.references).toHaveLength(1);

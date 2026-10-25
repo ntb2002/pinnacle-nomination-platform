@@ -21,19 +21,26 @@ type Row<K extends readonly string[]> = Record<K[number], string>;
 
 /**
  * Turns the entry form's flat fields ("outcomes.1.dataPoint") into the draft shape.
- * Rows left completely blank are dropped, so an optional third outcome or second
- * reference is simply absent. Unknown fields are ignored.
+ * Trailing rows left completely blank are dropped, so an optional third outcome or
+ * second reference is simply absent. A blank row between filled ones is kept, so rows
+ * never shift position (review then asks for it to be completed). Unknown fields are
+ * ignored.
  */
 export function entryFormToDraft(form: Iterable<[string, FormDataEntryValue]>) {
   const flat = new Map<string, string>();
   for (const [k, v] of form) if (typeof v === "string") flat.set(k, v);
   const get = (k: string) => flat.get(k) ?? "";
 
-  const rows = <K extends readonly string[]>(prefix: string, fields: K, max: number) =>
-    Array.from(
+  const rows = <K extends readonly string[]>(prefix: string, fields: K, max: number) => {
+    const all = Array.from(
       { length: max },
       (_, i) => Object.fromEntries(fields.map((f) => [f, get(`${prefix}.${i}.${f}`)])) as Row<K>,
-    ).filter((r) => Object.values(r).some((v) => (v as string).trim() !== ""));
+    );
+    const filled = (r: Row<K>) => Object.values(r).some((v) => (v as string).trim() !== "");
+    let last = all.length - 1;
+    while (last >= 0 && !filled(all[last]!)) last--;
+    return all.slice(0, last + 1);
+  };
 
   const nominee = Object.fromEntries(NOMINEE_FIELDS.map((f) => [f, get(f)])) as Row<
     typeof NOMINEE_FIELDS

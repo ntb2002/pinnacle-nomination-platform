@@ -15,6 +15,17 @@ export const ENTRY_RULES = {
 
 const text = (max: number) => z.string().trim().max(max, `Keep this under ${max} characters`);
 
+const LINKEDIN_RE = /^https:\/\/([a-z]{2,3}\.)?linkedin\.com\/[^\s]+$/i;
+const PHONE_RE = /^\+?[0-9 ().-]{7,25}(\s*(ext\.?|x)\s*\d{1,6})?$/i;
+const LINKEDIN_MSG = "Enter a LinkedIn profile address starting with https://www.linkedin.com/";
+const PHONE_MSG = "Enter a phone number, like +1 315 555 0100";
+const EMAIL_MSG = "Enter a valid email address, like name@example.com";
+const isEmail = (v: string) => z.email().safeParse(v).success;
+
+/** Optional in a draft, but if something is typed it must have the right format. */
+const formatIfPresent = (max: number, ok: (v: string) => boolean, message: string) =>
+  text(max).refine((v) => v === "" || ok(v), message);
+
 /**
  * Draft shape: everything optional (a draft can be saved at any point), but lengths are
  * always capped. Formats and counts are checked by `readinessProblems` before submission.
@@ -23,8 +34,8 @@ export const draftSchema = z.object({
   nomineeName: text(120).optional(),
   nomineeTitle: text(120).optional(),
   nomineeCompany: text(160).optional(),
-  nomineeEmail: text(254).optional(),
-  nomineeLinkedinUrl: text(300).optional(),
+  nomineeEmail: formatIfPresent(254, isEmail, EMAIL_MSG).optional(),
+  nomineeLinkedinUrl: formatIfPresent(300, (v) => LINKEDIN_RE.test(v), LINKEDIN_MSG).optional(),
   narrative: z.string().max(ENTRY_RULES.narrativeMaxChars, "The narrative is too long").optional(),
   outcomes: z
     .array(z.object({ description: text(300), dataPoint: text(200) }))
@@ -35,8 +46,8 @@ export const draftSchema = z.object({
         name: text(120),
         title: text(120),
         organization: text(160),
-        email: text(254),
-        phone: text(40),
+        email: formatIfPresent(254, isEmail, EMAIL_MSG),
+        phone: formatIfPresent(40, (v) => PHONE_RE.test(v), PHONE_MSG),
         relationship: text(200),
       }),
     )
@@ -54,18 +65,9 @@ const required = (label: string, max: number) =>
 const linkedin = z
   .string()
   .trim()
-  .refine(
-    (v) => v === "" || /^https:\/\/([a-z]{2,3}\.)?linkedin\.com\/[^\s]+$/i.test(v),
-    "Enter a LinkedIn profile address starting with https://www.linkedin.com/",
-  );
+  .refine((v) => v === "" || LINKEDIN_RE.test(v), LINKEDIN_MSG);
 
-const phone = z
-  .string()
-  .trim()
-  .regex(
-    /^\+?[0-9 ().-]{7,25}(\s*(ext\.?|x)\s*\d{1,6})?$/i,
-    "Enter a phone number, like +1 315 555 0100",
-  );
+const phone = z.string().trim().regex(PHONE_RE, PHONE_MSG);
 
 /** The complete entry required before payment and submission. */
 export const submissionSchema = z.object({

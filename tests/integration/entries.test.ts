@@ -1,9 +1,9 @@
 import { eq } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { closeDb } from "@/server/db";
-import { entry } from "@/server/db/schema";
+import { entry, payment } from "@/server/db/schema";
 import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from "@/server/errors";
-import { saveDraft } from "@/server/services/entry-drafts";
+import { deleteDraft, saveDraft } from "@/server/services/entry-drafts";
 import { getMyEntry, listMyEntries, startEntry } from "@/server/services/entries";
 import { createActor } from "../support/actors";
 import { db, resetTables } from "../support/db";
@@ -180,5 +180,51 @@ describe("ownership and editing", () => {
     await expect(saveDraft(me, id, draft({ narrative: "x".repeat(5001) }))).rejects.toBeInstanceOf(
       ValidationError,
     );
+  });
+});
+
+describe("draft formats and deletion", () => {
+  it("rejects a badly formatted email or URL as soon as it is typed", async () => {
+    const { category: cat } = await createProgram();
+    const me = await createActor("NOMINATOR");
+    const id = await startEntry(me, { categoryId: cat.id, relationship: "PEER" });
+    for (const patch of [{ nomineeEmail: "nope" }, { nomineeLinkedinUrl: "javascript:alert(1)" }]) {
+      await expect(saveDraft(me, id, draft(patch))).rejects.toBeInstanceOf(ValidationError);
+    }
+    // Blank optional fields are fine in a draft.
+    await saveDraft(me, id, draft({ nomineeEmail: "", nomineeLinkedinUrl: "" }));
+  });
+
+  it("deletes only the nominator's own unpaid drafts", async () => {
+    const { cycle, category: cat } = await createProgram();
+    const me = await createActor("NOMINATOR");
+    const other = await createActor("NOMINATOR");
+    const id = await startEntry(me, { categoryId: cat.id, relationship: "PEER" });
+    await saveDraft(me, id, draft());
+    await expect(deleteDraft(other, id)).rejects.toBeInstanceOf(NotFoundError);
+    const submitted = await createEntry({
+      cycleId: cycle.id,
+      categoryId: cat.id,
+      nominatorId: me.id,
+      status: "SUBMITTED",
+    });
+    await expect(deleteDraft(me, submitted.id)).rejects.toBeInstanceOf(NotFoundError);
+    const withAttempt = await createEntry({
+      cycleId: cycle.id,
+      categoryId: cat.id,
+      nominatorId: me.id,
+    });
+    await db.insert(payment).values({
+      entryId: withAttempt.id,
+      kind: "ENTRY_FEE",
+      tier: "EARLY",
+      amountCents: 50_000,
+      provider: "mock",
+      providerSessionId: "cs_x",
+      createdById: me.id,
+    });
+    await expect(deleteDraft(me, withAttempt.id)).rejects.toBeInstanceOf(ConflictError);
+    await deleteDraft(me, id);
+    expect(await db.select().from(entry).where(eq(entry.id, id))).toHaveLength(0);
   });
 });

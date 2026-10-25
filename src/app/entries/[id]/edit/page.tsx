@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { FocusFromHash } from "@/components/focus-from-hash";
 import { PageHeader } from "@/components/page-header";
 import { RELATIONSHIP_LABEL } from "@/lib/entry-status";
 import { requireRole } from "@/server/auth/session";
@@ -56,6 +57,7 @@ export default async function EditEntryPage({ params }: PageProps<"/entries/[id]
           This category is no longer offered, so this entry cannot be submitted.
         </p>
       )}
+      <FocusFromHash />
       <EntryForm
         entryId={entry.id}
         initial={initial}

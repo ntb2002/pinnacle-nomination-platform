@@ -10,6 +10,7 @@ import { readinessProblems, toSubmissionInput } from "@/lib/validation/entry";
 import { requireRole } from "@/server/auth/session";
 import { NotFoundError } from "@/server/errors";
 import { EDITABLE_STATUSES, getMyEntry, getNominationWindow } from "@/server/services/entries";
+import { DeleteDraft } from "./delete-draft";
 import { EntrySummary } from "./entry-summary";
 
 export const metadata: Metadata = { title: "Your entry" };
@@ -61,9 +62,9 @@ export default async function EntryPage({ params }: PageProps<"/entries/[id]">) 
             <ul className="mt-3 list-disc pl-6">
               {Object.entries(problems).map(([path, messages]) => (
                 <li key={path}>
-                  <Link href={`/entries/${entry.id}/edit#${path}`} className="underline">
+                  <a href={`/entries/${entry.id}/edit#${path}`} className="underline">
                     {path === "category" ? "Category" : entryFieldLabel(path)}: {messages[0]}
-                  </Link>
+                  </a>
                 </li>
               ))}
             </ul>
@@ -76,6 +77,7 @@ export default async function EntryPage({ params }: PageProps<"/entries/[id]">) 
               Edit the entry
             </Link>
           </p>
+          {entry.status === "DRAFT" && <DeleteDraft entryId={entry.id} />}
         </section>
       )}
       <EntrySummary entry={entry} />

@@ -6,7 +6,7 @@ import type { ActionState } from "@/lib/action-state";
 import { draftToFormValues, entryFormToDraft } from "@/lib/entry-form";
 import { toActionState } from "@/server/action-errors";
 import { requireRole } from "@/server/auth/session";
-import { saveDraft } from "@/server/services/entry-drafts";
+import { deleteDraft, saveDraft } from "@/server/services/entry-drafts";
 import { startEntry } from "@/server/services/entries";
 
 export async function startEntryAction(_prev: ActionState, form: FormData): Promise<ActionState> {
@@ -45,4 +45,14 @@ export async function saveEntryAction(
   revalidatePath(`/entries/${entryId}`, "layout");
   if (form.get("intent") === "review") redirect(`/entries/${entryId}`);
   return { status: "success", message: "Draft saved.", values };
+}
+
+export async function deleteDraftAction(entryId: string, _prev: ActionState): Promise<ActionState> {
+  const actor = await requireRole("NOMINATOR");
+  try {
+    await deleteDraft(actor, entryId);
+  } catch (err) {
+    return toActionState(err);
+  }
+  redirect("/entries");
 }

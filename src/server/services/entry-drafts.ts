@@ -4,8 +4,8 @@ import { isUuid } from "@/lib/ids";
 import { draftSchema, type EntryDraft } from "@/lib/validation/entry";
 import { assertRole, type Actor } from "@/server/auth/actor";
 import { db, type Transaction } from "@/server/db";
-import { entry, entryOutcome, entryReference } from "@/server/db/schema";
-import { NotFoundError, ValidationError } from "@/server/errors";
+import { entry, entryOutcome, entryReference, payment } from "@/server/db/schema";
+import { ConflictError, NotFoundError, ValidationError } from "@/server/errors";
 import { fieldErrorsOf } from "@/server/validation";
 import { EDITABLE_STATUSES } from "./entries";
 
@@ -98,4 +98,31 @@ async function syncReferences(tx: Transaction, entryId: string, rows: EntryDraft
       .values({ entryId, position: i + 1, ...row })
       .onConflictDoUpdate({ target: [entryReference.entryId, entryReference.position], set: row });
   }
+}
+
+/**
+ * Nominator: deletes one of their own drafts that has never had a checkout started.
+ * Its outcomes and references go with it (cascade). Anything submitted or paid stays.
+ */
+export async function deleteDraft(actor: Actor, entryId: string) {
+  assertRole(actor, "NOMINATOR");
+  if (!isUuid(entryId)) throw new NotFoundError("draft");
+  await db.transaction(async (tx) => {
+    const [row] = await tx
+      .select({ id: entry.id })
+      .from(entry)
+      .where(and(eq(entry.id, entryId), eq(entry.nominatorId, actor.id), eq(entry.status, "DRAFT")))
+      .for("update");
+    if (!row) throw new NotFoundError("draft");
+    const [paid] = await tx
+      .select({ id: payment.id })
+      .from(payment)
+      .where(eq(payment.entryId, entryId))
+      .limit(1);
+    if (paid)
+      throw new ConflictError(
+        "This draft has a payment attempt, so it cannot be deleted. Contact the program team.",
+      );
+    await tx.delete(entry).where(eq(entry.id, entryId));
+  });
 }
