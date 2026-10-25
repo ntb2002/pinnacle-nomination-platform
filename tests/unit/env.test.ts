@@ -25,7 +25,12 @@ describe("parseEnv", () => {
 
   it("rejects a trailing slash and plain http in production", () => {
     expect(() => parseEnv({ ...valid, APP_URL: "http://localhost:3000/" })).toThrow(/APP_URL/);
-    expect(() => parseEnv({ ...valid, NODE_ENV: "production" })).toThrow(/https/);
+    expect(() =>
+      parseEnv({ ...valid, NODE_ENV: "production", APP_URL: "http://pinnacle.example.edu" }),
+    ).toThrow(/https/);
+    expect(parseEnv({ ...valid, NODE_ENV: "production" })).toMatchObject({
+      APP_URL: valid.APP_URL,
+    });
     expect(
       parseEnv({ ...valid, NODE_ENV: "production", APP_URL: "https://pinnacle.example.edu" }),
     ).toMatchObject({ NODE_ENV: "production" });

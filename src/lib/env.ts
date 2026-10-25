@@ -19,7 +19,10 @@ const envSchema = z
     DATABASE_URL: postgresUrl,
   })
   .superRefine((cfg, ctx) => {
-    if (cfg.NODE_ENV === "production" && !cfg.APP_URL.startsWith("https://")) {
+    // Loopback is exempt so the production build can be tested locally (e2e).
+    const host = new URL(cfg.APP_URL).hostname;
+    const loopback = host === "localhost" || host === "127.0.0.1" || host === "[::1]";
+    if (cfg.NODE_ENV === "production" && !cfg.APP_URL.startsWith("https://") && !loopback) {
       ctx.addIssue({ code: "custom", path: ["APP_URL"], message: "must use https in production" });
     }
   });

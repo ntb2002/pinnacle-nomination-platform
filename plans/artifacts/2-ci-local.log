@@ -1,4 +1,4 @@
-ci-local: 5b82d73 on 2-app-foundation, node v24.22.1
+ci-local: 3ace71d on 2-app-foundation, node v24.22.1
 
 ==> lint
 
@@ -14,54 +14,46 @@ Generating route types...
 
  RUN  v5.0.5 /home/user/pinnacle-nomination-platform
 
-Migrations applied.
+Database reset and migrated.
 
- Test Files  3 passed (3)
-      Tests  7 passed (7)
-   Start at  19:58:46
-   Duration  4.06s (import 68%, transform 23%, tests 7%, worker 1%)
+ Test Files  5 passed (5)
+      Tests  12 passed (12)
+   Start at  20:06:16
+   Duration  4.17s (import 55%, tests 32%, transform 12%, worker 2%)
 
-    Isolate  3 workers spawned · ~147ms startup each (spawn + environment, per file)
-             at least ~294ms faster with isolate: false — reuses workers across files instead of one per file
+    Isolate  5 workers spawned · ~144ms startup each (spawn + environment, per file)
+             at least ~574ms faster with isolate: false — reuses workers across files instead of one per file
 
 
 ==> build
 ▲ Next.js 16.4.3 (Turbopack)
 - Environments: .env
-✓ Running next.config.ts took 57ms
+✓ Running next.config.ts took 52ms
 
   Creating an optimized production build ...
-✓ Compiled successfully in 1012ms
+✓ Compiled successfully in 1133ms
   Running TypeScript ...
-  Finished TypeScript in 5.3s ...
+  Finished TypeScript in 3.8s ...
   Collecting page data using 3 workers ...
-  Generating static pages using 3 workers (0/3) ...
-✓ Generating static pages using 3 workers (3/3) in 177ms
+  Generating static pages using 3 workers (0/1) ...
+✓ Generating static pages using 3 workers (1/1) in 115ms
   Finalizing page optimization ...
 
 Route (app)
 ┌ ƒ /
-├ ○ /_not-found
+├ ƒ /_not-found
 └ ƒ /api/health
 
 
 ƒ Proxy (Middleware)
 
-○  (Static)   prerendered as static content
 ƒ  (Dynamic)  server-rendered on demand
 
 Standalone output prepared.
 
 ==> e2e
-Migrations applied.
+[WebServer] Invalid environment configuration (see .env.example):
+[WebServer] ✖ must use https in production
+[WebServer]   → at APP_URL
+Error: Process from config.webServer was not able to start. Exit code: 1
 
-Running 4 tests using 1 worker
-
-  ✓  1 [chromium] › tests/e2e/home.spec.ts:5:3 › home and base layout › renders the home page with no accessibility violations (1.7s)
-  ✓  2 [chromium] › tests/e2e/home.spec.ts:15:3 › home and base layout › skip link moves focus to main content (490ms)
-  ✓  3 [chromium] › tests/e2e/home.spec.ts:24:3 › home and base layout › sends a nonce-based CSP and security headers (82ms)
-  ✓  4 [chromium] › tests/e2e/home.spec.ts:32:3 › home and base layout › health endpoint reports the database (25ms)
-
-  4 passed (6.8s)
-
-ci-local: all steps passed
