@@ -155,7 +155,8 @@ export function paymentsProvider(cfg: Env = env()): "stripe" | "mock" {
  * and before any payment is created, so a misconfigured server never takes money:
  * - the mock provider is refused in real production;
  * - stripe needs a secret key and a webhook signing secret;
- * - live keys are refused anywhere but real production.
+ * - live keys are refused anywhere but real production;
+ * - test keys are refused in real production, except on a demo deployment.
  */
 export function paymentConfigProblems(cfg: Env = env()): string[] {
   const problems: string[] = [];
@@ -167,6 +168,11 @@ export function paymentConfigProblems(cfg: Env = env()): string[] {
   if (provider === "stripe") {
     if (!cfg.STRIPE_SECRET_KEY) problems.push("STRIPE_SECRET_KEY is required for stripe");
     if (!cfg.STRIPE_WEBHOOK_SECRET) problems.push("STRIPE_WEBHOOK_SECRET is required for stripe");
+  }
+  // A test key in production would let anyone "pay" with a test card. Allowed only on a
+  // demo deployment, which says so on every page (DEMO_MODE).
+  if (/^(sk|rk)_test_/.test(cfg.STRIPE_SECRET_KEY ?? "") && real && cfg.DEMO_MODE !== "true") {
+    problems.push("STRIPE_SECRET_KEY: test keys are refused in production unless DEMO_MODE=true");
   }
   if (/^(sk|rk)_live_/.test(cfg.STRIPE_SECRET_KEY ?? "") && !real) {
     problems.push("STRIPE_SECRET_KEY: live keys are refused outside production; use a test key");

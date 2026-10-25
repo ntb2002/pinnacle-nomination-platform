@@ -11,7 +11,8 @@ const TOLERANCE_SECONDS = 300;
  * live keys only in production (enforced in src/lib/env.ts).
  */
 export function stripeProvider(cfg: { secretKey: string; webhookSecret: string }): PaymentProvider {
-  const stripe = new Stripe(cfg.secretKey, { maxNetworkRetries: 2, timeout: 15_000 });
+  // Short waits: checkout start holds the entry lock across these calls.
+  const stripe = new Stripe(cfg.secretKey, { maxNetworkRetries: 1, timeout: 8_000 });
   return {
     name: "stripe",
     async createCheckout(req) {
@@ -47,8 +48,16 @@ export function stripeProvider(cfg: { secretKey: string; webhookSecret: string }
     async expireCheckout(sessionId) {
       const s = await stripe.checkout.sessions.retrieve(sessionId);
       if (s.status === "complete") return false;
-      if (s.status === "open") await stripe.checkout.sessions.expire(sessionId);
-      return true;
+      if (s.status !== "open") return true;
+      try {
+        await stripe.checkout.sessions.expire(sessionId);
+        return true;
+      } catch (err) {
+        // Completed between the two calls: the payment is on its way.
+        const again = await stripe.checkout.sessions.retrieve(sessionId);
+        if (again.status === "complete") return false;
+        throw err;
+      }
     },
     parseEvent(rawBody, signature) {
       if (!signature) throw new WebhookSignatureError("missing signature");

@@ -15,12 +15,16 @@ export function SubmitPanel({
   entry,
   problems,
   fee,
-  openUntil,
+  checkout,
+  attempts,
 }: {
   entry: { id: string; status: string };
   problems: Record<string, string[]>;
   fee: EntryFee | null;
-  openUntil: Date | null;
+  /** An open checkout, or one that just ended and may still be confirmed. */
+  checkout: { expiresAt: Date | null; ended: boolean } | null;
+  /** Payment attempts so far: a draft with any cannot be deleted (records of money). */
+  attempts: number;
 }) {
   const ready = Object.keys(problems).length === 0;
   const draft = entry.status === "DRAFT";
@@ -30,10 +34,14 @@ export function SubmitPanel({
       className="mb-12 rounded border border-line bg-surface p-6"
     >
       <h2 id="ready-heading" className="font-display text-2xl font-semibold">
-        {openUntil ? "Checkout in progress" : ready ? "Ready to submit" : "Before you can submit"}
+        {checkout ? "Checkout in progress" : ready ? "Ready to submit" : "Before you can submit"}
       </h2>
-      {openUntil ? (
-        <OpenCheckout entryId={entry.id} until={formatDateTime(openUntil)} />
+      {checkout ? (
+        <OpenCheckout
+          entryId={entry.id}
+          until={checkout.expiresAt ? formatDateTime(checkout.expiresAt) : ""}
+          ended={checkout.ended}
+        />
       ) : ready ? (
         <>
           <p className="mt-3">
@@ -62,7 +70,7 @@ export function SubmitPanel({
           ))}
         </ul>
       )}
-      {!openUntil && (
+      {!checkout && (
         <p className="mt-6">
           <Link
             href={`/entries/${entry.id}/edit`}
@@ -72,7 +80,7 @@ export function SubmitPanel({
           </Link>
         </p>
       )}
-      {draft && !openUntil && <DeleteDraft entryId={entry.id} />}
+      {draft && !checkout && attempts === 0 && <DeleteDraft entryId={entry.id} />}
     </section>
   );
 }

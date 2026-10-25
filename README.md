@@ -14,3 +14,5 @@ Development, CI and the demo use the built-in checkout simulator (`PAYMENTS_PROV
 4. Sign in as a nominator, complete an entry, and press **Pay … and submit**. On Stripe's page pay with card `4242 4242 4242 4242`, any future expiry, any CVC and postcode.
 5. Back on the entry page the status becomes **Submitted** once the webhook arrives (watch `stripe listen` for `checkout.session.completed` → 200), and the receipt appears in `/dev/mailbox`.
 6. To check the cancel path, press the back link on Stripe's page: the entry stays a draft.
+
+In production, the Stripe webhook endpoint (`https://<host>/api/webhooks/stripe`) must send `checkout.session.completed`, `checkout.session.expired`, `checkout.session.async_payment_succeeded` and `checkout.session.async_payment_failed`. Create it with the API version the installed Stripe SDK uses (`node_modules/stripe/OPENAPI_VERSION`), because the endpoint's version shapes the event payload. Stripe test keys are refused in production unless `DEMO_MODE=true`.

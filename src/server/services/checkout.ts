@@ -24,13 +24,19 @@ import { paymentProvider } from "@/server/payments";
  */
 export const CHECKOUT_TTL_MS = 31 * 60 * 1000;
 
-/** Unpaid sessions that can still be completed. */
+/**
+ * The entry stays frozen this long after a session's expiry: a payment completed at
+ * the last second can still be on its way (webhook retries, clock skew).
+ */
+export const CONFIRMATION_GRACE_MS = 5 * 60 * 1000;
+
+/** Unpaid sessions that may still be completed or are still being confirmed. */
 const openCheckout = (entryId: string, now: Date) =>
   and(
     eq(payment.entryId, entryId),
     eq(payment.kind, "ENTRY_FEE"),
     eq(payment.status, "PENDING"),
-    gt(payment.expiresAt, now),
+    gt(payment.expiresAt, new Date(now.getTime() - CONFIRMATION_GRACE_MS)),
   );
 
 export const CHECKOUT_OPEN_MESSAGE =
@@ -109,10 +115,12 @@ export async function startCheckout(actor: Actor, entryId: string, now = new Dat
       )
       .limit(1);
     if (paid) throw new ConflictError("This entry has already been paid for.");
-    await endOpenCheckouts(tx, entryId, now);
+    await endOpenCheckouts(tx, entryId);
 
     const paymentId = randomUUID();
-    const expiresAt = new Date(now.getTime() + CHECKOUT_TTL_MS);
+    // Priced at `now`; the expiry counts from this moment, after any lock wait and
+    // provider calls above, so Stripe never sees less than its 30-minute minimum.
+    const expiresAt = new Date(Date.now() + CHECKOUT_TTL_MS);
     const session = await provider.createCheckout({
       paymentId,
       amountCents: fee.amountCents,
@@ -139,12 +147,29 @@ export async function startCheckout(actor: Actor, entryId: string, now = new Dat
   });
 }
 
-/** Ends every open session on the entry, or refuses if one was already completed. */
-async function endOpenCheckouts(tx: DbExecutor, entryId: string, now: Date) {
+/**
+ * Ends every unpaid session on the entry, or refuses if one was completed (its payment
+ * is on its way). Asks the provider about every PENDING row, whatever our own expiry
+ * says, so a late webhook can never be followed by a second charge.
+ */
+async function endOpenCheckouts(tx: DbExecutor, entryId: string) {
   const provider = paymentProvider();
-  const open = await tx.select().from(payment).where(openCheckout(entryId, now)).for("update");
-  for (const p of open) {
-    if (p.provider !== provider.name || !(await provider.expireCheckout(p.providerSessionId))) {
+  const pending = await tx
+    .select()
+    .from(payment)
+    .where(
+      and(
+        eq(payment.entryId, entryId),
+        eq(payment.kind, "ENTRY_FEE"),
+        eq(payment.status, "PENDING"),
+      ),
+    )
+    .for("update");
+  for (const p of pending) {
+    // A session from another provider cannot complete through this deployment.
+    const ended =
+      p.provider !== provider.name || (await provider.expireCheckout(p.providerSessionId));
+    if (!ended) {
       throw new ConflictError(
         "Your earlier payment is still being confirmed. Refresh this page in a minute.",
       );
@@ -154,7 +179,7 @@ async function endOpenCheckouts(tx: DbExecutor, entryId: string, now: Date) {
 }
 
 /** Nominator: cancels the open checkout so the draft can be edited again. */
-export async function cancelCheckout(actor: Actor, entryId: string, now = new Date()) {
+export async function cancelCheckout(actor: Actor, entryId: string) {
   assertRole(actor, "NOMINATOR");
   if (!isUuid(entryId)) throw new NotFoundError("entry");
   await db.transaction(async (tx) => {
@@ -164,11 +189,14 @@ export async function cancelCheckout(actor: Actor, entryId: string, now = new Da
       .where(and(eq(entry.id, entryId), eq(entry.nominatorId, actor.id), eq(entry.status, "DRAFT")))
       .for("update");
     if (!e) throw new NotFoundError("draft");
-    await endOpenCheckouts(tx, entryId, now);
+    await endOpenCheckouts(tx, entryId);
   });
 }
 
-/** The entry-fee payment state the nominator's entry page shows. */
+/**
+ * The entry-fee payment state the nominator's entry page shows: the paid fee, and any
+ * checkout that is open or has just ended and may still be confirmed.
+ */
 export async function getMyEntryPayment(actor: Actor, entryId: string, now = new Date()) {
   assertRole(actor, "NOMINATOR");
   if (!isUuid(entryId)) throw new NotFoundError("entry");
@@ -192,7 +220,11 @@ export async function getMyEntryPayment(actor: Actor, entryId: string, now = new
     )
     .orderBy(desc(payment.createdAt));
   const paid = rows.find((r) => r.status === "PAID") ?? null;
-  const open =
-    rows.find((r) => r.status === "PENDING" && !!r.expiresAt && r.expiresAt > now) ?? null;
-  return { paid, open };
+  const graceStart = now.getTime() - CONFIRMATION_GRACE_MS;
+  const pending = rows.find(
+    (r) => r.status === "PENDING" && !!r.expiresAt && r.expiresAt.getTime() > graceStart,
+  );
+  // `ended`: past its expiry but still inside the confirmation grace period.
+  const open = pending ? { ...pending, ended: pending.expiresAt! <= now } : null;
+  return { paid, open, attempts: rows.length };
 }

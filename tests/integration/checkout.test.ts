@@ -1,9 +1,11 @@
 import { and, eq } from "drizzle-orm";
-import { afterAll, beforeEach, describe, expect, it } from "vitest";
+import Stripe from "stripe";
+import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Actor } from "@/server/auth/actor";
 import { closeDb } from "@/server/db";
 import {
   auditLog,
+  awardCycle,
   category,
   emailOutbox,
   entry,
@@ -15,12 +17,14 @@ import { mockPaymentProvider } from "@/server/payments";
 import {
   cancelCheckout,
   CHECKOUT_TTL_MS,
+  CONFIRMATION_GRACE_MS,
   getMyEntryPayment,
   startCheckout,
 } from "@/server/services/checkout";
 import { listPayments, paymentLabel } from "@/server/services/payments-admin";
 import { saveDraft } from "@/server/services/entry-drafts";
-import { handleWebhook } from "@/server/services/payment-events";
+import { handleWebhook, WEBHOOK_REJECTION_AUDIT } from "@/server/services/payment-events";
+import { stripeProvider } from "@/server/payments/stripe";
 import { updateCategory } from "@/server/services/program-settings";
 import { createActor } from "../support/actors";
 import { db, resetTables } from "../support/db";
@@ -233,7 +237,8 @@ describe("payment visibility", () => {
     const { owner, entry: e } = await setup();
     await startCheckout(owner, e.id);
     const admin = await createActor("ADMIN");
-    const rows = await listPayments(admin);
+    const { rows, totals } = await listPayments(admin);
+    expect(totals).toEqual({ paid: 0, paidCents: 0 });
     expect(rows).toHaveLength(1);
     expect(paymentLabel(rows[0]!)).toBe("Checkout open");
     expect(paymentLabel(rows[0]!, new Date(Date.now() + 2 * CHECKOUT_TTL_MS))).toBe("Expired");
@@ -242,6 +247,116 @@ describe("payment visibility", () => {
     // The nominator sees their own entry's payment state, nobody else's.
     expect((await getMyEntryPayment(owner, e.id)).open).not.toBeNull();
     const other = await createActor("NOMINATOR");
-    expect(await getMyEntryPayment(other, e.id)).toEqual({ paid: null, open: null });
+    expect(await getMyEntryPayment(other, e.id)).toEqual({ paid: null, open: null, attempts: 0 });
+  });
+});
+
+describe("review regressions", () => {
+  it("asks the provider about a session past our expiry and refuses a second charge", async () => {
+    const { owner, entry: e } = await setup();
+    const first = await startAndGet(owner, e.id);
+    const longAgo = new Date(Date.now() - 2 * CHECKOUT_TTL_MS);
+    await db.update(payment).set({ expiresAt: longAgo }).where(eq(payment.id, first.id));
+    // The provider reports the old session as completed: its payment is on its way.
+    const spy = vi.spyOn(mock(), "expireCheckout").mockResolvedValueOnce(false);
+    await expect(startCheckout(owner, e.id)).rejects.toBeInstanceOf(ConflictError);
+    expect(spy).toHaveBeenCalledWith(first.providerSessionId);
+    expect(await paymentsOf(e.id)).toHaveLength(1);
+    // Once the provider says it ended, a new checkout can start.
+    await startCheckout(owner, e.id);
+    expect((await paymentsOf(e.id)).map((r) => r.status).sort()).toEqual(["EXPIRED", "PENDING"]);
+  });
+
+  it("keeps the entry frozen for a grace period after expiry", async () => {
+    const { owner, entry: e } = await setup();
+    const p = await startAndGet(owner, e.id);
+    await db
+      .update(payment)
+      .set({ expiresAt: new Date(Date.now() - 60_000) })
+      .where(eq(payment.id, p.id));
+    await expect(saveDraft(owner, e.id, { outcomes: [], references: [] })).rejects.toBeInstanceOf(
+      ConflictError,
+    );
+    expect((await getMyEntryPayment(owner, e.id)).open).toMatchObject({ ended: true });
+    await db
+      .update(payment)
+      .set({ expiresAt: new Date(Date.now() - CONFIRMATION_GRACE_MS - 60_000) })
+      .where(eq(payment.id, p.id));
+    expect((await getMyEntryPayment(owner, e.id)).open).toBeNull();
+  });
+
+  it("honours a payment for a session started before the final deadline", async () => {
+    const { owner, entry: e, cycle } = await setup();
+    const p = await startAndGet(owner, e.id);
+    await db
+      .update(awardCycle)
+      // Nominations have now closed (deadlines stay in order).
+      .set({
+        earlyDeadline: new Date(Date.now() - 3000),
+        regularDeadline: new Date(Date.now() - 2000),
+        finalDeadline: new Date(Date.now() - 1000),
+      })
+      .where(eq(awardCycle.id, cycle.id));
+    await pay(p.providerSessionId, p.amountCents);
+    expect((await db.select().from(entry).where(eq(entry.id, e.id)))[0]?.status).toBe("SUBMITTED");
+  });
+
+  it("shows a charged duplicate as needing review, with its reference", async () => {
+    const { owner, entry: e } = await setup();
+    const first = await startAndGet(owner, e.id);
+    await startCheckout(owner, e.id);
+    const [second] = (await paymentsOf(e.id)).filter((r) => r.status === "PENDING");
+    await pay(second!.providerSessionId, second!.amountCents);
+    await pay(first.providerSessionId, first.amountCents);
+    const { rows } = await listPayments(await createActor("ADMIN"));
+    const flagged = rows.find((r) => r.id === first.id)!;
+    expect(flagged.reference).toMatch(/^mock_pi_/);
+    expect(paymentLabel(flagged)).toBe("Charged, needs review");
+    expect(paymentLabel(rows.find((r) => r.id === second!.id)!)).toBe("Paid");
+  });
+
+  it("verifies and fulfils a real Stripe-signed event", async () => {
+    const { owner, entry: e } = await setup();
+    const p = await startAndGet(owner, e.id);
+    await db
+      .update(payment)
+      .set({ provider: "stripe", providerSessionId: "cs_test_regress" })
+      .where(eq(payment.id, p.id));
+    const secret = "whsec_regress";
+    const provider = stripeProvider({ secretKey: "sk_test_regress", webhookSecret: secret });
+    const payload = JSON.stringify({
+      id: "evt_regress",
+      object: "event",
+      type: "checkout.session.completed",
+      data: {
+        object: {
+          id: "cs_test_regress",
+          object: "checkout.session",
+          payment_status: "paid",
+          payment_intent: "pi_regress",
+          amount_total: p.amountCents,
+          currency: "usd",
+        },
+      },
+    });
+    const header = new Stripe("sk_test_regress").webhooks.generateTestHeaderString({
+      payload,
+      secret,
+    });
+    expect((await handleWebhook(provider, payload, header)).status).toBe(200);
+    expect((await paymentsOf(e.id))[0]).toMatchObject({
+      status: "PAID",
+      providerPaymentIntentId: "pi_regress",
+    });
+  });
+
+  it("audits rejected webhooks up to a cap per IP", async () => {
+    for (let i = 0; i < WEBHOOK_REJECTION_AUDIT.limit + 3; i++) {
+      expect(
+        (await handleWebhook(mock(), "{}", "t=1,v1=" + "0".repeat(64), "198.51.100.4")).status,
+      ).toBe(400);
+    }
+    const rows = await db.select().from(auditLog).where(eq(auditLog.action, "webhook.rejected"));
+    expect(rows).toHaveLength(WEBHOOK_REJECTION_AUDIT.limit);
   });
 });

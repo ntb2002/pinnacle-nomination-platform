@@ -45,10 +45,11 @@ export const config = {
   matcher: [
     {
       // Supporting files skip the proxy: uploads so their bodies are not buffered
-      // here, downloads so they keep their own sandbox CSP. Both route handlers check
-      // origin/session themselves.
+      // here, downloads so they keep their own sandbox CSP. Provider webhooks skip it
+      // too (raw bodies, signature-authenticated). Each route handler checks its own
+      // origin, session or signature.
       source:
-        "/((?!_next/static|_next/image|favicon.ico|api/entries/[^/]+/attachments$|api/attachments/[^/]+$).*)",
+        "/((?!_next/static|_next/image|favicon.ico|api/entries/[^/]+/attachments$|api/attachments/[^/]+$|api/webhooks/).*)",
       missing: [
         { type: "header", key: "next-router-prefetch" },
         { type: "header", key: "purpose", value: "prefetch" },

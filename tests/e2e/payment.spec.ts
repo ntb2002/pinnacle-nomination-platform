@@ -98,7 +98,7 @@ test.describe("entry fee payment (mock provider)", () => {
 
     await expect(page).toHaveURL(new RegExp(`/entries/${entryId}\\?checkout=cancelled$`));
     await expect(
-      page.getByRole("status").filter({ hasText: "Payment cancelled. Nothing was charged" }),
+      page.getByRole("status").filter({ hasText: "You left checkout without paying" }),
     ).toBeFocused();
     await expect(page.getByText("Status: Draft")).toBeVisible();
     // The session is still open, so editing waits until it is cancelled.
@@ -109,7 +109,15 @@ test.describe("entry fee payment (mock provider)", () => {
     await expectNoAxeViolations(page);
 
     await page.getByRole("button", { name: "Cancel the checkout to make changes" }).click();
+    await expect(page).toHaveURL(new RegExp(`/entries/${entryId}\\?checkout=ended$`));
+    await expect(
+      page
+        .getByRole("status")
+        .filter({ hasText: "Checkout cancelled. You can edit the entry again." }),
+    ).toBeFocused();
     await expect(page.getByRole("heading", { name: "Ready to submit" })).toBeVisible();
+    // Payment attempts are records of money: the draft can no longer be deleted.
+    await expect(page.getByText("Delete this draft")).toHaveCount(0);
     await page.getByRole("link", { name: "Edit the entry" }).click();
     await expect(page).toHaveURL(new RegExp(`/entries/${entryId}/edit$`));
 

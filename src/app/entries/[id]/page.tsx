@@ -42,12 +42,14 @@ export default async function EntryPage({ params, searchParams }: PageProps<"/en
   const locked = !editable && query.locked === "1";
   const notice =
     query.checkout === "cancelled" && entry.status === "DRAFT"
-      ? "Payment cancelled. Nothing was charged, and your entry is still a draft."
-      : query.checkout === "done"
-        ? entry.status === "DRAFT"
-          ? "We are confirming your payment. This usually takes a few seconds; refresh the page to see the result."
-          : `Payment received. Your entry is submitted, and a receipt is on its way to ${actor.email}.`
-        : null;
+      ? "You left checkout without paying. Nothing was charged, and your entry is still a draft."
+      : query.checkout === "ended" && entry.status === "DRAFT"
+        ? "Checkout cancelled. You can edit the entry again."
+        : query.checkout === "done"
+          ? entry.status === "DRAFT"
+            ? "We are confirming your payment. This usually takes a few seconds; refresh the page to see the result."
+            : `Payment received. Your entry is submitted, and a receipt is on its way to ${actor.email}.`
+          : null;
 
   return (
     <div className="container-page max-w-3xl py-12">
@@ -80,7 +82,8 @@ export default async function EntryPage({ params, searchParams }: PageProps<"/en
           entry={entry}
           problems={problems}
           fee={fee}
-          openUntil={pay.open?.expiresAt ?? null}
+          checkout={pay.open}
+          attempts={pay.attempts}
         />
       )}
       {pay.paid && (

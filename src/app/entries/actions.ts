@@ -110,5 +110,6 @@ export async function cancelCheckoutAction(
     return toActionState(err);
   }
   revalidatePath(`/entries/${entryId}`, "layout");
-  return { status: "success", message: "Checkout cancelled. You can edit the entry again." };
+  // The panel this form lives in disappears, so the result is a page-level notice.
+  redirect(`/entries/${entryId}?checkout=ended`);
 }

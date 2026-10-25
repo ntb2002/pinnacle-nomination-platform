@@ -111,7 +111,13 @@ describe("payment configuration", () => {
     expect(paymentsProvider(parseEnv(valid))).toBe("mock");
     expect(paymentConfigProblems(parseEnv(valid))).toEqual([]);
     expect(paymentsProvider(parseEnv(prod))).toBe("stripe");
-    expect(paymentConfigProblems(parseEnv({ ...prod, ...stripeTest }))).toEqual([]);
+    expect(paymentConfigProblems(parseEnv({ ...prod, ...stripeTest }))).toEqual([
+      expect.stringMatching(/test keys are refused in production/),
+    ]);
+    // A public demo deployment may use test keys; it shows the demo banner.
+    expect(paymentConfigProblems(parseEnv({ ...prod, ...stripeTest, DEMO_MODE: "true" }))).toEqual(
+      [],
+    );
   });
 
   it("refuses the mock provider in production", async () => {

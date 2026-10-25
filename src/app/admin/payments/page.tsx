@@ -12,17 +12,15 @@ const KIND = { ENTRY_FEE: "Entry fee", FINALIST_FEE: "Finalist package" } as con
 
 export default async function AdminPaymentsPage() {
   const actor = await requireRole("ADMIN");
-  const rows = await listPayments(actor);
-  const paid = rows.filter((r) => r.status === "PAID");
-  const total = paid.reduce((sum, r) => sum + r.amountCents, 0);
+  const { rows, totals } = await listPayments(actor);
   return (
     <div className="container-page py-12">
       <PageHeader
         title="Payments"
-        intro="Every checkout started in the active cycle. Refunds are made in the Stripe dashboard."
+        intro="Every checkout started in the active cycle. A row marked \u201cCharged, needs review\u201d took money that was not applied to an entry (a duplicate or a wrong amount): refund it in the Stripe dashboard."
       />
       <p className="mb-6">
-        {paid.length} paid, {formatCents(total)} in total.
+        {totals.paid} paid, {formatCents(totals.paidCents)} in total.
       </p>
       {rows.length === 0 ? (
         <p>No payments yet.</p>

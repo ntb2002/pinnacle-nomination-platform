@@ -20,15 +20,31 @@ export function PayButton({ entryId, label }: { entryId: string; label: string }
 }
 
 /** For an open checkout: go back to paying, or cancel it to edit again. */
-export function OpenCheckout({ entryId, until }: { entryId: string; until: string }) {
+export function OpenCheckout({
+  entryId,
+  until,
+  ended,
+}: {
+  entryId: string;
+  until: string;
+  /** Past its expiry, inside the grace period while a late payment may still arrive. */
+  ended: boolean;
+}) {
   const [payState, pay] = useActionState(startCheckoutAction.bind(null, entryId), idleState);
   const [cancelState, cancel] = useActionState(cancelCheckoutAction.bind(null, entryId), idleState);
   return (
     <div className="mt-4 flex flex-col gap-4">
-      <p>
-        You started paying for this entry. The checkout stays open until {until} Eastern. While it
-        is open, the entry cannot be edited.
-      </p>
+      {ended ? (
+        <p>
+          Your checkout has ended. If you completed the payment, we are confirming it now: refresh
+          this page in a minute. Otherwise, start a new checkout or cancel this one to make changes.
+        </p>
+      ) : (
+        <p>
+          You started paying for this entry. The checkout stays open until {until} Eastern. While it
+          is open, the entry cannot be edited.
+        </p>
+      )}
       <FormMessage state={payState} />
       <FormMessage state={cancelState} />
       <div className="flex flex-wrap items-center gap-6">
