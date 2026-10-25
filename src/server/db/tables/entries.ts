@@ -3,11 +3,13 @@ import {
   bigint,
   boolean,
   check,
+  foreignKey,
   index,
   pgTable,
   smallint,
   text,
   timestamp,
+  unique,
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
@@ -29,9 +31,8 @@ export const entry = pgTable(
     cycleId: uuid()
       .notNull()
       .references(() => awardCycle.id),
-    categoryId: uuid()
-      .notNull()
-      .references(() => category.id),
+    // FK to category(id, cycle_id) below keeps the entry in its category's cycle.
+    categoryId: uuid().notNull(),
     nominatorId: text()
       .notNull()
       .references(() => user.id),
@@ -56,7 +57,15 @@ export const entry = pgTable(
       .$onUpdate(() => new Date()),
   },
   (t) => [
+    foreignKey({
+      name: "entry_category_in_cycle_fk",
+      columns: [t.categoryId, t.cycleId],
+      foreignColumns: [category.id, category.cycleId],
+    }),
+    // Target for category_result's (winner_entry_id, category_id) FK.
+    unique("entry_id_category_unique").on(t.id, t.categoryId),
     index().on(t.cycleId, t.categoryId, t.status),
+    index().on(t.cycleId, t.status),
     index().on(t.nominatorId),
     // Policy: a nominator cannot open two entries for the same nominee in the same category.
     uniqueIndex("entry_one_per_nominee_category")

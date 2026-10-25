@@ -1,5 +1,4 @@
 $ npm run db:reset && npm run db:seed && npm run db:seed   # second run: same counts (idempotent)
-Database reset and migrated.
 Seed complete. Row counts:
   award_cycle          1
   rubric_profile       2
@@ -7,11 +6,11 @@ Seed complete. Row counts:
   user                 19
   judge_profile        6
   judge_assignment     36
-  entry                30
-  entry_outcome        66
-  entry_reference      39
-  entry_status_event   44
-  payment              25
+  entry                63
+  entry_outcome        148
+  entry_reference      88
+  entry_status_event   105
+  payment              57
 --- second run ---
 Seed complete. Row counts:
   award_cycle          1
@@ -20,8 +19,8 @@ Seed complete. Row counts:
   user                 19
   judge_profile        6
   judge_assignment     36
-  entry                30
-  entry_outcome        66
-  entry_reference      39
-  entry_status_event   44
-  payment              25
+  entry                63
+  entry_outcome        148
+  entry_reference      88
+  entry_status_event   105
+  payment              57

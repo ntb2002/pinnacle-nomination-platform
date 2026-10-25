@@ -20,8 +20,53 @@ describe("demo seed", () => {
       category: 9,
       user: 19,
       judge_profile: 6,
-      entry: 30,
+      entry: 63,
     });
+  });
+
+  it("has the documented mix of roles, statuses and public judges", async () => {
+    const roles = await db.execute<{ role: string; n: number }>(
+      sql`SELECT role, count(*)::int AS n FROM "user" GROUP BY role`,
+    );
+    expect(Object.fromEntries(roles.rows.map((r) => [r.role, r.n]))).toEqual({
+      ADMIN: 1,
+      JUDGE: 6,
+      NOMINATOR: 12,
+    });
+    const statuses = await db.execute<{ status: string; n: number }>(
+      sql`SELECT status, count(*)::int AS n FROM entry GROUP BY status`,
+    );
+    expect(Object.fromEntries(statuses.rows.map((r) => [r.status, r.n]))).toEqual({
+      APPROVED: 45,
+      SUBMITTED: 9,
+      RETURNED: 3,
+      DRAFT: 6,
+    });
+    const publicJudges = await db.execute<{ n: number }>(
+      sql`SELECT count(*)::int AS n FROM judge_profile WHERE is_public AND bio <> ''`,
+    );
+    expect(publicJudges.rows[0]?.n).toBe(6);
+  });
+
+  it("charges each paid entry the tier in force when it was submitted", async () => {
+    const res = await db.execute<{ bad: number }>(sql`
+      SELECT count(*)::int AS bad FROM payment p JOIN entry e ON e.id = p.entry_id JOIN award_cycle c ON c.id = e.cycle_id
+      WHERE p.kind = 'ENTRY_FEE' AND NOT (
+        (p.tier = 'EARLY' AND e.submitted_at < c.early_deadline AND p.amount_cents = c.early_fee_cents) OR
+        (p.tier = 'REGULAR' AND e.submitted_at >= c.early_deadline AND e.submitted_at < c.regular_deadline AND p.amount_cents = c.regular_fee_cents) OR
+        (p.tier = 'LATE' AND e.submitted_at >= c.regular_deadline AND e.submitted_at < c.final_deadline AND p.amount_cents = c.late_fee_cents))`);
+    expect(res.rows[0]?.bad).toBe(0);
+    const tiers = await db.execute<{ n: number }>(
+      sql`SELECT count(DISTINCT tier)::int AS n FROM payment`,
+    );
+    expect(tiers.rows[0]?.n).toBeGreaterThan(1);
+  });
+
+  it("names the nominator as nominee on self-nominations", async () => {
+    const res = await db.execute<{ bad: number }>(sql`
+      SELECT count(*)::int AS bad FROM entry e JOIN "user" u ON u.id = e.nominator_id
+      WHERE e.relationship = 'SELF' AND (e.nominee_email <> u.email OR e.nominee_name <> u.name)`);
+    expect(res.rows[0]?.bad).toBe(0);
   });
 
   it("uses only reserved example email domains", async () => {

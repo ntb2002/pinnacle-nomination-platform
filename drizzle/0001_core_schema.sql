@@ -47,7 +47,8 @@ CREATE TABLE "user" (
 	"disabled_at" timestamp with time zone,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
-	CONSTRAINT "user_email_unique" UNIQUE("email")
+	CONSTRAINT "user_email_unique" UNIQUE("email"),
+	CONSTRAINT "user_email_lowercase" CHECK ("user"."email" = lower("user"."email"))
 );
 --> statement-breakpoint
 CREATE TABLE "verification" (
@@ -93,7 +94,8 @@ CREATE TABLE "category" (
 	"kind" "category_kind" NOT NULL,
 	"enabled" boolean DEFAULT true NOT NULL,
 	"rubric_profile_id" uuid NOT NULL,
-	"sort_order" smallint DEFAULT 0 NOT NULL
+	"sort_order" smallint DEFAULT 0 NOT NULL,
+	CONSTRAINT "category_id_cycle_unique" UNIQUE("id","cycle_id")
 );
 --> statement-breakpoint
 CREATE TABLE "judge_profile" (
@@ -152,7 +154,8 @@ CREATE TABLE "entry" (
 	"finalist_fee_waiver_reason" text,
 	"submitted_at" timestamp with time zone,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
-	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "entry_id_category_unique" UNIQUE("id","category_id")
 );
 --> statement-breakpoint
 CREATE TABLE "entry_outcome" (
@@ -208,10 +211,11 @@ CREATE TABLE "payment" (
 );
 --> statement-breakpoint
 CREATE TABLE "webhook_event" (
-	"id" text PRIMARY KEY NOT NULL,
 	"provider" text NOT NULL,
+	"id" text NOT NULL,
 	"type" text NOT NULL,
-	"received_at" timestamp with time zone DEFAULT now() NOT NULL
+	"received_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "webhook_event_provider_id_pk" PRIMARY KEY("provider","id")
 );
 --> statement-breakpoint
 CREATE TABLE "category_result" (
@@ -282,17 +286,19 @@ CREATE TABLE "email_outbox" (
 	"template" text NOT NULL,
 	"text_body" text NOT NULL,
 	"html_body" text NOT NULL,
+	"dedupe_key" text,
 	"status" "email_status" DEFAULT 'PENDING' NOT NULL,
 	"error" text,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
-	"sent_at" timestamp with time zone
+	"sent_at" timestamp with time zone,
+	CONSTRAINT "email_outbox_dedupeKey_unique" UNIQUE("dedupe_key")
 );
 --> statement-breakpoint
-CREATE TABLE "rate_limit" (
+CREATE TABLE "rate_limit_window" (
 	"key" text NOT NULL,
 	"window_start" timestamp with time zone NOT NULL,
 	"count" integer DEFAULT 0 NOT NULL,
-	CONSTRAINT "rate_limit_key_window_start_pk" PRIMARY KEY("key","window_start")
+	CONSTRAINT "rate_limit_window_key_window_start_pk" PRIMARY KEY("key","window_start")
 );
 --> statement-breakpoint
 ALTER TABLE "account" ADD CONSTRAINT "account_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -304,25 +310,25 @@ ALTER TABLE "rubric_profile" ADD CONSTRAINT "rubric_profile_cycle_id_award_cycle
 ALTER TABLE "attachment" ADD CONSTRAINT "attachment_entry_id_entry_id_fk" FOREIGN KEY ("entry_id") REFERENCES "public"."entry"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "attachment" ADD CONSTRAINT "attachment_uploaded_by_id_user_id_fk" FOREIGN KEY ("uploaded_by_id") REFERENCES "public"."user"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "entry" ADD CONSTRAINT "entry_cycle_id_award_cycle_id_fk" FOREIGN KEY ("cycle_id") REFERENCES "public"."award_cycle"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "entry" ADD CONSTRAINT "entry_category_id_category_id_fk" FOREIGN KEY ("category_id") REFERENCES "public"."category"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "entry" ADD CONSTRAINT "entry_nominator_id_user_id_fk" FOREIGN KEY ("nominator_id") REFERENCES "public"."user"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "entry" ADD CONSTRAINT "entry_finalist_fee_waived_by_id_user_id_fk" FOREIGN KEY ("finalist_fee_waived_by_id") REFERENCES "public"."user"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "entry" ADD CONSTRAINT "entry_category_in_cycle_fk" FOREIGN KEY ("category_id","cycle_id") REFERENCES "public"."category"("id","cycle_id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "entry_outcome" ADD CONSTRAINT "entry_outcome_entry_id_entry_id_fk" FOREIGN KEY ("entry_id") REFERENCES "public"."entry"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "entry_reference" ADD CONSTRAINT "entry_reference_entry_id_entry_id_fk" FOREIGN KEY ("entry_id") REFERENCES "public"."entry"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "entry_status_event" ADD CONSTRAINT "entry_status_event_entry_id_entry_id_fk" FOREIGN KEY ("entry_id") REFERENCES "public"."entry"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "entry_status_event" ADD CONSTRAINT "entry_status_event_actor_id_user_id_fk" FOREIGN KEY ("actor_id") REFERENCES "public"."user"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "payment" ADD CONSTRAINT "payment_entry_id_entry_id_fk" FOREIGN KEY ("entry_id") REFERENCES "public"."entry"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "payment" ADD CONSTRAINT "payment_created_by_id_user_id_fk" FOREIGN KEY ("created_by_id") REFERENCES "public"."user"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "category_result" ADD CONSTRAINT "category_result_cycle_id_award_cycle_id_fk" FOREIGN KEY ("cycle_id") REFERENCES "public"."award_cycle"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "category_result" ADD CONSTRAINT "category_result_category_id_category_id_fk" FOREIGN KEY ("category_id") REFERENCES "public"."category"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "category_result" ADD CONSTRAINT "category_result_winner_entry_id_entry_id_fk" FOREIGN KEY ("winner_entry_id") REFERENCES "public"."entry"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "category_result" ADD CONSTRAINT "category_result_cycle_id_award_cycle_id_fk" FOREIGN KEY ("cycle_id") REFERENCES "public"."award_cycle"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "category_result" ADD CONSTRAINT "category_result_category_id_category_id_fk" FOREIGN KEY ("category_id") REFERENCES "public"."category"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "category_result" ADD CONSTRAINT "category_result_confirmed_by_id_user_id_fk" FOREIGN KEY ("confirmed_by_id") REFERENCES "public"."user"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "conflict_declaration" ADD CONSTRAINT "conflict_declaration_judge_id_user_id_fk" FOREIGN KEY ("judge_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "category_result" ADD CONSTRAINT "category_result_winner_in_category_fk" FOREIGN KEY ("winner_entry_id","category_id") REFERENCES "public"."entry"("id","category_id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "conflict_declaration" ADD CONSTRAINT "conflict_declaration_judge_id_user_id_fk" FOREIGN KEY ("judge_id") REFERENCES "public"."user"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "conflict_declaration" ADD CONSTRAINT "conflict_declaration_entry_id_entry_id_fk" FOREIGN KEY ("entry_id") REFERENCES "public"."entry"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "conflict_declaration" ADD CONSTRAINT "conflict_declaration_recorded_by_id_user_id_fk" FOREIGN KEY ("recorded_by_id") REFERENCES "public"."user"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "judge_assignment" ADD CONSTRAINT "judge_assignment_judge_id_user_id_fk" FOREIGN KEY ("judge_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "judge_assignment" ADD CONSTRAINT "judge_assignment_judge_id_user_id_fk" FOREIGN KEY ("judge_id") REFERENCES "public"."user"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "judge_assignment" ADD CONSTRAINT "judge_assignment_category_id_category_id_fk" FOREIGN KEY ("category_id") REFERENCES "public"."category"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "score" ADD CONSTRAINT "score_judge_id_user_id_fk" FOREIGN KEY ("judge_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "score" ADD CONSTRAINT "score_judge_id_user_id_fk" FOREIGN KEY ("judge_id") REFERENCES "public"."user"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "score" ADD CONSTRAINT "score_entry_id_entry_id_fk" FOREIGN KEY ("entry_id") REFERENCES "public"."entry"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX "account_user_id_index" ON "account" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "session_user_id_index" ON "session" USING btree ("user_id");--> statement-breakpoint
@@ -332,15 +338,18 @@ CREATE UNIQUE INDEX "category_cycle_id_slug_index" ON "category" USING btree ("c
 CREATE UNIQUE INDEX "rubric_profile_cycle_id_key_index" ON "rubric_profile" USING btree ("cycle_id","key");--> statement-breakpoint
 CREATE INDEX "attachment_entry_id_index" ON "attachment" USING btree ("entry_id");--> statement-breakpoint
 CREATE INDEX "entry_cycle_id_category_id_status_index" ON "entry" USING btree ("cycle_id","category_id","status");--> statement-breakpoint
+CREATE INDEX "entry_cycle_id_status_index" ON "entry" USING btree ("cycle_id","status");--> statement-breakpoint
 CREATE INDEX "entry_nominator_id_index" ON "entry" USING btree ("nominator_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "entry_one_per_nominee_category" ON "entry" USING btree ("cycle_id","category_id","nominator_id",lower("nominee_email")) WHERE "entry"."nominee_email" IS NOT NULL;--> statement-breakpoint
 CREATE UNIQUE INDEX "entry_outcome_entry_id_position_index" ON "entry_outcome" USING btree ("entry_id","position");--> statement-breakpoint
 CREATE UNIQUE INDEX "entry_reference_entry_id_position_index" ON "entry_reference" USING btree ("entry_id","position");--> statement-breakpoint
 CREATE INDEX "entry_status_event_entry_id_created_at_index" ON "entry_status_event" USING btree ("entry_id","created_at");--> statement-breakpoint
 CREATE INDEX "payment_entry_id_index" ON "payment" USING btree ("entry_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "payment_provider_intent_unique" ON "payment" USING btree ("provider","provider_payment_intent_id") WHERE "payment"."provider_payment_intent_id" IS NOT NULL;--> statement-breakpoint
 CREATE UNIQUE INDEX "payment_one_paid_per_kind" ON "payment" USING btree ("entry_id","kind") WHERE "payment"."status" = 'PAID';--> statement-breakpoint
 CREATE UNIQUE INDEX "category_result_cycle_id_category_id_index" ON "category_result" USING btree ("cycle_id","category_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "conflict_declaration_judge_id_entry_id_index" ON "conflict_declaration" USING btree ("judge_id","entry_id");--> statement-breakpoint
+CREATE INDEX "conflict_declaration_entry_id_index" ON "conflict_declaration" USING btree ("entry_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "judge_assignment_judge_id_category_id_round_index" ON "judge_assignment" USING btree ("judge_id","category_id","round");--> statement-breakpoint
 CREATE INDEX "judge_assignment_category_id_round_index" ON "judge_assignment" USING btree ("category_id","round");--> statement-breakpoint
 CREATE UNIQUE INDEX "score_judge_id_entry_id_round_index" ON "score" USING btree ("judge_id","entry_id","round");--> statement-breakpoint
@@ -349,4 +358,5 @@ CREATE INDEX "audit_log_created_at_index" ON "audit_log" USING btree ("created_a
 CREATE INDEX "audit_log_actor_id_created_at_index" ON "audit_log" USING btree ("actor_id","created_at");--> statement-breakpoint
 CREATE INDEX "audit_log_target_type_target_id_index" ON "audit_log" USING btree ("target_type","target_id");--> statement-breakpoint
 CREATE INDEX "audit_log_action_index" ON "audit_log" USING btree ("action");--> statement-breakpoint
-CREATE INDEX "email_outbox_to_address_created_at_index" ON "email_outbox" USING btree ("to_address","created_at");
+CREATE INDEX "email_outbox_to_address_created_at_index" ON "email_outbox" USING btree ("to_address","created_at");--> statement-breakpoint
+CREATE INDEX "email_outbox_status_created_at_index" ON "email_outbox" USING btree ("status","created_at");

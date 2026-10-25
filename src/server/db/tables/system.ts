@@ -49,17 +49,20 @@ export const emailOutbox = pgTable(
     template: text().notNull(),
     textBody: text().notNull(),
     htmlBody: text().notNull(),
+    /** Optional idempotency key (e.g. "receipt:<paymentId>") so retries never send twice. */
+    dedupeKey: text().unique(),
     status: emailStatus().notNull().default("PENDING"),
     error: text(),
     createdAt: tz().notNull().defaultNow(),
     sentAt: tz(),
   },
-  (t) => [index().on(t.toAddress, t.createdAt)],
+  (t) => [index().on(t.toAddress, t.createdAt), index().on(t.status, t.createdAt)],
 );
 
 /** Fixed-window counters for rate limiting, shared across app instances (#4). */
-export const rateLimit = pgTable(
-  "rate_limit",
+// Named to avoid Better Auth's own `rateLimit` model (its adapter matches by schema key).
+export const rateLimitWindow = pgTable(
+  "rate_limit_window",
   {
     key: text().notNull(),
     windowStart: tz().notNull(),

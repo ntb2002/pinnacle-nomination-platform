@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import {
   boolean,
   check,
+  foreignKey,
   index,
   pgTable,
   smallint,
@@ -22,9 +23,11 @@ export const judgeAssignment = pgTable(
   "judge_assignment",
   {
     id: uuid().primaryKey().defaultRandom(),
+    // Judges are retired via judge_profile.active / user.disabled_at, never deleted:
+    // their assignments, declarations and scores are the record of how results were reached.
     judgeId: text()
       .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
+      .references(() => user.id, { onDelete: "restrict" }),
     categoryId: uuid()
       .notNull()
       .references(() => category.id, { onDelete: "cascade" }),
@@ -46,9 +49,11 @@ export const conflictDeclaration = pgTable(
   "conflict_declaration",
   {
     id: uuid().primaryKey().defaultRandom(),
+    // Judges are retired via judge_profile.active / user.disabled_at, never deleted:
+    // their assignments, declarations and scores are the record of how results were reached.
     judgeId: text()
       .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
+      .references(() => user.id, { onDelete: "restrict" }),
     entryId: uuid()
       .notNull()
       .references(() => entry.id, { onDelete: "cascade" }),
@@ -59,7 +64,7 @@ export const conflictDeclaration = pgTable(
     recordedById: text().references(() => user.id),
     adminNote: text(),
   },
-  (t) => [uniqueIndex().on(t.judgeId, t.entryId)],
+  (t) => [uniqueIndex().on(t.judgeId, t.entryId), index().on(t.entryId)],
 );
 
 /**
@@ -70,9 +75,11 @@ export const score = pgTable(
   "score",
   {
     id: uuid().primaryKey().defaultRandom(),
+    // Judges are retired via judge_profile.active / user.disabled_at, never deleted:
+    // their assignments, declarations and scores are the record of how results were reached.
     judgeId: text()
       .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
+      .references(() => user.id, { onDelete: "restrict" }),
     entryId: uuid()
       .notNull()
       .references(() => entry.id, { onDelete: "cascade" }),
@@ -110,13 +117,11 @@ export const categoryResult = pgTable(
     id: uuid().primaryKey().defaultRandom(),
     cycleId: uuid()
       .notNull()
-      .references(() => awardCycle.id, { onDelete: "cascade" }),
+      .references(() => awardCycle.id, { onDelete: "restrict" }),
     categoryId: uuid()
       .notNull()
-      .references(() => category.id, { onDelete: "cascade" }),
-    winnerEntryId: uuid()
-      .notNull()
-      .references(() => entry.id),
+      .references(() => category.id, { onDelete: "restrict" }),
+    winnerEntryId: uuid().notNull(),
     decision: resultDecision().notNull(),
     tiebreakReason: text(),
     confirmedById: text()
@@ -126,6 +131,12 @@ export const categoryResult = pgTable(
   },
   (t) => [
     uniqueIndex().on(t.cycleId, t.categoryId),
+    // The winner must be an entry in this result's category.
+    foreignKey({
+      name: "category_result_winner_in_category_fk",
+      columns: [t.winnerEntryId, t.categoryId],
+      foreignColumns: [entry.id, entry.categoryId],
+    }).onDelete("restrict"),
     check(
       "category_result_tiebreak_reason",
       sql`${t.decision} <> 'TIEBREAK' OR (${t.tiebreakReason} IS NOT NULL AND length(trim(${t.tiebreakReason})) > 0)`,

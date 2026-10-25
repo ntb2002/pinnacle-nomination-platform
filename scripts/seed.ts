@@ -13,8 +13,10 @@ async function main() {
   if (!url) throw new Error("DATABASE_URL is not set");
   const args = new Set(process.argv.slice(2));
   const programOnly = args.has("--program-only");
-  if (process.env.NODE_ENV === "production" && !programOnly) {
-    throw new Error("Refused: demo seed data is never loaded in production (use --program-only).");
+  if (process.env.NODE_ENV === "production" && (!programOnly || args.has("--open-now"))) {
+    throw new Error(
+      "Refused: demo data and --open-now never run in production (use --program-only alone).",
+    );
   }
   const pool = new Pool({ connectionString: url, max: 2 });
   try {

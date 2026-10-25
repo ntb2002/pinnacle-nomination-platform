@@ -1,35 +1,19 @@
 import { sql } from "drizzle-orm";
 import { db } from "@/server/db";
 
-const TABLES = [
-  "audit_log",
-  "email_outbox",
-  "rate_limit",
-  "webhook_event",
-  "category_result",
-  "score",
-  "conflict_declaration",
-  "judge_assignment",
-  "payment",
-  "entry_status_event",
-  "attachment",
-  "entry_reference",
-  "entry_outcome",
-  "entry",
-  "category",
-  "rubric_profile",
-  "award_cycle",
-  "judge_profile",
-  "verification",
-  "account",
-  "session",
-  "user",
-];
+let tables: string[] | undefined;
 
 /** Empties every app table in the test database. Call in beforeEach of integration tests. */
 export async function resetTables(): Promise<void> {
+  // Derived from the catalog so new tables are covered automatically.
+  tables ??= (
+    await db.execute<{ tablename: string }>(
+      sql`SELECT tablename FROM pg_tables WHERE schemaname = 'public'`,
+    )
+  ).rows.map((r) => r.tablename);
+  if (tables.length === 0) return;
   await db.execute(
-    sql.raw(`TRUNCATE ${TABLES.map((t) => `"${t}"`).join(", ")} RESTART IDENTITY CASCADE`),
+    sql.raw(`TRUNCATE ${tables.map((t) => `"${t}"`).join(", ")} RESTART IDENTITY CASCADE`),
   );
 }
 

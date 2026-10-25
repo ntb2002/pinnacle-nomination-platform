@@ -28,11 +28,12 @@ const COUNTED = [
 /** Seeds fake data. Safe to run repeatedly: every insert is keyed and skips existing rows. */
 export async function seed(db: Database, opts: SeedOptions = {}): Promise<Record<string, number>> {
   await db.transaction(async (tx) => {
+    const now = opts.now ?? new Date();
     const cycleId = await seedProgram(tx as unknown as Database, {
       openNow: opts.openNow ?? false,
-      now: opts.now ?? new Date(),
+      now,
     });
-    if (!opts.programOnly) await seedDemo(tx as unknown as Database, cycleId);
+    if (!opts.programOnly) await seedDemo(tx as unknown as Database, cycleId, now);
   });
   const counts: Record<string, number> = {};
   for (const table of COUNTED) {

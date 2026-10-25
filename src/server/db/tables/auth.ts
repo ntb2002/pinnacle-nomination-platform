@@ -1,4 +1,5 @@
-import { boolean, index, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import { boolean, check, index, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 import { userRole } from "./enums";
 
 // Tables required by Better Auth (users, sessions, accounts, verification tokens).
@@ -12,17 +13,22 @@ const timestamps = {
     .$onUpdate(() => new Date()),
 };
 
-export const user = pgTable("user", {
-  id: text().primaryKey(),
-  name: text().notNull(),
-  email: text().notNull().unique(),
-  emailVerified: boolean().notNull().default(false),
-  image: text(),
-  /** Granted only by admins or the user:role CLI — never from client input. */
-  role: userRole().notNull().default("NOMINATOR"),
-  disabledAt: timestamp({ withTimezone: true }),
-  ...timestamps,
-});
+export const user = pgTable(
+  "user",
+  {
+    id: text().primaryKey(),
+    name: text().notNull(),
+    email: text().notNull().unique(),
+    emailVerified: boolean().notNull().default(false),
+    image: text(),
+    /** Granted only by admins or the user:role CLI — never from client input. */
+    role: userRole().notNull().default("NOMINATOR"),
+    disabledAt: timestamp({ withTimezone: true }),
+    ...timestamps,
+  },
+  // Emails are stored lowercased so uniqueness is case-insensitive.
+  (t) => [check("user_email_lowercase", sql`${t.email} = lower(${t.email})`)],
+);
 
 export const session = pgTable(
   "session",

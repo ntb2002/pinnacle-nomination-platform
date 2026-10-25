@@ -4,6 +4,7 @@ import {
   index,
   integer,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   uniqueIndex,
@@ -47,6 +48,10 @@ export const payment = pgTable(
   },
   (t) => [
     index().on(t.entryId),
+    // Refund and dispute webhooks look payments up by payment intent.
+    uniqueIndex("payment_provider_intent_unique")
+      .on(t.provider, t.providerPaymentIntentId)
+      .where(sql`${t.providerPaymentIntentId} IS NOT NULL`),
     // Policy: at most one paid fee of each kind per entry.
     uniqueIndex("payment_one_paid_per_kind")
       .on(t.entryId, t.kind)
@@ -56,9 +61,13 @@ export const payment = pgTable(
 );
 
 /** Provider webhook events already processed (idempotency on event id). */
-export const webhookEvent = pgTable("webhook_event", {
-  id: text().primaryKey(),
-  provider: text().notNull(),
-  type: text().notNull(),
-  receivedAt: tz().notNull().defaultNow(),
-});
+export const webhookEvent = pgTable(
+  "webhook_event",
+  {
+    provider: text().notNull(),
+    id: text().notNull(),
+    type: text().notNull(),
+    receivedAt: tz().notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.provider, t.id] })],
+);

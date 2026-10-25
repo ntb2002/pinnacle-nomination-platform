@@ -22,6 +22,9 @@
 
 ## Open technical threads
 
+- #8 must delete stored files when an attachment row goes (entry cascade deletes rows, not bytes).
+- #5: show a "demo data" banner when the demo seed is loaded, so invented judges are never mistaken for the real panel.
+- `src/lib/pricing.ts` landed early in #3 (the seed needs it); #6 adds the admin UI around it.
 - `drizzle-kit` (dev-only) pulls a deprecated `@esbuild-kit` chain with 4 moderate `npm audit` advisories (esbuild dev-server CORS). Not in production deps; revisit when drizzle-kit 1.0 ships.
 - Deploy-time migrations need `tsx` + `drizzle/` alongside the standalone server; packaging decided in #18.
 

@@ -1,5 +1,5 @@
 {
-  "id": "cebd4d86-d654-462c-b05d-c2ec48759aa9",
+  "id": "f5329c62-e6b4-4503-bd01-427a0c060b6c",
   "prevId": "b7854f76-989a-4546-8044-f1f012bc4221",
   "version": "7",
   "dialect": "postgresql",
@@ -305,7 +305,12 @@
         }
       },
       "policies": {},
-      "checkConstraints": {},
+      "checkConstraints": {
+        "user_email_lowercase": {
+          "name": "user_email_lowercase",
+          "value": "\"user\".\"email\" = lower(\"user\".\"email\")"
+        }
+      },
       "isRLSEnabled": false
     },
     "public.verification": {
@@ -657,7 +662,16 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "category_id_cycle_unique": {
+          "name": "category_id_cycle_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "id",
+            "cycle_id"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -1124,6 +1138,27 @@
           "method": "btree",
           "with": {}
         },
+        "entry_cycle_id_status_index": {
+          "name": "entry_cycle_id_status_index",
+          "columns": [
+            {
+              "expression": "cycle_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
         "entry_nominator_id_index": {
           "name": "entry_nominator_id_index",
           "columns": [
@@ -1188,19 +1223,6 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "entry_category_id_category_id_fk": {
-          "name": "entry_category_id_category_id_fk",
-          "tableFrom": "entry",
-          "tableTo": "category",
-          "columnsFrom": [
-            "category_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
         "entry_nominator_id_user_id_fk": {
           "name": "entry_nominator_id_user_id_fk",
           "tableFrom": "entry",
@@ -1226,10 +1248,34 @@
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
+        },
+        "entry_category_in_cycle_fk": {
+          "name": "entry_category_in_cycle_fk",
+          "tableFrom": "entry",
+          "tableTo": "category",
+          "columnsFrom": [
+            "category_id",
+            "cycle_id"
+          ],
+          "columnsTo": [
+            "id",
+            "cycle_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "entry_id_category_unique": {
+          "name": "entry_id_category_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "id",
+            "category_id"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -1656,6 +1702,28 @@
           "method": "btree",
           "with": {}
         },
+        "payment_provider_intent_unique": {
+          "name": "payment_provider_intent_unique",
+          "columns": [
+            {
+              "expression": "provider",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "provider_payment_intent_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"payment\".\"provider_payment_intent_id\" IS NOT NULL",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
         "payment_one_paid_per_kind": {
           "name": "payment_one_paid_per_kind",
           "columns": [
@@ -1730,14 +1798,14 @@
       "name": "webhook_event",
       "schema": "",
       "columns": {
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true
-        },
         "provider": {
           "name": "provider",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
           "type": "text",
           "primaryKey": false,
           "notNull": true
@@ -1758,7 +1826,15 @@
       },
       "indexes": {},
       "foreignKeys": {},
-      "compositePrimaryKeys": {},
+      "compositePrimaryKeys": {
+        "webhook_event_provider_id_pk": {
+          "name": "webhook_event_provider_id_pk",
+          "columns": [
+            "provider",
+            "id"
+          ]
+        }
+      },
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
@@ -1854,7 +1930,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
+          "onDelete": "restrict",
           "onUpdate": "no action"
         },
         "category_result_category_id_category_id_fk": {
@@ -1867,20 +1943,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "category_result_winner_entry_id_entry_id_fk": {
-          "name": "category_result_winner_entry_id_entry_id_fk",
-          "tableFrom": "category_result",
-          "tableTo": "entry",
-          "columnsFrom": [
-            "winner_entry_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
+          "onDelete": "restrict",
           "onUpdate": "no action"
         },
         "category_result_confirmed_by_id_user_id_fk": {
@@ -1894,6 +1957,21 @@
             "id"
           ],
           "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "category_result_winner_in_category_fk": {
+          "name": "category_result_winner_in_category_fk",
+          "tableFrom": "category_result",
+          "tableTo": "entry",
+          "columnsFrom": [
+            "winner_entry_id",
+            "category_id"
+          ],
+          "columnsTo": [
+            "id",
+            "category_id"
+          ],
+          "onDelete": "restrict",
           "onUpdate": "no action"
         }
       },
@@ -1984,6 +2062,21 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "conflict_declaration_entry_id_index": {
+          "name": "conflict_declaration_entry_id_index",
+          "columns": [
+            {
+              "expression": "entry_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
@@ -1997,7 +2090,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
+          "onDelete": "restrict",
           "onUpdate": "no action"
         },
         "conflict_declaration_entry_id_entry_id_fk": {
@@ -2131,7 +2224,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
+          "onDelete": "restrict",
           "onUpdate": "no action"
         },
         "judge_assignment_category_id_category_id_fk": {
@@ -2293,7 +2386,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "cascade",
+          "onDelete": "restrict",
           "onUpdate": "no action"
         },
         "score_entry_id_entry_id_fk": {
@@ -2513,6 +2606,12 @@
           "primaryKey": false,
           "notNull": true
         },
+        "dedupe_key": {
+          "name": "dedupe_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "status": {
           "name": "status",
           "type": "email_status",
@@ -2562,17 +2661,46 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "email_outbox_status_created_at_index": {
+          "name": "email_outbox_status_created_at_index",
+          "columns": [
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {},
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "email_outbox_dedupeKey_unique": {
+          "name": "email_outbox_dedupeKey_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "dedupe_key"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.rate_limit": {
-      "name": "rate_limit",
+    "public.rate_limit_window": {
+      "name": "rate_limit_window",
       "schema": "",
       "columns": {
         "key": {
@@ -2598,8 +2726,8 @@
       "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {
-        "rate_limit_key_window_start_pk": {
-          "name": "rate_limit_key_window_start_pk",
+        "rate_limit_window_key_window_start_pk": {
+          "name": "rate_limit_window_key_window_start_pk",
           "columns": [
             "key",
             "window_start"

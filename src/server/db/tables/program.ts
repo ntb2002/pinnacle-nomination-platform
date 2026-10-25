@@ -7,6 +7,7 @@ import {
   smallint,
   text,
   timestamp,
+  unique,
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
@@ -107,7 +108,11 @@ export const category = pgTable(
       .references(() => rubricProfile.id),
     sortOrder: smallint().notNull().default(0),
   },
-  (t) => [uniqueIndex().on(t.cycleId, t.slug)],
+  (t) => [
+    uniqueIndex().on(t.cycleId, t.slug),
+    // Target for entry's (category_id, cycle_id) FK.
+    unique("category_id_cycle_unique").on(t.id, t.cycleId),
+  ],
 );
 
 /** Public-facing judge details. A judge appears on /judges only when isPublic. */

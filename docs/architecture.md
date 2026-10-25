@@ -43,8 +43,8 @@ erDiagram
   user ||--o| judge_profile : "public bio (judges)"
   user ||--o{ entry : nominates
   category ||--o{ entry : "one nominee each"
-  entry ||--|{ entry_outcome : "2-3"
-  entry ||--|{ entry_reference : "1-2 (confidential)"
+  entry ||--o{ entry_outcome : "2-3 (drafts may have none)"
+  entry ||--o{ entry_reference : "1-2, confidential"
   entry ||--o{ attachment : "optional files"
   entry ||--o{ entry_status_event : timeline
   entry ||--o{ payment : "entry fee, finalist fee"
@@ -70,16 +70,16 @@ erDiagram
 | `attachment` | stored file metadata; bytes in storage under a random key | as entry |
 | `entry_status_event` | triage timeline: from → to, actor, return reason, note | admins; nominator sees own without actor |
 | `payment` | checkout attempts; amount fixed server-side; partial unique index: one PAID per (entry, kind) | nominator, admins |
-| `webhook_event` | processed provider event ids (idempotency) | system |
+| `webhook_event` | processed provider events, PK (provider, id): idempotency | system |
 | `judge_assignment` | judge × category × round | admins, the judge |
 | `conflict_declaration` | one per judge per entry; `has_conflict` = recused | admins, the judge |
 | `score` | four 1-10 criteria per judge/entry/round; CHECK complete when submitted | admins; the judge's own |
 | `category_result` | confirmed winner, SCORE or TIEBREAK (reason required) | admins until results are published |
 | `audit_log` | append-only (trigger rejects UPDATE/DELETE) | admins |
-| `email_outbox` | outgoing mail (dev mailbox / delivery record) | admins, dev only page |
-| `rate_limit` | fixed-window counters | system |
+| `email_outbox` | outgoing mail: dev mailbox / delivery record; optional `dedupe_key` | admins, dev only page |
+| `rate_limit_window` | fixed-window counters (hashed keys, no PII) | system |
 
-Policy encoded as constraints: one score per judge/entry/round; one conflict declaration per judge/entry; one paid fee per entry and kind; one result per category per cycle; one entry per nominator/nominee email/category; rubric weights sum to 100; deadlines strictly ordered; score criteria 1-10.
+Policy encoded as constraints: entries stay in their category's cycle and a winner must belong to the result's category (composite FKs); judges' assignments, declarations and scores and confirmed results cannot be deleted by cascading from users, categories or cycles (restrict); emails stored lowercase; one score per judge/entry/round; one conflict declaration per judge/entry; one paid fee per entry and kind; one result per category per cycle; one entry per nominator/nominee email/category; rubric weights sum to 100; deadlines strictly ordered; score criteria 1-10.
 
 ## Status machines
 
@@ -100,8 +100,12 @@ DRAFT ──pay (verified webhook)──▶ SUBMITTED ──admin approve──�
                                       └──admin return (reason)──▶ RETURNED ──nominator resubmits (no new fee)──▶ SUBMITTED
 ```
 
+**Payment status** (`payment.status`): a row is created PENDING when a checkout session is created (amount fixed then). The verified webhook moves it to PAID (sets `paid_at`, payment intent id) or EXPIRED/FAILED. PAID → REFUNDED only from a refund webhook. At most one PAID row per (entry, kind).
+
+**Email status** (`email_outbox.status`): PENDING → SENT (or FAILED with `error`). The outbox transport marks rows SENT on insert; SMTP updates after delivery.
+
 Round outcomes are not statuses: `entry.is_finalist` is the admin's selection, visible outside admin only once the cycle reaches FINALISTS_ANNOUNCED. Winners live in `category_result` and are visible outside admin only at RESULTS_PUBLISHED.
 
 ## Seed data
 
-`npm run db:seed` loads fake demo data (`scripts/seed/`): the 2027 cycle, 2 rubric profiles, 9 categories, 1 admin, 6 judges (5 public), 12 nominators, 30 entries (16 approved, 6 submitted, 3 returned, 5 drafts), round 1 and 2 judge assignments (two judges per category). `--open-now` moves the window so nominations are open today. `--program-only` loads only the cycle/rubrics/categories. Emails are `example.com`/`example.org` only (a test enforces it). Ids are derived from names, so re-runs insert nothing new.
+`npm run db:seed` loads fake demo data (`scripts/seed/`): the 2027 cycle, 2 rubric profiles, 9 categories, 1 admin, 6 judges (all public), 12 nominators, 63 entries (7 per category: 45 approved, 9 submitted, 3 returned, 6 drafts), round 1 and 2 judge assignments (two judges per category). Submission dates fall inside the window and each payment carries the tier from `entryFeeFor` at its submission time; self-nominations name the nominator. `--open-now` moves the window so nominations are open today (run `db:reset` before switching modes). `--program-only` loads only the cycle/rubrics/categories. Emails are `example.com`/`example.org` only (a test enforces it). Ids are derived from names, so re-runs insert nothing new.

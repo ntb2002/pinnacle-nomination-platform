@@ -1,9 +1,24 @@
 import { eq, sql } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { closeDb } from "@/server/db";
-import { auditLog, conflictDeclaration, payment, rubricProfile, score } from "@/server/db/schema";
+import {
+  auditLog,
+  categoryResult,
+  conflictDeclaration,
+  payment,
+  rubricProfile,
+  score,
+  user,
+} from "@/server/db/schema";
 import { db, resetTables } from "../support/db";
-import { createEntry, createProgram, createRubricProfile, createUser } from "../support/factories";
+import {
+  createCategory,
+  createCycle,
+  createEntry,
+  createProgram,
+  createRubricProfile,
+  createUser,
+} from "../support/factories";
 
 beforeEach(resetTables);
 afterAll(closeDb);
@@ -164,6 +179,73 @@ describe("policy constraints in the schema", () => {
     expect(await pgCode(db.delete(auditLog).where(eq(auditLog.id, row!.id)))).toBe("42501");
     const [count] = await db.select({ n: sql<number>`count(*)::int` }).from(auditLog);
     expect(count?.n).toBe(1);
+  });
+
+  it("allows one result per category, requires a tiebreak reason, and a winner from that category", async () => {
+    const { cycle, category, nominator } = await createProgram();
+    const other = await createCategory(cycle.id);
+    const admin = await createUser("ADMIN");
+    const winner = await createEntry({
+      cycleId: cycle.id,
+      categoryId: category.id,
+      nominatorId: nominator.id,
+    });
+    const elsewhere = await createEntry({
+      cycleId: cycle.id,
+      categoryId: other.id,
+      nominatorId: nominator.id,
+    });
+    const base = { cycleId: cycle.id, categoryId: category.id, confirmedById: admin.id };
+    // Winner from another category is rejected by the composite FK.
+    expect(
+      await pgCode(
+        db
+          .insert(categoryResult)
+          .values({ ...base, winnerEntryId: elsewhere.id, decision: "SCORE" }),
+      ),
+    ).toBe("23503");
+    // A tiebreak needs a written reason.
+    expect(
+      await pgCode(
+        db
+          .insert(categoryResult)
+          .values({ ...base, winnerEntryId: winner.id, decision: "TIEBREAK", tiebreakReason: " " }),
+      ),
+    ).toBe("23514");
+    await db
+      .insert(categoryResult)
+      .values({ ...base, winnerEntryId: winner.id, decision: "SCORE" });
+    expect(
+      await pgCode(
+        db.insert(categoryResult).values({ ...base, winnerEntryId: winner.id, decision: "SCORE" }),
+      ),
+    ).toBe("23505");
+  });
+
+  it("keeps an entry in its category's cycle", async () => {
+    const { category, nominator } = await createProgram();
+    const otherCycle = await createCycle({ isActive: false });
+    expect(
+      await pgCode(
+        createEntry({ cycleId: otherCycle.id, categoryId: category.id, nominatorId: nominator.id }),
+      ),
+    ).toBe("23503");
+  });
+
+  it("refuses to delete a judge who has scored", async () => {
+    const { cycle, category, nominator } = await createProgram();
+    const e = await createEntry({
+      cycleId: cycle.id,
+      categoryId: category.id,
+      nominatorId: nominator.id,
+    });
+    const judge = await createUser("JUDGE");
+    await db.insert(score).values({ judgeId: judge.id, entryId: e.id, round: 1 });
+    expect(await pgCode(db.delete(user).where(eq(user.id, judge.id)))).toBe("23503");
+  });
+
+  it("stores emails lowercased", async () => {
+    expect(await pgCode(createUser("NOMINATOR", { email: "Mixed@Example.com" }))).toBe("23514");
   });
 
   it("stores weights per profile", async () => {

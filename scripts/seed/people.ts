@@ -39,14 +39,12 @@ export const JUDGES = [
     organization: "The Creator Ledger",
     bio: "Covers the business of the creator economy. Twenty years in business journalism.",
   },
-  // Not public: demonstrates that /judges lists only judges who opted in.
   {
     email: "judge6@example.org",
     name: "Leo Brandt",
     title: "Head of Creator Strategy",
     organization: "Signal Point Agency",
     bio: "Leads strategy for creator-led campaigns at a full-service agency.",
-    isPublic: false,
   },
 ] as const;
 
@@ -69,35 +67,91 @@ export const NOMINATORS = Array.from({ length: 12 }, (_, i) => {
   return { email: `nominator${n}@example.com`, name: names[i]! };
 });
 
-export const NOMINEES = [
-  ["Elena Vasquez", "Chief Executive Officer", "Brightline Creator Studios"],
-  ["Noah Kim", "Co-founder and CEO", "Tandem Media Labs"],
-  ["Aisha Bello", "Chief Executive Officer", "Parallax Networks"],
-  ["Daniel Osei", "VP, Product Innovation", "Crestview Platforms"],
-  ["Mei Tanaka", "Head of New Ventures", "Fieldnote Audio"],
-  ["Lucas Ferreira", "Chief Technology Officer", "Overture Creator Tools"],
-  ["Sofia Marchetti", "Creator and Founder", "Studio Marchetti"],
-  ["Jamal Carter", "Creator and CEO", "Carter Makes"],
-  ["Hannah Lindqvist", "Creator and Founder", "North Trail Kitchen"],
-  ["Omar Haddad", "Partner, Digital Talent", "Meridian Representation"],
-  ["Claire Dubois", "Talent Manager", "Bluewater Management"],
-  ["Victor Nguyen", "Head of Talent", "Lantern Artists"],
-  ["Rachel Stein", "SVP, Creator Partnerships", "Harbor Commerce"],
-  ["Kwame Mensah", "Head of Brand Sales", "Pulse Streaming"],
-  ["Isabel Cruz", "Chief Revenue Officer", "Copperleaf Media"],
-  ["Ethan Brooks", "Chief Strategy Officer", "Atlas Creative Group"],
-  ["Nadia Rahman", "VP, Strategy", "Kestrel Brands"],
-  ["Felix Wagner", "Head of Creator Strategy", "Summit & Pine"],
-  ["Grace Liu", "Managing Director", "Clearpath Creator Services"],
-  ["Samuel Adeyemi", "Chief Operating Officer", "Harmonic Studios"],
-  ["Olivia Hart", "Head of Creator Success", "Waypoint Platforms"],
-  ["Mateo Silva", "Director of AI Products", "Northwind Creator Labs"],
-  ["Ava Thompson", "VP, Generative Media", "Prism Content Co."],
-  ["Hiro Sato", "Head of Applied AI", "Keystone Video"],
-  ["Zara Ali", "Executive Creative Director", "Bold Signal Agency"],
-  ["Benjamin Cole", "Head of Social Campaigns", "Riverbend Beverage Co."],
-  ["Leila Haddad", "VP, Integrated Campaigns", "Foxglove Retail"],
-  ["Peter Novak", "Chief Executive Officer", "Ridgeway Creator Fund"],
-  ["Imani Brooks", "Founder and CEO", "Spark Collective"],
-  ["Chen Wei", "Chief Product Officer", "Loomwork Apps"],
-] as const;
+// Invented names and deliberately unusual company names, combined deterministically.
+const FIRST = [
+  "Elena",
+  "Noah",
+  "Aisha",
+  "Daniel",
+  "Mei",
+  "Lucas",
+  "Sofia",
+  "Jamal",
+  "Hannah",
+  "Omar",
+  "Claire",
+  "Victor",
+  "Rachel",
+  "Kwame",
+  "Isabel",
+  "Ethan",
+  "Nadia",
+  "Felix",
+  "Grace",
+  "Samuel",
+  "Olivia",
+];
+const LAST = [
+  "Vasquez",
+  "Kimura",
+  "Bello",
+  "Osei",
+  "Tanaka",
+  "Ferreira",
+  "Marchetti",
+  "Carter",
+  "Lindqvist",
+  "Haddad",
+  "Dubois",
+  "Nguyen",
+  "Steinberg",
+  "Mensah",
+  "Cruz",
+  "Brookfield",
+  "Rahman",
+  "Wagner",
+  "Liu",
+  "Adeyemi",
+  "Hartwell",
+];
+const COMPANY_PREFIX = [
+  "Quillfeather",
+  "Emberlight",
+  "Tallow & Finch",
+  "Corvid",
+  "Marigold Lane",
+  "Copperkettle",
+  "Bramblewood",
+  "Saltmarsh",
+  "Juniper Hollow",
+];
+const COMPANY_SUFFIX = [
+  "Studios",
+  "Media Labs",
+  "Creator Co.",
+  "Talent",
+  "Partners",
+  "Networks",
+  "Collective",
+];
+
+/** Nominee i (0-based): unique name and company for i < 63. */
+export function nominee(i: number) {
+  return {
+    name: `${FIRST[i % FIRST.length]} ${LAST[Math.floor(i / 3) % LAST.length]}`,
+    company: `${COMPANY_PREFIX[i % COMPANY_PREFIX.length]} ${COMPANY_SUFFIX[Math.floor(i / COMPANY_PREFIX.length) % COMPANY_SUFFIX.length]}`,
+  };
+}
+
+/** Typical nominee titles per category slug. */
+export const TITLES: Record<string, string> = {
+  "ceo-of-the-year": "Chief Executive Officer",
+  "innovator-of-the-year": "VP, Product Innovation",
+  "creator-of-the-year": "Creator and Founder",
+  "agent-manager-of-the-year": "Talent Manager",
+  "top-sales-leader": "Chief Revenue Officer",
+  "top-strategist": "Chief Strategy Officer",
+  "top-service-leader": "Managing Director",
+  "best-use-of-genai": "Head of Applied AI",
+  "most-innovative-campaign": "Executive Creative Director",
+};
