@@ -9,6 +9,13 @@ const ROLE_HOME = {
   ADMIN: { href: "/admin", label: "Admin" },
 } as const;
 
+const PUBLIC_LINKS = [
+  { href: "/categories", label: "Categories" },
+  { href: "/fees", label: "Fees and deadlines" },
+  { href: "/methodology", label: "Methodology" },
+  { href: "/judges", label: "Judges" },
+];
+
 const linkClass = "text-on-ink underline-offset-4 hover:underline";
 
 export async function SiteHeader() {
@@ -29,11 +36,13 @@ export async function SiteHeader() {
         </Link>
         <nav aria-label="Main">
           <ul className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
-            <li>
-              <Link href="/" className={linkClass}>
-                Home
-              </Link>
-            </li>
+            {PUBLIC_LINKS.map((l) => (
+              <li key={l.href}>
+                <Link href={l.href} className={linkClass}>
+                  {l.label}
+                </Link>
+              </li>
+            ))}
             {actor ? (
               <>
                 <li>

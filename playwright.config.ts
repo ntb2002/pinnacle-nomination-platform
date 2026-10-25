@@ -34,6 +34,7 @@ export default defineConfig({
       DATABASE_URL: e2eDatabaseUrl,
       BETTER_AUTH_SECRET: "test-only-secret-not-for-production-000000",
       EMAIL_TRANSPORT: "outbox",
+      DEMO_MODE: "true",
     },
   },
 });

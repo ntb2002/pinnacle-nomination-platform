@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "@fontsource-variable/bodoni-moda";
 import "@fontsource-variable/public-sans";
 import "./globals.css";
+import { DemoBanner } from "@/components/public/demo-banner";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 
@@ -25,6 +26,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         >
           Skip to main content
         </a>
+        <DemoBanner />
         <SiteHeader />
         <main id="main" tabIndex={-1} className="flex-1 focus:outline-none">
           {children}

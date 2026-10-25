@@ -5,8 +5,8 @@
 ## Now
 
 - **Done:** #1, #2, #3, #4
-- **In progress:** —
-- **Next:** #5 Public program site
+- **In progress:** #5 Public program site (branch `5-public-site`)
+- **Next:** #6 Admin program settings
 - **Blockers:** none
 
 ## Needs human (collected from issues)
@@ -18,14 +18,13 @@
 - **HSTS scope (#2):** production sends `Strict-Transport-Security: max-age=63072000` without `includeSubDomains`/`preload`. Adding those commits the whole parent domain; Syracuse IT decides (LAUNCH_READINESS).
 
 - **Program dates and finalist fee (#3):** nominations open 2027-01-26 (given). The early/regular/final deadlines (Feb 26 / Mar 26 / Apr 23, 2027) and the $1,500 finalist package fee are placeholders in `src/lib/program-defaults.ts`. Admins can change all of them in the app (#6). CCE to confirm.
-- **Category descriptions (#3):** placeholder copy marked `TODO(copy)` for CCE staff.
+- **Copy review (#3, #5):** category descriptions, the conflict-of-interest policy and the refund wording are placeholder copy marked `TODO(copy)` for CCE staff (and counsel for the COI policy).
 
 ## Open technical threads
 
 - Rate limiting and audit IPs use the `TRUSTED_PROXY_HOPS`-th `X-Forwarded-For` entry from the right; production must sit behind a proxy that appends it (LAUNCH_READINESS). The per-email sign-in limit (5 per sliding 15 minutes) means someone who knows an address can keep that person from requesting new links for as long as they keep sending about 5 requests every 15 minutes. Accepted trade-off against email bombing; LAUNCH_READINESS lists mitigations (admin SSO, a CAPTCHA after failures).
 - Shorter sessions for admins/judges are scheduled for #16 (all roles get 7 days today).
 - #8 must delete stored files when an attachment row goes (entry cascade deletes rows, not bytes).
-- #5: show a "demo data" banner when the demo seed is loaded, so invented judges are never mistaken for the real panel.
 - `src/lib/pricing.ts` landed early in #3 (the seed needs it); #6 adds the admin UI around it.
 - `drizzle-kit` (dev-only) pulls a deprecated `@esbuild-kit` chain with 4 moderate `npm audit` advisories (esbuild dev-server CORS). Not in production deps; revisit when drizzle-kit 1.0 ships.
 - Deploy-time migrations need `tsx` + `drizzle/` alongside the standalone server; packaging decided in #18.
