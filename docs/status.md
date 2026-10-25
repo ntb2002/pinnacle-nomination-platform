@@ -4,8 +4,8 @@
 
 ## Now
 
-- **Done:** #1
-- **In progress:** #2 App foundation (branch `2-app-foundation`)
+- **Done:** #1, #2
+- **In progress:** —
 - **Next:** #3 Data model and seeded demo data
 - **Blockers:** none
 
@@ -26,5 +26,6 @@
 
 ### 2026-10-25 — v1 build started
 
+- #2 — Next.js 16 foundation: env validation (exits on bad config), nonce CSP + security headers, Drizzle/Postgres (DECISIONS 004 replaced Prisma), health route, accessible layout + tokens, Vitest + Playwright/axe, CI staged at `docs/ci/ci.yml`. Review APPROVE WITH FIXES and evaluator FAIL on the 404 CSP; all fixed.
 - #1 — playbook scaffold, VISION/AGENTS/DECISIONS, status log. Code review: APPROVE WITH FIXES (fixes applied).
 - Spec: issues #1-#18 filed in dependency order. Integration branch `v1` created from `main`.
