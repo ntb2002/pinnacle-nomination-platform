@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { entryFormToDraft } from "@/lib/entry-form";
-import { readinessProblems } from "@/lib/validation/entry";
+import { readinessProblems, toSubmissionInput } from "@/lib/validation/entry";
 
 const words = (n: number) => Array.from({ length: n }, (_, i) => `word${i}`).join(" ");
 const outcome = { description: "Grew revenue", dataPoint: "+48% YoY (audited)" };
@@ -85,5 +85,25 @@ describe("entryFormToDraft", () => {
     expect(draft.references).toHaveLength(1);
     expect(draft).not.toHaveProperty("role");
     expect(draft.nomineeName).toBe("Pat");
+  });
+});
+
+describe("toSubmissionInput", () => {
+  it("turns a stored draft's nulls into friendly messages", () => {
+    const p = readinessProblems(
+      toSubmissionInput({
+        nomineeName: null,
+        nomineeTitle: null,
+        nomineeCompany: null,
+        nomineeEmail: null,
+        nomineeLinkedinUrl: null,
+        narrative: null,
+        outcomes: [],
+        references: [],
+      }),
+    );
+    expect(p.nomineeName).toEqual(["Enter the nominee's name"]);
+    expect(p.nomineeEmail?.[0]).toMatch(/valid email/);
+    expect(JSON.stringify(p)).not.toMatch(/expected string/);
   });
 });

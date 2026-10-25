@@ -5,33 +5,14 @@ import { PageHeader } from "@/components/page-header";
 import { formatDeadline } from "@/lib/dates";
 import { NOMINATOR_STATUS, RELATIONSHIP_LABEL } from "@/lib/entry-status";
 import { formatCents } from "@/lib/money";
-import { readinessProblems } from "@/lib/validation/entry";
+import { entryFieldLabel } from "@/lib/entry-form";
+import { readinessProblems, toSubmissionInput } from "@/lib/validation/entry";
 import { requireRole } from "@/server/auth/session";
 import { NotFoundError } from "@/server/errors";
-import { EDITABLE_STATUSES, getMyEntry, getNominationOptions } from "@/server/services/entries";
+import { EDITABLE_STATUSES, getMyEntry, getNominationWindow } from "@/server/services/entries";
 import { EntrySummary } from "./entry-summary";
 
 export const metadata: Metadata = { title: "Your entry" };
-
-const FIELD_LABEL: Record<string, string> = {
-  nomineeName: "Nominee's name",
-  nomineeTitle: "Nominee's title",
-  nomineeCompany: "Nominee's company",
-  nomineeEmail: "Nominee's email",
-  nomineeLinkedinUrl: "LinkedIn profile",
-  narrative: "Narrative",
-  outcomes: "Outcomes",
-  references: "References",
-};
-
-function labelFor(path: string) {
-  const [root, index, field] = path.split(".");
-  if (index !== undefined && field) {
-    const kind = root === "outcomes" ? "Outcome" : "Reference";
-    return `${kind} ${Number(index) + 1}, ${field.replace(/([A-Z])/g, " $1").toLowerCase()}`;
-  }
-  return FIELD_LABEL[root ?? ""] ?? root;
-}
 
 export default async function EntryPage({ params }: PageProps<"/entries/[id]">) {
   const actor = await requireRole("NOMINATOR");
@@ -41,15 +22,12 @@ export default async function EntryPage({ params }: PageProps<"/entries/[id]">) 
     throw err;
   });
   const editable = (EDITABLE_STATUSES as readonly string[]).includes(entry.status);
-  const problems = editable
-    ? readinessProblems({
-        ...entry,
-        nomineeLinkedinUrl: entry.nomineeLinkedinUrl ?? "",
-        narrative: entry.narrative ?? "",
-      })
-    : {};
+  const problems = editable ? readinessProblems(toSubmissionInput(entry)) : {};
+  if (editable && !entry.categoryEnabled) {
+    problems.category = ["This category is no longer offered. Contact the program team."];
+  }
   const ready = editable && Object.keys(problems).length === 0;
-  const { fee } = await getNominationOptions();
+  const fee = await getNominationWindow();
   const status = NOMINATOR_STATUS[entry.status];
 
   return (
@@ -75,7 +53,7 @@ export default async function EntryPage({ params }: PageProps<"/entries/[id]">) 
           {ready ? (
             <p className="mt-3">
               Everything required is complete.{" "}
-              {fee.open
+              {fee?.open
                 ? `The ${fee.tier.toLowerCase()} fee of ${formatCents(fee.amountCents)} applies if you pay by ${formatDeadline(fee.tierEndsAt)}.`
                 : "Nominations are closed, so this entry can no longer be submitted."}
             </p>
@@ -84,7 +62,7 @@ export default async function EntryPage({ params }: PageProps<"/entries/[id]">) 
               {Object.entries(problems).map(([path, messages]) => (
                 <li key={path}>
                   <Link href={`/entries/${entry.id}/edit#${path}`} className="underline">
-                    {labelFor(path)}: {messages[0]}
+                    {path === "category" ? "Category" : entryFieldLabel(path)}: {messages[0]}
                   </Link>
                 </li>
               ))}

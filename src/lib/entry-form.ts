@@ -45,3 +45,49 @@ export function entryFormToDraft(form: Iterable<[string, FormDataEntryValue]>) {
     references: rows("references", REFERENCE_FIELDS, ENTRY_RULES.referencesMax),
   };
 }
+
+const TOP_LABELS: Record<string, string> = {
+  nomineeName: "Nominee's name",
+  nomineeTitle: "Nominee's title",
+  nomineeCompany: "Nominee's company",
+  nomineeEmail: "Nominee's email",
+  nomineeLinkedinUrl: "LinkedIn profile",
+  narrative: "Narrative",
+  outcomes: "Outcomes",
+  references: "References",
+};
+const ROW_FIELD_LABELS: Record<string, string> = {
+  description: "what changed",
+  dataPoint: "data point",
+  name: "name",
+  title: "job title",
+  organization: "organization",
+  email: "email",
+  phone: "phone",
+  relationship: "relationship to the nominee",
+};
+
+/** Human label for an entry field path: "outcomes.1.dataPoint" → "Outcome 2, data point". */
+export function entryFieldLabel(path: string): string {
+  const [root = "", index, field] = path.split(".");
+  if (index !== undefined && field) {
+    const kind = root === "outcomes" ? "Outcome" : "Reference";
+    return `${kind} ${Number(index) + 1}, ${ROW_FIELD_LABELS[field] ?? field}`;
+  }
+  return TOP_LABELS[root] ?? root;
+}
+
+/** Flattens a draft back into form field names, for echoing values into the form. */
+export function draftToFormValues(
+  draft: ReturnType<typeof entryFormToDraft>,
+): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(draft)) if (typeof v === "string") out[k] = v;
+  draft.outcomes.forEach((o, i) => {
+    for (const [k, v] of Object.entries(o)) out[`outcomes.${i}.${k}`] = v;
+  });
+  draft.references.forEach((r, i) => {
+    for (const [k, v] of Object.entries(r)) out[`references.${i}.${k}`] = v;
+  });
+  return out;
+}

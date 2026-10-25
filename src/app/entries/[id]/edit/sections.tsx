@@ -9,7 +9,15 @@ type Errors = Record<string, string[] | undefined>;
 const sectionClass = "flex flex-col gap-6 rounded border border-line bg-surface p-6";
 const legendClass = "mb-2 font-display text-2xl font-semibold";
 
-export function NomineeSection({ v, e }: { v: Values; e: Errors }) {
+export function NomineeSection({
+  v,
+  e,
+  selfNomination,
+}: {
+  v: Values;
+  e: Errors;
+  selfNomination: boolean;
+}) {
   const f = (
     name: string,
     label: string,
@@ -32,8 +40,11 @@ export function NomineeSection({ v, e }: { v: Values; e: Errors }) {
       {f("nomineeCompany", "Company or organization", { maxLength: 160 })}
       {f("nomineeEmail", "Email address", {
         type: "email",
-        hint: "Used only by program staff, to contact the nominee if they become a finalist.",
+        hint: selfNomination
+          ? "This is a self-nomination, so the nominee's email is your sign-in email."
+          : "Used only by program staff, to contact the nominee if they become a finalist.",
         maxLength: 254,
+        readOnly: selfNomination,
       })}
       {f("nomineeLinkedinUrl", "LinkedIn profile (optional)", {
         type: "url",
@@ -76,13 +87,22 @@ export function NarrativeSection({ v, e }: { v: Values; e: Errors }) {
 
 export function OutcomesSection({ v, e }: { v: Values; e: Errors }) {
   return (
-    <fieldset className={sectionClass} id="outcomes" tabIndex={-1}>
+    <fieldset
+      className={sectionClass}
+      id="outcomes"
+      tabIndex={-1}
+      aria-describedby={e.outcomes ? "outcomes-error" : undefined}
+    >
       <legend className={legendClass}>Quantified outcomes</legend>
       <p className="text-slate">
         Give {ENTRY_RULES.outcomesMin} or {ENTRY_RULES.outcomesMax} results, each with a data point
         judges can check (a figure, its period and its source).
       </p>
-      {e.outcomes && <p className="font-semibold text-danger">{e.outcomes.join(" ")}</p>}
+      {e.outcomes && (
+        <p id="outcomes-error" className="font-semibold text-danger">
+          {e.outcomes.join(" ")}
+        </p>
+      )}
       {Array.from({ length: ENTRY_RULES.outcomesMax }, (_, i) => (
         <fieldset key={i} className="flex flex-col gap-4 border-t border-line pt-4">
           <legend className="font-semibold">
@@ -125,14 +145,23 @@ const REFERENCE_FIELDS = [
 
 export function ReferencesSection({ v, e }: { v: Values; e: Errors }) {
   return (
-    <fieldset className={sectionClass} id="references" tabIndex={-1}>
+    <fieldset
+      className={sectionClass}
+      id="references"
+      tabIndex={-1}
+      aria-describedby={e.references ? "references-error" : undefined}
+    >
       <legend className={legendClass}>References</legend>
       <p className="text-slate">
         Give {ENTRY_RULES.referencesMin} or {ENTRY_RULES.referencesMax} people who can confirm the
         outcomes. Program staff may contact them. Judges see their names and roles, never their
         contact details.
       </p>
-      {e.references && <p className="font-semibold text-danger">{e.references.join(" ")}</p>}
+      {e.references && (
+        <p id="references-error" className="font-semibold text-danger">
+          {e.references.join(" ")}
+        </p>
+      )}
       {Array.from({ length: ENTRY_RULES.referencesMax }, (_, i) => (
         <fieldset key={i} className="grid gap-4 border-t border-line pt-4 sm:grid-cols-2">
           <legend className="font-semibold">

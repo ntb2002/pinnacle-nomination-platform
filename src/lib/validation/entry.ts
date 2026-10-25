@@ -127,3 +127,40 @@ export const startEntrySchema = z.object({
   categoryId: z.uuid("Choose a category"),
   relationship: z.enum(["SELF", "PEER", "STAFF"], { error: "Choose how you know the nominee" }),
 });
+
+/** A stored entry as submission-schema input: nullable text becomes "" so messages are friendly. */
+export function toSubmissionInput(e: {
+  nomineeName: string | null;
+  nomineeTitle: string | null;
+  nomineeCompany: string | null;
+  nomineeEmail: string | null;
+  nomineeLinkedinUrl: string | null;
+  narrative: string | null;
+  outcomes: { description: string; dataPoint: string }[];
+  references: {
+    name: string;
+    title: string;
+    organization: string;
+    email: string;
+    phone: string;
+    relationship: string;
+  }[];
+}) {
+  return {
+    nomineeName: e.nomineeName ?? "",
+    nomineeTitle: e.nomineeTitle ?? "",
+    nomineeCompany: e.nomineeCompany ?? "",
+    nomineeEmail: e.nomineeEmail ?? "",
+    nomineeLinkedinUrl: e.nomineeLinkedinUrl ?? "",
+    narrative: e.narrative ?? "",
+    outcomes: e.outcomes.map(({ description, dataPoint }) => ({ description, dataPoint })),
+    references: e.references.map(({ name, title, organization, email, phone, relationship }) => ({
+      name,
+      title,
+      organization,
+      email,
+      phone,
+      relationship,
+    })),
+  };
+}

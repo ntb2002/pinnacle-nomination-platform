@@ -48,7 +48,19 @@ export default async function EditEntryPage({ params }: PageProps<"/entries/[id]
         title={entry.categoryName}
         intro={`${RELATIONSHIP_LABEL[entry.relationship]}. Save at any time; nothing is submitted until you review and pay.`}
       />
-      <EntryForm entryId={entry.id} initial={initial} />
+      {!entry.categoryEnabled && (
+        <p
+          role="note"
+          className="mb-8 rounded border-l-4 border-danger bg-danger-bg px-4 py-3 text-danger"
+        >
+          This category is no longer offered, so this entry cannot be submitted.
+        </p>
+      )}
+      <EntryForm
+        entryId={entry.id}
+        initial={initial}
+        selfNomination={entry.relationship === "SELF"}
+      />
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import "server-only";
 import { and, asc, desc, eq } from "drizzle-orm";
+import { isUuid } from "@/lib/ids";
 import { entryFeeFor } from "@/lib/pricing";
 import { startEntrySchema } from "@/lib/validation/entry";
 import { assertRole, type Actor } from "@/server/auth/actor";
@@ -59,8 +60,11 @@ export async function startEntry(actor: Actor, raw: Record<string, unknown>, now
       nomineeEmail: self ? actor.email : null,
     })
     .returning({ id: entry.id })
-    .catch((err: { cause?: { code?: string } }) => {
-      if (err.cause?.code === "23505") {
+    .catch((err: { cause?: { code?: string; constraint?: string } }) => {
+      if (
+        err.cause?.code === "23505" &&
+        err.cause.constraint === "entry_one_per_nominee_category"
+      ) {
         throw new ConflictError("You already have an entry for yourself in this category.");
       }
       throw err;
@@ -90,6 +94,7 @@ export async function listMyEntries(actor: Actor) {
 /** One of the nominator's own entries with outcomes and references. NotFound for anyone else's. */
 export async function getMyEntry(actor: Actor, entryId: string) {
   assertRole(actor, "NOMINATOR");
+  if (!isUuid(entryId)) throw new NotFoundError("entry");
   const [row] = await db
     .select({ entry, categoryName: category.name, categoryEnabled: category.enabled })
     .from(entry)
@@ -108,7 +113,13 @@ export async function getMyEntry(actor: Actor, entryId: string) {
       .where(eq(entryReference.entryId, entryId))
       .orderBy(asc(entryReference.position)),
   ]);
-  return { ...row.entry, categoryName: row.categoryName, outcomes, references };
+  return {
+    ...row.entry,
+    categoryName: row.categoryName,
+    categoryEnabled: row.categoryEnabled,
+    outcomes,
+    references,
+  };
 }
 
 /** What the start-a-nomination page offers: open/closed, the fee now, enabled categories. */
@@ -130,4 +141,10 @@ export async function getNominationOptions(now = new Date()) {
     fee,
     categories,
   };
+}
+
+/** The nomination window for dashboards: null when no cycle is active (pages still render). */
+export async function getNominationWindow(now = new Date()) {
+  const [cycle] = await db.select().from(awardCycle).where(eq(awardCycle.isActive, true));
+  return cycle ? entryFeeFor(cycle, now) : null;
 }

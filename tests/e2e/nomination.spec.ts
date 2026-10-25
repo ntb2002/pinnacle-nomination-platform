@@ -31,6 +31,12 @@ test.describe("nomination form", () => {
     await page.getByLabel("Full name").first().fill("Robin Testcase");
     await page.getByRole("button", { name: "Save draft" }).click();
     await expect(page.getByRole("status").filter({ hasText: "Draft saved." })).toBeVisible();
+    // The saved value stays in the form (React resets uncontrolled fields after an action).
+    await expect(page.getByLabel("Full name").first()).toHaveValue("Robin Testcase");
+    await page.getByLabel("Job title").first().fill("x".repeat(10));
+    await page.getByLabel("Job title").first().press("Enter");
+    await expect(page.getByRole("status").filter({ hasText: "Draft saved." })).toBeVisible();
+    await expect(page).toHaveURL(/\/edit$/);
 
     // Leave and come back: the draft is listed and resumes with its data.
     await page.goto("/entries");
@@ -79,7 +85,12 @@ test.describe("nomination form", () => {
       `SELECT e.id FROM entry e JOIN "user" u ON u.id = e.nominator_id WHERE u.email <> 'nominator12@example.com' LIMIT 1`,
     );
     await signInAs(page, "nominator12@example.com");
-    for (const path of [`/entries/${rows[0].id}`, `/entries/${rows[0].id}/edit`]) {
+    for (const path of [
+      `/entries/${rows[0].id}`,
+      `/entries/${rows[0].id}/edit`,
+      "/entries/not-a-uuid",
+      "/entries/not-a-uuid/edit",
+    ]) {
       expect((await page.goto(path))?.status(), path).toBe(404);
     }
   });

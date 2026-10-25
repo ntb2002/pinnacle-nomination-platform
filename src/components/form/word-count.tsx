@@ -14,16 +14,18 @@ export function WordCount({ forId, min, max }: { forId: string; min: number; max
     const el = document.getElementById(forId) as HTMLTextAreaElement | null;
     if (!el) return;
     let timer: ReturnType<typeof setTimeout> | undefined;
-    const update = () => {
+    const update = (announce: boolean) => {
       const n = countWords(el.value);
       setCount(n);
       clearTimeout(timer);
-      timer = setTimeout(() => setAnnounced(`${n} words`), 1200);
+      if (announce) timer = setTimeout(() => setAnnounced(`${n} words`), 1200);
     };
-    update();
-    el.addEventListener("input", update);
+    // Show the count on load without announcing it; announce after typing pauses.
+    update(false);
+    const onInput = () => update(true);
+    el.addEventListener("input", onInput);
     return () => {
-      el.removeEventListener("input", update);
+      el.removeEventListener("input", onInput);
       clearTimeout(timer);
     };
   }, [forId]);

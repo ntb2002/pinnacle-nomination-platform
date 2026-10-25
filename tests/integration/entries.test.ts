@@ -30,6 +30,15 @@ describe("starting an entry", () => {
     expect(mine).toMatchObject({ status: "DRAFT", nomineeEmail: me.email, relationship: "SELF" });
   });
 
+  it("refuses a second self-nomination in the same category", async () => {
+    const { category: cat } = await createProgram();
+    const me = await createActor("NOMINATOR");
+    await startEntry(me, { categoryId: cat.id, relationship: "SELF" });
+    await expect(
+      startEntry(me, { categoryId: cat.id, relationship: "SELF" }),
+    ).rejects.toBeInstanceOf(ConflictError);
+  });
+
   it("is refused to judges and admins", async () => {
     const { category: cat } = await createProgram();
     for (const role of ["JUDGE", "ADMIN"] as const) {
@@ -126,6 +135,39 @@ describe("ownership and editing", () => {
       status: "SUBMITTED",
     });
     await expect(saveDraft(me, e.id, draft())).rejects.toBeInstanceOf(NotFoundError);
+  });
+
+  it("keeps a self-nomination's nominee email as the nominator's", async () => {
+    const { category: cat } = await createProgram();
+    const me = await createActor("NOMINATOR");
+    const id = await startEntry(me, { categoryId: cat.id, relationship: "SELF" });
+    await saveDraft(me, id, draft({ nomineeEmail: "someone.else@example.com" }));
+    expect((await getMyEntry(me, id)).nomineeEmail).toBe(me.email);
+  });
+
+  it("treats malformed ids as not found", async () => {
+    await createProgram();
+    const me = await createActor("NOMINATOR");
+    await expect(getMyEntry(me, "abc")).rejects.toBeInstanceOf(NotFoundError);
+    await expect(saveDraft(me, "abc", draft())).rejects.toBeInstanceOf(NotFoundError);
+  });
+
+  it("keeps outcome and reference row ids stable across saves", async () => {
+    const { category: cat } = await createProgram();
+    const me = await createActor("NOMINATOR");
+    const id = await startEntry(me, { categoryId: cat.id, relationship: "PEER" });
+    const two = [
+      { description: "A", dataPoint: "1" },
+      { description: "B", dataPoint: "2" },
+    ];
+    await saveDraft(me, id, draft({ outcomes: two }));
+    const before = (await getMyEntry(me, id)).outcomes.map((o) => o.id);
+    await saveDraft(me, id, draft({ outcomes: [{ description: "A2", dataPoint: "1" }, two[1]] }));
+    const after = await getMyEntry(me, id);
+    expect(after.outcomes.map((o) => o.id)).toEqual(before);
+    expect(after.outcomes[0]?.description).toBe("A2");
+    await saveDraft(me, id, draft({ outcomes: [two[0]] }));
+    expect((await getMyEntry(me, id)).outcomes).toHaveLength(1);
   });
 
   it("caps lengths even in drafts", async () => {

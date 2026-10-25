@@ -14,7 +14,7 @@ export function StartForm({
 }) {
   const [state, action] = useActionState(startEntryAction, idleState);
   return (
-    <form action={action} className="flex flex-col gap-10" noValidate>
+    <form key={JSON.stringify(state)} action={action} className="flex flex-col gap-10" noValidate>
       <FormMessage
         state={state}
         labels={{ categoryId: "Category", relationship: "Relationship" }}
@@ -23,6 +23,7 @@ export function StartForm({
         name="categoryId"
         legend="Which award is this nomination for?"
         errors={state.fieldErrors?.categoryId}
+        defaultValue={state.values?.categoryId}
         options={categories.map((c) => ({
           value: c.id,
           label: c.name,
@@ -33,6 +34,7 @@ export function StartForm({
         name="relationship"
         legend="Who is making this nomination?"
         errors={state.fieldErrors?.relationship}
+        defaultValue={state.values?.relationship}
         options={[
           { value: "SELF", label: "I am nominating myself" },
           { value: "PEER", label: "I am nominating someone else" },
