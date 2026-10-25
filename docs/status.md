@@ -5,8 +5,8 @@
 ## Now
 
 - **Done:** #1, #2
-- **In progress:** —
-- **Next:** #3 Data model and seeded demo data
+- **In progress:** #3 Data model and seeded demo data (branch `3-data-model-seed`)
+- **Next:** #4 Authentication, RBAC and audit logging
 - **Blockers:** none
 
 ## Needs human (collected from issues)
@@ -16,6 +16,9 @@
 - Enable the pre-commit hook once per clone: `git config core.hooksPath .githooks`. The agent's deny list blocks it from doing this itself (by design); until then the agent runs `.githooks/pre-commit` by hand before each commit, and CI will run the same checks once #2 replaces the placeholder workflow.
 
 - **HSTS scope (#2):** production sends `Strict-Transport-Security: max-age=63072000` without `includeSubDomains`/`preload`. Adding those commits the whole parent domain; Syracuse IT decides (LAUNCH_READINESS).
+
+- **Program dates and finalist fee (#3):** nominations open 2027-01-26 (given). The early/regular/final deadlines (Feb 26 / Mar 26 / Apr 23, 2027) and the $1,500 finalist package fee are placeholders in `src/lib/program-defaults.ts`. Admins can change all of them in the app (#6). CCE to confirm.
+- **Category descriptions (#3):** placeholder copy marked `TODO(copy)` for CCE staff.
 
 ## Open technical threads
 
