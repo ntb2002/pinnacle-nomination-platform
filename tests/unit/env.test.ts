@@ -5,6 +5,7 @@ const valid = {
   NODE_ENV: "development",
   APP_URL: "http://localhost:3000",
   DATABASE_URL: "postgresql://u:p@localhost:5432/db",
+  BETTER_AUTH_SECRET: "x".repeat(32),
 };
 
 describe("parseEnv", () => {
@@ -32,8 +33,24 @@ describe("parseEnv", () => {
       APP_URL: valid.APP_URL,
     });
     expect(
-      parseEnv({ ...valid, NODE_ENV: "production", APP_URL: "https://pinnacle.example.edu" }),
+      parseEnv({
+        ...valid,
+        NODE_ENV: "production",
+        APP_URL: "https://pinnacle.example.edu",
+        EMAIL_TRANSPORT: "smtp",
+        SMTP_URL: "smtps://u:p@smtp.example.edu:465",
+      }),
     ).toMatchObject({ NODE_ENV: "production" });
+  });
+
+  it("requires SMTP in real production and a strong auth secret", () => {
+    const prod = { ...valid, NODE_ENV: "production", APP_URL: "https://pinnacle.example.edu" };
+    expect(() => parseEnv(prod)).toThrow(/EMAIL_TRANSPORT/);
+    expect(() => parseEnv({ ...prod, EMAIL_TRANSPORT: "smtp" })).toThrow(/SMTP_URL/);
+    expect(() => parseEnv({ ...valid, BETTER_AUTH_SECRET: "short" })).toThrow(/BETTER_AUTH_SECRET/);
+    expect(() => parseEnv({ ...valid, BETTER_AUTH_SECRET: undefined })).toThrow(
+      /BETTER_AUTH_SECRET/,
+    );
   });
 
   it("rejects a non-postgres DATABASE_URL", () => {

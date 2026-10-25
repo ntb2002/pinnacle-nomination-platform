@@ -4,6 +4,10 @@ import { z } from "zod";
  * The only place the app reads process.env (AGENTS.md → Architecture conventions).
  * Every variable is documented in .env.example. Validation runs at server boot
  * (src/instrumentation.ts) and on first use, so a bad config fails fast and loudly.
+ *
+ * "Local test deployment" = a production build served on a loopback APP_URL (e2e).
+ * It may use the dev-only drivers (email outbox; later the mock payment provider).
+ * A real production deployment (non-loopback APP_URL) may not.
  */
 const postgresUrl = z
   .string()
@@ -12,19 +16,41 @@ const postgresUrl = z
 const envSchema = z
   .object({
     NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
-    /** Public base URL, no trailing slash, e.g. https://pinnacle.example.edu. Used in emails and redirects. */
+    /** Public base URL, no trailing slash, e.g. https://pinnacle.example.edu. */
     APP_URL: z
       .url({ protocol: /^https?$/ })
       .refine((v) => !v.endsWith("/"), "must not end with a slash"),
     DATABASE_URL: postgresUrl,
+    /** Signs session cookies and tokens. At least 32 random characters. */
+    BETTER_AUTH_SECRET: z.string().min(32, "must be at least 32 characters"),
+    /** outbox: write mail to the email_outbox table (dev/test). smtp: deliver via SMTP_URL. */
+    EMAIL_TRANSPORT: z.enum(["outbox", "smtp"]).default("outbox"),
+    /** e.g. smtps://user:pass@smtp.example.edu:465 */
+    SMTP_URL: z
+      .string()
+      .regex(/^smtps?:\/\/.+/, "must be an smtp:// or smtps:// URL")
+      .optional(),
+    EMAIL_FROM: z.string().min(3).default("Pinnacle Awards <no-reply@example.edu>"),
   })
   .superRefine((cfg, ctx) => {
-    // Loopback is exempt so the production build can be tested locally (e2e).
     if (!URL.canParse(cfg.APP_URL)) return; // already reported by the field check
-    const host = new URL(cfg.APP_URL).hostname;
-    const loopback = host === "localhost" || host === "127.0.0.1" || host === "[::1]";
-    if (cfg.NODE_ENV === "production" && !cfg.APP_URL.startsWith("https://") && !loopback) {
+    const realProduction = cfg.NODE_ENV === "production" && !isLoopback(cfg.APP_URL);
+    if (realProduction && !cfg.APP_URL.startsWith("https://")) {
       ctx.addIssue({ code: "custom", path: ["APP_URL"], message: "must use https in production" });
+    }
+    if (realProduction && cfg.EMAIL_TRANSPORT !== "smtp") {
+      ctx.addIssue({
+        code: "custom",
+        path: ["EMAIL_TRANSPORT"],
+        message: "must be smtp in production (the outbox never delivers mail)",
+      });
+    }
+    if (cfg.EMAIL_TRANSPORT === "smtp" && !cfg.SMTP_URL) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["SMTP_URL"],
+        message: "is required when EMAIL_TRANSPORT=smtp",
+      });
     }
   });
 
@@ -35,6 +61,11 @@ export class EnvError extends Error {
     super(message);
     this.name = "EnvError";
   }
+}
+
+function isLoopback(appUrl: string): boolean {
+  const host = new URL(appUrl).hostname;
+  return host === "localhost" || host === "127.0.0.1" || host === "[::1]";
 }
 
 /** Validates a raw environment record. Exported for tests; app code calls env(). */
@@ -53,4 +84,9 @@ let cached: Env | undefined;
 export function env(): Env {
   cached ??= parseEnv(process.env);
   return cached;
+}
+
+/** True for a real deployment: production build on a non-loopback URL. */
+export function isRealProduction(cfg: Env = env()): boolean {
+  return cfg.NODE_ENV === "production" && !isLoopback(cfg.APP_URL);
 }

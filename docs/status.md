@@ -5,8 +5,8 @@
 ## Now
 
 - **Done:** #1, #2, #3
-- **In progress:** —
-- **Next:** #4 Authentication, RBAC and audit logging
+- **In progress:** #4 Authentication, RBAC and audit logging (branch `4-auth-rbac-audit`)
+- **Next:** #5 Public program site
 - **Blockers:** none
 
 ## Needs human (collected from issues)
@@ -22,6 +22,8 @@
 
 ## Open technical threads
 
+- Rate limiting and audit IPs use the first `X-Forwarded-For` hop; the production load balancer must overwrite that header (LAUNCH_READINESS).
+- Shorter sessions for admins/judges are scheduled for #16 (all roles get 7 days today).
 - #8 must delete stored files when an attachment row goes (entry cascade deletes rows, not bytes).
 - #5: show a "demo data" banner when the demo seed is loaded, so invented judges are never mistaken for the real panel.
 - `src/lib/pricing.ts` landed early in #3 (the seed needs it); #6 adds the admin UI around it.

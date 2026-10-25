@@ -21,6 +21,8 @@ const nextConfig: NextConfig = {
   output: "standalone",
   poweredByHeader: false,
   reactStrictMode: true,
+  // forbidden() → src/app/forbidden.tsx with HTTP 403 (used by requireRole).
+  experimental: { authInterrupts: true },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

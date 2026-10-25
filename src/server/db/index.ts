@@ -30,7 +30,11 @@ function instance() {
 
 /** The Drizzle client. A proxy so importing this module never opens a connection. */
 export const db: Database = new Proxy({} as Database, {
-  get: (_target, prop) => Reflect.get(instance().db, prop),
+  get: (_target, prop) => {
+    const real = instance().db;
+    const value = Reflect.get(real, prop);
+    return typeof value === "function" ? value.bind(real) : value;
+  },
 });
 
 /** Closes the pool (tests and scripts). The next `db` use reconnects. */
