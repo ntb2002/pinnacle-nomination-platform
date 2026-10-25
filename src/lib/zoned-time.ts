@@ -35,14 +35,20 @@ export function zonedToUtc(date: string, time = "00:00"): Date | null {
   const tm = TIME_RE.exec(time);
   if (!dm || !tm) return null;
   const [y, mo, d, h, mi] = [+dm[1]!, +dm[2]!, +dm[3]!, +tm[1]!, +tm[2]!];
+  if (y < 2000 || y > 2100) return null;
   if (mo < 1 || mo > 12 || d < 1 || d > 31 || h > 23 || mi > 59) return null;
   const wall = Date.UTC(y, mo - 1, d, h, mi);
   const check = new Date(wall);
   if (check.getUTCMonth() !== mo - 1 || check.getUTCDate() !== d) return null; // e.g. Feb 30
   // Two passes settle the offset across DST transitions.
-  let guess = wall - offsetAt(new Date(wall));
-  guess = wall - offsetAt(new Date(guess));
-  return new Date(guess);
+  const first = wall - offsetAt(new Date(wall));
+  const second = wall - offsetAt(new Date(first));
+  // A wall time inside the spring-forward gap (e.g. 02:30) does not exist; neither guess
+  // round-trips, and the later instant is the one that reads as the next valid time.
+  const roundTrips = (t: number) => offsetAt(new Date(t)) + t === wall;
+  if (roundTrips(second)) return new Date(second);
+  if (roundTrips(first)) return new Date(first);
+  return new Date(Math.max(first, second));
 }
 
 /** The exclusive deadline instant for "submit by the end of <date>" (midnight starting the next day). */

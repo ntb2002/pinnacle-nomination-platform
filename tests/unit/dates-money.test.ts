@@ -47,7 +47,16 @@ describe("zoned time conversion", () => {
     expect(endOfDayDeadline("2027-02-26")?.toISOString()).toBe("2027-02-27T05:00:00.000Z");
     expect(toZonedDateInput(new Date("2027-01-26T14:00:00Z"))).toBe("2027-01-26");
   });
+  it("resolves a wall time in the spring-forward gap to the next valid time", () => {
+    // 02:30 on 2027-03-14 does not exist in New York; it reads as 03:30 EDT (07:30Z).
+    expect(zonedToUtc("2027-03-14", "02:30")?.toISOString()).toBe("2027-03-14T07:30:00.000Z");
+    // 01:30 on 2027-11-07 happens twice; the first (EDT) occurrence is used.
+    expect(zonedToUtc("2027-11-07", "01:30")?.toISOString()).toBe("2027-11-07T05:30:00.000Z");
+  });
+
   it("rejects malformed dates", () => {
+    expect(zonedToUtc("0099-01-01")).toBeNull();
+    expect(zonedToUtc("2101-01-01")).toBeNull();
     expect(zonedToUtc("2027-02-30")).toBeNull();
     expect(zonedToUtc("27-01-01")).toBeNull();
     expect(zonedToUtc("2027-01-01", "25:00")).toBeNull();

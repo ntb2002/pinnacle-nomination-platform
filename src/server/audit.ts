@@ -1,5 +1,5 @@
 import "server-only";
-import type { Database } from "@/server/db";
+import type { DbExecutor } from "@/server/db";
 import { db } from "@/server/db";
 import { auditLog } from "@/server/db/schema";
 import type { Actor } from "@/server/auth/actor";
@@ -20,7 +20,7 @@ export interface AuditEvent {
  * Appends one row to the audit log (append-only; a DB trigger rejects changes).
  * Pass `tx` to write inside the same transaction as the action it records.
  */
-export async function audit(event: AuditEvent, tx: Database = db): Promise<void> {
+export async function audit(event: AuditEvent, tx: DbExecutor = db): Promise<void> {
   await tx.insert(auditLog).values({
     actorId: event.actor?.id ?? null,
     actorRole: event.actor?.role ?? null,
