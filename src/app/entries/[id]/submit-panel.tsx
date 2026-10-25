@@ -41,7 +41,7 @@ export function SubmitPanel({
             {!draft
               ? "Resubmitting a returned entry does not cost anything."
               : fee?.open
-                ? `The ${fee.tier.toLowerCase()} fee is ${formatCents(fee.amountCents)} if you start checkout by ${formatDeadline(fee.tierEndsAt)}. The fee is set when checkout starts.`
+                ? `The ${fee.tier.toLowerCase()} fee of ${formatCents(fee.amountCents)} applies if you start checkout by ${formatDeadline(fee.tierEndsAt)}. The fee is set when checkout starts.`
                 : "Nominations are closed, so this entry can no longer be submitted."}
           </p>
           {draft && fee?.open && (
