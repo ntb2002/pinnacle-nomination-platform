@@ -45,11 +45,17 @@ export default async function EntryPage({ params, searchParams }: PageProps<"/en
       ? "You left checkout without paying. Nothing was charged, and your entry is still a draft."
       : query.checkout === "ended" && entry.status === "DRAFT"
         ? "Checkout cancelled. You can edit the entry again."
-        : query.checkout === "done"
+        : query.checkout === "stale"
           ? entry.status === "DRAFT"
-            ? "We are confirming your payment. This usually takes a few seconds; refresh the page to see the result."
-            : `Payment received. Your entry is submitted, and a receipt is on its way to ${actor.email}.`
-          : null;
+            ? "That checkout had already ended, so nothing was charged. Start a new checkout to pay."
+            : "This entry is already paid for. Nothing more was charged."
+          : query.checkout === "done"
+            ? entry.status !== "DRAFT"
+              ? `Payment received. Your entry is submitted, and a receipt is on its way to ${actor.email}.`
+              : pay.open
+                ? "We are confirming your payment. This usually takes a few seconds; refresh the page to see the result."
+                : null
+            : null;
 
   return (
     <div className="container-page max-w-3xl py-12">
@@ -84,6 +90,7 @@ export default async function EntryPage({ params, searchParams }: PageProps<"/en
           fee={fee}
           checkout={pay.open}
           attempts={pay.attempts}
+          lastEnded={pay.lastEnded}
         />
       )}
       {pay.paid && (
@@ -94,7 +101,7 @@ export default async function EntryPage({ params, searchParams }: PageProps<"/en
           <p className="mt-3">
             {pay.paid.tier ? `${TIER[pay.paid.tier]} entry fee` : "Entry fee"}{" "}
             {formatCents(pay.paid.amountCents)}
-            {pay.paid.paidAt && `, paid ${formatDateTime(pay.paid.paidAt)} Eastern`}.
+            {pay.paid.paidAt && `, paid ${formatDateTime(pay.paid.paidAt)}`}.
             {pay.paid.reference && ` Reference ${pay.paid.reference}.`}
           </p>
         </section>

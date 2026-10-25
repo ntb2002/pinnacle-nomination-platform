@@ -17,6 +17,7 @@ export function SubmitPanel({
   fee,
   checkout,
   attempts,
+  lastEnded,
 }: {
   entry: { id: string; status: string };
   problems: Record<string, string[]>;
@@ -25,6 +26,8 @@ export function SubmitPanel({
   checkout: { expiresAt: Date | null; ended: boolean } | null;
   /** Payment attempts so far: a draft with any cannot be deleted (records of money). */
   attempts: number;
+  /** The latest checkout ended without payment. */
+  lastEnded: boolean;
 }) {
   const ready = Object.keys(problems).length === 0;
   const draft = entry.status === "DRAFT";
@@ -44,6 +47,11 @@ export function SubmitPanel({
         />
       ) : ready ? (
         <>
+          {draft && lastEnded && (
+            <p className="mt-3 font-semibold">
+              Your last checkout ended without payment, and nothing was charged.
+            </p>
+          )}
           <p className="mt-3">
             Everything required is complete.{" "}
             {!draft

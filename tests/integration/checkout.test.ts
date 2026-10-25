@@ -247,7 +247,12 @@ describe("payment visibility", () => {
     // The nominator sees their own entry's payment state, nobody else's.
     expect((await getMyEntryPayment(owner, e.id)).open).not.toBeNull();
     const other = await createActor("NOMINATOR");
-    expect(await getMyEntryPayment(other, e.id)).toEqual({ paid: null, open: null, attempts: 0 });
+    expect(await getMyEntryPayment(other, e.id)).toEqual({
+      paid: null,
+      open: null,
+      attempts: 0,
+      lastEnded: false,
+    });
   });
 });
 

@@ -116,6 +116,7 @@ test.describe("entry fee payment (mock provider)", () => {
         .filter({ hasText: "Checkout cancelled. You can edit the entry again." }),
     ).toBeFocused();
     await expect(page.getByRole("heading", { name: "Ready to submit" })).toBeVisible();
+    await expect(page.getByText("Your last checkout ended without payment")).toBeVisible();
     // Payment attempts are records of money: the draft can no longer be deleted.
     await expect(page.getByText("Delete this draft")).toHaveCount(0);
     await page.getByRole("link", { name: "Edit the entry" }).click();
@@ -143,5 +144,29 @@ test.describe("entry fee payment (mock provider)", () => {
     await other.close();
     // The Stripe endpoint is off while the mock provider is configured.
     expect((await request.post("/api/webhooks/stripe", { data: "{}" })).status()).toBe(404);
+  });
+
+  test("paying from a stale checkout page charges nothing and says why", async ({ page }) => {
+    await signInAs(page, NOMINATOR);
+    const entryId = await completeDraft("Devon Stale");
+    await openCheckout(page, entryId);
+    // A second tab cancels the checkout while the first still shows the pay button.
+    const other = await page.context().newPage();
+    await other.goto(`/entries/${entryId}`);
+    await other.getByRole("button", { name: "Cancel the checkout to make changes" }).click();
+    await expect(other).toHaveURL(/checkout=ended$/);
+    await other.close();
+
+    await page.getByRole("button", { name: /^Pay \$[\d,]+ \(test\)$/ }).click();
+    await expect(page).toHaveURL(new RegExp(`/entries/${entryId}\\?checkout=stale$`));
+    await expect(
+      page.getByRole("status").filter({ hasText: "That checkout had already ended" }),
+    ).toBeFocused();
+    await expect(page.getByText("Status: Draft")).toBeVisible();
+    const { rows } = await e2eDb().query(
+      `SELECT count(*)::int AS n FROM payment WHERE entry_id = $1 AND status = 'PAID'`,
+      [entryId],
+    );
+    expect(rows[0].n).toBe(0);
   });
 });

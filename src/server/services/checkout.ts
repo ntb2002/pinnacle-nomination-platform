@@ -226,5 +226,7 @@ export async function getMyEntryPayment(actor: Actor, entryId: string, now = new
   );
   // `ended`: past its expiry but still inside the confirmation grace period.
   const open = pending ? { ...pending, ended: pending.expiresAt! <= now } : null;
-  return { paid, open, attempts: rows.length };
+  // The latest attempt ended without payment (expired, cancelled or failed).
+  const lastEnded = !paid && !open && rows.length > 0;
+  return { paid, open, attempts: rows.length, lastEnded };
 }

@@ -40,7 +40,7 @@ export default async function MockCheckoutPage({ params }: PageProps<"/dev/check
         {s.expiresAt && (
           <>
             <dt className="font-semibold">Pay by</dt>
-            <dd>{formatDateTime(s.expiresAt)} Eastern</dd>
+            <dd>{formatDateTime(s.expiresAt)}</dd>
           </>
         )}
       </dl>

@@ -41,8 +41,8 @@ export function OpenCheckout({
         </p>
       ) : (
         <p>
-          You started paying for this entry. The checkout stays open until {until} Eastern. While it
-          is open, the entry cannot be edited.
+          You started paying for this entry. The checkout stays open until {until}. While it is
+          open, the entry cannot be edited.
         </p>
       )}
       <FormMessage state={payState} />

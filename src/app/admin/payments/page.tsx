@@ -25,7 +25,13 @@ export default async function AdminPaymentsPage() {
       {rows.length === 0 ? (
         <p>No payments yet.</p>
       ) : (
-        <div className="overflow-x-auto">
+        <div
+          className="overflow-x-auto"
+          // Scrolls sideways on narrow screens; focusable so keyboard users can scroll it.
+          tabIndex={0}
+          role="region"
+          aria-label="Payments table"
+        >
           <table className="w-full min-w-[48rem] border-collapse text-left text-sm">
             <caption className="sr-only">Payments, newest first</caption>
             <thead>

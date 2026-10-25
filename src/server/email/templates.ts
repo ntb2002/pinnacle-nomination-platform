@@ -44,7 +44,7 @@ export function receiptEmail(r: {
     paragraphs: [
       `Thank you. We received your payment and your entry is submitted.`,
       `Entry: ${r.nomineeName}, ${r.categoryName}.`,
-      `${tier}: ${formatCents(r.amountCents)}, paid ${formatDateTime(r.paidAt)} Eastern.`,
+      `${tier}: ${formatCents(r.amountCents)}, paid ${formatDateTime(r.paidAt)}.`,
       `Payment reference: ${r.reference}.`,
       "The program team reviews each entry for completeness before judging. We will email you if anything needs to change.",
     ],
