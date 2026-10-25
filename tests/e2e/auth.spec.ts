@@ -87,11 +87,18 @@ test.describe("authentication and role gates", () => {
     expect(crossSite.status()).toBe(303);
     expect(crossSite.headers().location).toMatch(/\/sign-in\?error=link$/);
     expect((await verify("https://evil.example/", "same-origin")).status()).toBe(403);
-    expect(
-      (
-        await page.request.get(`/api/auth/magic-link/verify?token=${token}`, { maxRedirects: 0 })
-      ).status(),
-    ).toBe(400);
+    // No callbackURL: refused, so verify never answers with a raw session token.
+    const noCallback = await page.request.get(`/api/auth/magic-link/verify?token=${token}`, {
+      headers: { "sec-fetch-site": "same-origin" },
+      maxRedirects: 0,
+    });
+    expect(noCallback.status()).toBe(400);
+    // Clients without fetch metadata are accepted only with a same-origin Referer.
+    const noMetadata = await page.request.get(
+      `/api/auth/magic-link/verify?token=${token}&callbackURL=%2F`,
+      { maxRedirects: 0 },
+    );
+    expect(noMetadata.status()).toBe(303);
   });
 
   test("a signed-in user is never redirected off-site by next", async ({ page }) => {
