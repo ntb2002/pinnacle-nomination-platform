@@ -3,20 +3,22 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { FlashNotice } from "@/components/flash-notice";
 import { PageHeader } from "@/components/page-header";
-import { formatDeadline } from "@/lib/dates";
+import { formatDateTime } from "@/lib/dates";
 import { NOMINATOR_STATUS, RELATIONSHIP_LABEL } from "@/lib/entry-status";
 import { formatCents } from "@/lib/money";
-import { entryFieldLabel } from "@/lib/entry-form";
 import { readinessProblems, toSubmissionInput } from "@/lib/validation/entry";
 import { requireRole } from "@/server/auth/session";
 import { NotFoundError } from "@/server/errors";
 import { listAttachments } from "@/server/services/attachments";
+import { getMyEntryPayment } from "@/server/services/checkout";
 import { EDITABLE_STATUSES, getMyEntry, getNominationWindow } from "@/server/services/entries";
 import { AttachmentList } from "./attachment-list";
-import { DeleteDraft } from "./delete-draft";
+import { SubmitPanel } from "./submit-panel";
 import { EntrySummary } from "./entry-summary";
 
 export const metadata: Metadata = { title: "Your entry" };
+
+const TIER = { EARLY: "Early", REGULAR: "Regular", LATE: "Late" } as const;
 
 export default async function EntryPage({ params, searchParams }: PageProps<"/entries/[id]">) {
   const actor = await requireRole("NOMINATOR");
@@ -30,10 +32,22 @@ export default async function EntryPage({ params, searchParams }: PageProps<"/en
   if (editable && !entry.categoryEnabled) {
     problems.category = ["This category is no longer offered. Contact the program team."];
   }
-  const ready = editable && Object.keys(problems).length === 0;
-  const [fee, files] = await Promise.all([getNominationWindow(), listAttachments(actor, id)]);
+  const [fee, files, pay, query] = await Promise.all([
+    getNominationWindow(),
+    listAttachments(actor, id),
+    getMyEntryPayment(actor, id),
+    searchParams,
+  ]);
   const status = NOMINATOR_STATUS[entry.status];
-  const locked = !editable && (await searchParams).locked === "1";
+  const locked = !editable && query.locked === "1";
+  const notice =
+    query.checkout === "cancelled" && entry.status === "DRAFT"
+      ? "Payment cancelled. Nothing was charged, and your entry is still a draft."
+      : query.checkout === "done"
+        ? entry.status === "DRAFT"
+          ? "We are confirming your payment. This usually takes a few seconds; refresh the page to see the result."
+          : `Payment received. Your entry is submitted, and a receipt is on its way to ${actor.email}.`
+        : null;
 
   return (
     <div className="container-page max-w-3xl py-12">
@@ -56,41 +70,30 @@ export default async function EntryPage({ params, searchParams }: PageProps<"/en
           />
         </div>
       )}
+      {notice && (
+        <div className="mb-8">
+          <FlashNotice id="checkout-message" error={false} text={notice} />
+        </div>
+      )}
       {editable && (
-        <section
-          aria-labelledby="ready-heading"
-          className="mb-12 rounded border border-line bg-surface p-6"
-        >
-          <h2 id="ready-heading" className="font-display text-2xl font-semibold">
-            {ready ? "Ready to submit" : "Before you can submit"}
+        <SubmitPanel
+          entry={entry}
+          problems={problems}
+          fee={fee}
+          openUntil={pay.open?.expiresAt ?? null}
+        />
+      )}
+      {pay.paid && (
+        <section aria-labelledby="sum-payment" className="mb-10">
+          <h2 id="sum-payment" className="font-display text-2xl font-semibold">
+            Payment
           </h2>
-          {ready ? (
-            <p className="mt-3">
-              Everything required is complete.{" "}
-              {fee?.open
-                ? `The ${fee.tier.toLowerCase()} fee of ${formatCents(fee.amountCents)} applies if you pay by ${formatDeadline(fee.tierEndsAt)}.`
-                : "Nominations are closed, so this entry can no longer be submitted."}
-            </p>
-          ) : (
-            <ul className="mt-3 list-disc pl-6">
-              {Object.entries(problems).map(([path, messages]) => (
-                <li key={path}>
-                  <a href={`/entries/${entry.id}/edit#${path}`} className="underline">
-                    {path === "category" ? "Category" : entryFieldLabel(path)}: {messages[0]}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          )}
-          <p className="mt-6">
-            <Link
-              href={`/entries/${entry.id}/edit`}
-              className="inline-flex rounded border-2 border-ink px-5 py-3 font-semibold"
-            >
-              Edit the entry
-            </Link>
+          <p className="mt-3">
+            {pay.paid.tier ? `${TIER[pay.paid.tier]} entry fee` : "Entry fee"}{" "}
+            {formatCents(pay.paid.amountCents)}
+            {pay.paid.paidAt && `, paid ${formatDateTime(pay.paid.paidAt)} Eastern`}.
+            {pay.paid.reference && ` Reference ${pay.paid.reference}.`}
           </p>
-          {entry.status === "DRAFT" && <DeleteDraft entryId={entry.id} />}
         </section>
       )}
       <EntrySummary entry={entry} />

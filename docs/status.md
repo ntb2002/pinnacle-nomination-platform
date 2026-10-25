@@ -5,8 +5,8 @@
 ## Now
 
 - **Done:** #1, #2, #3, #4, #5, #6, #7, #8
-- **In progress:** —
-- **Next:** #9 Entry fee payment with Stripe hosted Checkout
+- **In progress:** #9 Entry fee payment (built and tested; reviews next)
+- **Next:** #10 Admin triage
 - **Blockers:** none
 
 ## Needs human (collected from issues)
@@ -24,9 +24,8 @@
 
 ## Open technical threads
 
-- #9: lock an entry's content while a checkout is open (or block checkout when content changed after review), re-run readiness with `toSubmissionInput` under `FOR UPDATE`, and check the category is enabled (`FOR SHARE`).
+- Payments, for LAUNCH_READINESS: the real-Stripe path ([MANUAL] gate of #9) could not run in the build sandbox (api.stripe.com is blocked); steps are in README → *Testing payments with Stripe test keys*. A paid duplicate or a mismatched amount is only audited (`payment.duplicate_needs_refund`, `payment.amount_mismatch`); someone must watch for these and refund in the Stripe dashboard until #16's audit viewer can filter them. Refund and dispute webhooks are not handled (refunds are manual). `startCheckout` holds the entry lock during the Stripe API call (up to ~15 s with retries); fine at this scale. Every rejected webhook is audited, so a flood of forged requests grows the audit log: rate-limit `/api/webhooks/stripe` at the load balancer.
 - #10: decide whether a returned entry may change the nominee (today any field can change before resubmission); show admins a change summary on resubmission; map a category change hitting the duplicate index to a field error.
-- #7/#9: the submit/fulfil path must read the entry's category `FOR SHARE` and refuse a withdrawn (disabled) category, to serialize with category withdrawal.
 - Rate limiting and audit IPs use the `TRUSTED_PROXY_HOPS`-th `X-Forwarded-For` entry from the right; production must sit behind a proxy that appends it (LAUNCH_READINESS). The per-email sign-in limit (5 per sliding 15 minutes) means someone who knows an address can keep that person from requesting new links for as long as they keep sending about 5 requests every 15 minutes. Accepted trade-off against email bombing; LAUNCH_READINESS lists mitigations (admin SSO, a CAPTCHA after failures).
 - Shorter sessions for admins/judges are scheduled for #16 (all roles get 7 days today).
 - Supporting files are not malware-scanned (#8). LAUNCH_READINESS: add a scanning step (e.g. ClamAV or the bucket provider's scanner) before judges download. Files are only ever served as downloads with `nosniff`.

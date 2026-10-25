@@ -8,6 +8,7 @@ import { attachment, entry, entryOutcome, entryReference, payment } from "@/serv
 import { ConflictError, NotFoundError, ValidationError } from "@/server/errors";
 import { fieldErrorsOf } from "@/server/validation";
 import { removeBytes } from "./attachments";
+import { assertNoOpenCheckout } from "./checkout";
 import { EDITABLE_STATUSES } from "./entries";
 
 const blankToNull = (v: string | undefined) => (v && v.trim() !== "" ? v.trim() : null);
@@ -40,6 +41,7 @@ export async function saveDraft(actor: Actor, entryId: string, raw: unknown) {
         )
         .for("update");
       if (!current) throw new NotFoundError("editable entry");
+      await assertNoOpenCheckout(tx, entryId);
 
       await tx
         .update(entry)

@@ -65,6 +65,8 @@ export const UPLOAD_ERRORS = {
   closed: "Files can only be changed while the entry is a draft or returned for changes.",
   failed: "The file could not be uploaded. Please try again.",
   remove_failed: "The file could not be removed. Please try again.",
+  checkout:
+    "A checkout is open for this entry. Finish paying, or cancel the checkout to change files.",
 } as const;
 export type UploadErrorCode = keyof typeof UPLOAD_ERRORS;
 

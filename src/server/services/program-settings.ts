@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, eq, ne, sql } from "drizzle-orm";
+import { and, asc, eq, gt, ne, sql } from "drizzle-orm";
 import { isUuid } from "@/lib/ids";
 import {
   categoryUpdateSchema,
@@ -10,7 +10,7 @@ import {
 import { audit } from "@/server/audit";
 import { assertRole, type Actor } from "@/server/auth/actor";
 import { db, type DbExecutor } from "@/server/db";
-import { awardCycle, category, entry, rubricProfile } from "@/server/db/schema";
+import { awardCycle, category, entry, payment, rubricProfile } from "@/server/db/schema";
 import { ConflictError, NotFoundError, ValidationError } from "@/server/errors";
 import { fieldErrorsOf } from "@/server/validation";
 
@@ -235,6 +235,24 @@ export async function updateCategory(
         .where(and(eq(entry.categoryId, categoryId), ne(entry.status, "DRAFT")));
       if ((row?.n ?? 0) > 0) {
         throw new ConflictError("This category has submitted entries, so it cannot be withdrawn.");
+      }
+      // A draft with an open checkout could be paid for after withdrawal.
+      const [paying] = await tx
+        .select({ id: payment.id })
+        .from(payment)
+        .innerJoin(entry, eq(entry.id, payment.entryId))
+        .where(
+          and(
+            eq(entry.categoryId, categoryId),
+            eq(payment.status, "PENDING"),
+            gt(payment.expiresAt, new Date()),
+          ),
+        )
+        .limit(1);
+      if (paying) {
+        throw new ConflictError(
+          "A nominator is paying for an entry in this category right now. Try again in 30 minutes.",
+        );
       }
     }
     await tx.update(category).set(next).where(eq(category.id, categoryId));

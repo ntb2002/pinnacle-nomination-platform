@@ -7,8 +7,9 @@ import { draftToFormValues, entryFormToDraft } from "@/lib/entry-form";
 import { toActionState } from "@/server/action-errors";
 import { isUuid } from "@/lib/ids";
 import { requireRole } from "@/server/auth/session";
-import { NotFoundError } from "@/server/errors";
+import { ConflictError, NotFoundError } from "@/server/errors";
 import { deleteAttachment } from "@/server/services/attachments";
+import { cancelCheckout, startCheckout } from "@/server/services/checkout";
 import { deleteDraft, saveDraft } from "@/server/services/entry-drafts";
 import { startEntry } from "@/server/services/entries";
 
@@ -70,9 +71,44 @@ export async function removeAttachmentAction(entryId: string, attachmentId: stri
     target = await deleteAttachment(actor, attachmentId);
   } catch (err) {
     toActionState(err); // logs unexpected errors, rethrows Next's signals
-    result = err instanceof NotFoundError ? "uploadError=closed" : "uploadError=remove_failed";
+    result =
+      err instanceof NotFoundError
+        ? "uploadError=closed"
+        : err instanceof ConflictError
+          ? "uploadError=checkout"
+          : "uploadError=remove_failed";
   }
   if (!target) redirect("/entries");
   revalidatePath(`/entries/${target}`, "layout");
   redirect(`/entries/${target}/edit?${result}#files-message`);
+}
+
+/** Starts hosted checkout for a complete draft and sends the nominator to it. */
+export async function startCheckoutAction(
+  entryId: string,
+  _prev: ActionState,
+): Promise<ActionState> {
+  const actor = await requireRole("NOMINATOR");
+  let url: string;
+  try {
+    url = await startCheckout(actor, entryId);
+  } catch (err) {
+    return toActionState(err);
+  }
+  redirect(url);
+}
+
+/** Ends the open checkout so the draft can be edited again. */
+export async function cancelCheckoutAction(
+  entryId: string,
+  _prev: ActionState,
+): Promise<ActionState> {
+  const actor = await requireRole("NOMINATOR");
+  try {
+    await cancelCheckout(actor, entryId);
+  } catch (err) {
+    return toActionState(err);
+  }
+  revalidatePath(`/entries/${entryId}`, "layout");
+  return { status: "success", message: "Checkout cancelled. You can edit the entry again." };
 }

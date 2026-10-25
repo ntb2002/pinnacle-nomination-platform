@@ -36,6 +36,11 @@ export const payment = pgTable(
     provider: text().notNull(),
     providerSessionId: text().notNull().unique(),
     providerPaymentIntentId: text(),
+    /**
+     * When the hosted checkout stops accepting payment (#9). Set on every checkout the
+     * app creates; null (rows from before #9) counts as no longer open.
+     */
+    expiresAt: tz(),
     createdById: text()
       .notNull()
       .references(() => user.id),
