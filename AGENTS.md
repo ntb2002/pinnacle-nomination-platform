@@ -18,7 +18,7 @@
 ## 📍 Landing pad — where am I / what next
 
 - **Product:** the nomination, payment and judging platform for the Pinnacle Awards (Syracuse University CCE). See `VISION.md`.
-- **Tracker:** **GitHub Issues** — https://github.com/ntb2002/pinnacle-nomination-platform/issues. Issues live here and nowhere else: `/start-unit <n>` fetches with `gh issue view <n> --comments` (or the GitHub MCP) and stops if it can't.
+- **Tracker:** **GitHub Issues** — https://github.com/ntb2002/pinnacle-nomination-platform/issues. Issues live here and nowhere else: `/start-unit <n>` fetches with the GitHub MCP tools, `gh issue view <n> --comments`, or `gh api repos/ntb2002/pinnacle-nomination-platform/issues/<n>` (cloud sessions may block `gh`'s GraphQL), and stops if it can't.
 - **Active project:** v1 launch build — issues #1-#18, nominations open 2027-01-26. Integration branch `v1`; one PR `v1 → main` at the end.
 - **Next unit:** see `docs/status.md` → *Next*. Resume protocol after a reset: read `docs/status.md`, then the open issues in number order.
 - **Working rhythm:** the issue's `lane` label says which. Every issue: branch `<n>-<slug>` from `v1`, tests, gate evidence, `code-review` + `evaluator` subagents, fix findings, merge into `v1`, close the issue with an evidence comment.
@@ -43,8 +43,8 @@ The tracker owns it (link above). History of what shipped: `docs/status.md`.
 
 | Layer | Choice | Notes |
 |---|---|---|
-| Runtime | Node.js 22 LTS | `.nvmrc` |
-| Framework | Next.js 16 App Router, React 19, TypeScript (strict) | Server components + server actions; `proxy.ts` (Next 16's middleware) |
+| Runtime | Node.js 24 LTS | `.nvmrc`; Node 22 reaches EOL 2027-04-30, mid-cycle |
+| Framework | Next.js 16 App Router, React 19, TypeScript 5.9 (strict) | Server components + server actions; `proxy.ts` (Next 16's middleware) |
 | Database | PostgreSQL 16 via Prisma 7 (`@prisma/adapter-pg`) | Migrations in `prisma/migrations`, forward-only |
 | Auth | Better Auth, email magic link, DB sessions | Roles on `User.role`; checks in `src/server/auth/guards.ts` |
 | Payments | Stripe hosted Checkout + verified webhooks | `PAYMENTS_PROVIDER=mock` simulator for dev/CI/demo, refused in production |
@@ -54,7 +54,7 @@ The tracker owns it (link above). History of what shipped: `docs/status.md`.
 | Styling | Tailwind CSS 4, self-hosted fonts | Tokens meet WCAG 2.1 AA |
 | Tests | Vitest (unit + integration on real Postgres), Playwright + axe-core (e2e) | CI runs all |
 
-## How to run
+## How to run (available once #2 lands)
 
 ```bash
 cp .env.example .env          # fill DATABASE_URL etc.
@@ -96,8 +96,8 @@ npm run test:e2e              # Playwright (builds and starts the app)
 ## What we're explicitly NOT building (or deferring)
 
 - Public voting; ticketing/gala management; sponsor portals.
-- In-app refunds (handled in the Stripe dashboard by CCE finance; see LAUNCH_READINESS).
-- SSO (Syracuse NetID) for admins/judges — deferred, listed in LAUNCH_READINESS.
+- In-app refunds (handled in the Stripe dashboard by CCE finance; see LAUNCH_READINESS, #18).
+- SSO (Syracuse NetID) for admins/judges — deferred, listed in LAUNCH_READINESS (#18).
 - Multi-cycle admin UI beyond the active cycle (data model supports it).
 
 ---
@@ -117,7 +117,7 @@ npm run test:e2e              # Playwright (builds and starts the app)
 Inside an issue, on its branch, you don't ask: edit, run tests / linters / builds / the app, iterate until the gate passes, call subagents (`code-review`, `evaluator`), commit, push. The human owns: merging to `main`, deploys, spend, real secrets, deleting data. Full doctrine: agent-playbook `PLAYBOOK.md` → *Autonomy inside the box*.
 
 - **Protected checks — never change a check to make yourself pass.** Tests that existed when the branch was cut, fixtures, and CI config. Tests you add are reviewed like any code. Never weaken, skip, or delete an existing test to get to green.
-- **Deny list:** `.claude/settings.json` denies agent edits to `.github/workflows/`, hooks, and `evals/`, plus force-push, pushing to `main`, `--no-verify`. The issue that owns CI (#2) creates the workflow; later CI changes are their own issue.
+- **Deny list:** `.claude/settings.json` denies agent edits to `.github/workflows/`, hooks, and `evals/`, plus force-push, pushing to `main`, `--no-verify`. Issue #2 replaces the placeholder workflow with the real one (its explicit purpose); later CI changes are their own issue.
 - **Loop bounds:** transient failure → retry twice · bad output format → repair once · gate still failing → up to 3 correction rounds · same error twice → escalate · ambiguous requirement → `## Needs human` on the issue, stub safely, continue · protected check change → separate issue.
 - **Escalate** = push the branch, comment on the issue: what you tried, the last failure, best hypothesis, smallest decision needed.
 
@@ -130,4 +130,4 @@ Inside an issue, on its branch, you don't ask: edit, run tests / linters / build
 | What's next | GitHub Issues + `docs/status.md` |
 | Git / CI / review workflow | `docs/git-workflow.md` |
 | Decisions expensive to reverse | `DECISIONS.md` |
-| Launch gaps | `LAUNCH_READINESS.md` |
+| Launch gaps | `LAUNCH_READINESS.md` (written in #18) |

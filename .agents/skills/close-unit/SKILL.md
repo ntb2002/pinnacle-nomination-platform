@@ -7,6 +7,8 @@ allowed-tools: Read, Edit, Bash(git status:*), Bash(git diff:*), Bash(git add:*)
 
 # /close-unit $ARGUMENTS
 
+> **v1 autonomous-run override (DECISIONS 002).** While building v1 in this repo: cut issue branches from `origin/v1` (not `origin/main`), bring the branch current with `origin/v1`, skip `gh pr create`, and after the gate plus the `code-review` and `evaluator` subagents pass, merge into `v1` (`git merge --no-ff`) and close the issue with an evidence comment. Never merge into `main`. In Claude Code cloud sessions `gh` may be blocked; use the GitHub MCP tools or `gh api repos/ntb2002/pinnacle-nomination-platform/issues/<n>`.
+
 Close out the issue `$ARGUMENTS` only after its gate is fully met. The gate is in the issue (and in the Deep-lane plan file, if one exists).
 
 1. Walk the unit's **verification gate**. For each item confirm evidence exists:

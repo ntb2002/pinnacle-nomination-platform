@@ -12,7 +12,7 @@ One web app that runs an awards cycle end to end:
 
 - **Nominators** (self, peer, or CCE staff) submit structured entries for creator-economy executives: a 250-500 word narrative, 2-3 quantified outcomes, 1-2 references, optional supporting files. Each entry is one nominee in one category and is billed separately, at an entry fee that rises as deadlines pass (early $500, regular $650, late $800). Payment is Stripe hosted Checkout, so card data never touches our servers.
 - **CCE admins** triage every paid entry (approve, or return for completeness or wrong category), configure deadlines, fees, categories and rubric weights, build the judging panel, run two judging rounds, break ties, and publish results.
-- **Judges** declare conflicts of interest, are recused where conflicted, and score assigned entries on a weighted rubric (Impact & Results 40%, Innovation 20%, Industry Influence 20%, Reference Validation 20%; weights configurable per category type).
+- **Judges** are assigned per category and round, declare conflicts of interest, are recused where conflicted, and score assigned entries on a weighted rubric (Impact & Results 40%, Innovation 20%, Industry Influence 20%, Reference Validation 20%; weights configurable per category type).
 - **The public** sees the published methodology, the named judging panel, the conflict-of-interest policy, the per-category finalist-rate disclosure, and, once an admin lifts the embargo, the winners.
 
 Categories: 7 core (CEO of the Year, Innovator of the Year, Creator of the Year, Agent/Manager of the Year, Top Sales Leader, Top Strategist, Top Service Leader of the Year) plus up to 2 optional (Best Use of GenAI, Most Innovative Campaign of the Year).

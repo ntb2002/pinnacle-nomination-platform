@@ -42,7 +42,8 @@
       "Bash(git commit -n *)",
       "Bash(git commit * -n *)",
       "Bash(git config core.hooksPath *)",
-      "Bash(gh pr merge *)"
+      "Bash(gh pr merge *)",
+      "Bash(git push *refs/heads/main*)"
     ]
   }
 }

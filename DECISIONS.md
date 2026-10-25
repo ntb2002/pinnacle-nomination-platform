@@ -6,7 +6,7 @@
 
 ### 003 — Application stack (2026-10) — Accepted
 
-- **Decision:** One TypeScript codebase: Next.js 16 (App Router, server components and server actions) on Node 22, PostgreSQL 16 through Prisma 7, Better Auth (email magic link, database sessions), Stripe hosted Checkout with signed webhooks, Tailwind CSS 4, zod 4, Vitest + Playwright + axe-core. Payment, file storage and email each sit behind a small interface with a production driver and a local driver. Ships as a container (Next standalone output) that runs on any Node host with managed Postgres and S3-compatible storage.
+- **Decision:** One TypeScript codebase: Next.js 16 (App Router, server components and server actions) on Node 24 LTS (Node 22 reaches end of life 2027-04-30, during the first cycle), PostgreSQL 16 through Prisma 7, Better Auth (email magic link, database sessions), Stripe hosted Checkout with signed webhooks, Tailwind CSS 4, zod 4, Vitest + Playwright + axe-core. Payment, file storage and email each sit behind a small interface with a production driver and a local driver. Ships as a container (Next standalone output) that runs on any Node host with managed Postgres and S3-compatible storage.
 - **Why:**
   - *Maintainable by the next person.* Next.js/React/TypeScript is the most widely taught and hired web stack; a Syracuse student or a contractor can pick it up. One language and one deployable for UI and server means fewer moving parts than a separate API + SPA.
   - *Server-side authority by default.* Server components and server actions keep data access, authorization and pricing on the server; the client gets rendered HTML and minimal JS.
@@ -26,7 +26,7 @@
 
 ### 001 — Tracker and branching model (2026-10) — Accepted
 
-- **Decision:** GitHub Issues is the tracker (labels: `accepted` = Backlog, `ready` = Todo, `lane: standard|deep`, `tier: fast|mid|strong`, `feature|bug|improvement`). Branches: `main` ← `v1` (integration) ← `<issue>-<slug>`. CI runs on every push and PR.
+- **Decision:** GitHub Issues is the tracker (labels: `accepted` = Backlog, `ready` = Todo, `lane: standard|deep`, `tier: fast|mid|strong`, `feature|bug|improvement`). Branches: `main` ← `v1` (integration) ← `<issue>-<slug>`. CI runs on every push and PR (the real workflow lands in #2; until then it is the template placeholder).
 - **Why:** Solo-builder repo; GitHub mobile is the review surface; issues close from commit/PR references.
 - **Rejected:** Linear (no stakeholders beyond the owner in the tracker for this build).
 - **Reverse cost:** low.

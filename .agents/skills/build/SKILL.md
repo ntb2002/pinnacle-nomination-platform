@@ -6,6 +6,8 @@ disable-model-invocation: true
 
 # /build $ARGUMENTS
 
+> **v1 autonomous-run override (DECISIONS 002).** While building v1 in this repo: cut issue branches from `origin/v1` (not `origin/main`), bring the branch current with `origin/v1`, skip `gh pr create`, and after the gate plus the `code-review` and `evaluator` subagents pass, merge into `v1` (`git merge --no-ff`) and close the issue with an evidence comment. Never merge into `main`. In Claude Code cloud sessions `gh` may be blocked; use the GitHub MCP tools or `gh api repos/ntb2002/pinnacle-nomination-platform/issues/<n>`.
+
 **Build mode.** Take one issue (`$ARGUMENTS`, e.g. `NV-7`, or `#42` on the GitHub tier) from Todo to an open PR in one run. The human's approval already happened when they promoted the issue to Todo; their final check is the PR. Don't stop in between to ask whether to continue.
 
 This skill has no steps of its own. It runs the two unit rituals back to back, so there is one source of truth:

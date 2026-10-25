@@ -6,6 +6,8 @@ disable-model-invocation: true
 
 # /start-unit $ARGUMENTS
 
+> **v1 autonomous-run override (DECISIONS 002).** While building v1 in this repo: cut issue branches from `origin/v1` (not `origin/main`), bring the branch current with `origin/v1`, skip `gh pr create`, and after the gate plus the `code-review` and `evaluator` subagents pass, merge into `v1` (`git merge --no-ff`) and close the issue with an evidence comment. Never merge into `main`. In Claude Code cloud sessions `gh` may be blocked; use the GitHub MCP tools or `gh api repos/ntb2002/pinnacle-nomination-platform/issues/<n>`.
+
 Begin exactly one issue — no scope creep. `$ARGUMENTS` is an issue id (`SP-7`, `NV-3`, or `#42` on the GitHub tier).
 
 1. **Fetch the issue from the declared tracker.** `AGENTS.md`'s landing pad names it. Linear → Linear MCP (`get_issue`) as the first read. GitHub Issues → `gh issue view <n> --comments`. That tracker is the only place work comes from: do not search the other tracker, Notion, or a planning markdown file for "the issue." **If you cannot fetch it, stop and say so** — do not guess from `plans/` and do not proceed on a pasted summary unless the human explicitly says the tracker is down. If the human named sub-issues, fetch those too.
