@@ -19,7 +19,7 @@ export function SiteFooter() {
           </p>
           <p className="mt-4">© {year} Syracuse University</p>
         </div>
-        <nav aria-label="Program policies">
+        <nav aria-label="Program">
           <ul className="flex flex-col gap-2">
             {LINKS.map((l) => (
               <li key={l.href}>

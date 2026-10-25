@@ -12,7 +12,9 @@ export default function ConflictOfInterestPage() {
   return (
     <>
       <PageIntro title="Conflict-of-interest policy">
-        <p>Judges never score an entry they have a personal or financial connection to.</p>
+        <p>
+          Judges declare their connections to every entry and are recused where a conflict exists.
+        </p>
       </PageIntro>
       <div className="container-page py-14">
         <Prose>
@@ -30,9 +32,7 @@ export default function ConflictOfInterestPage() {
             <li>
               They represent, are represented by, or have a commercial agreement with the nominee.
             </li>
-            <li>
-              They are a family member or close personal friend of the nominee or the nominator.
-            </li>
+            <li>They are a family member or close personal friend of the nominee.</li>
             <li>They are listed as a reference on the entry, or helped prepare it.</li>
             <li>
               Any other relationship that a reasonable person would see as affecting their judgment.
@@ -46,13 +46,24 @@ export default function ConflictOfInterestPage() {
             that entry, and it is excluded from their totals.
           </p>
           <p>
-            A judge cannot withdraw a declared conflict. Program staff may record a recusal on a
-            judge&apos;s behalf, and every declaration and change is kept in an audit log.
+            A judge who becomes aware of a conflict after opening an entry (for example, finding
+            they are listed as a reference) must declare it at once. They are recused from that
+            point, and any score they started on that entry is discarded.
+          </p>
+          <p>
+            Judges do not see who submitted a nomination. Program staff check for conflicts between
+            judges and nominators.
+          </p>
+          <p>
+            A judge cannot withdraw a declared conflict. Only program staff can reverse one, and
+            only with a recorded reason. Staff may also record a recusal on a judge&apos;s behalf.
+            Every declaration and change is kept in an audit log.
           </p>
           <h2>Coverage</h2>
           <p>
-            Program staff check that every eligible entry is scored by at least two judges without a
-            conflict, and assign additional judges where recusals leave a gap.
+            Every eligible entry must be scored by at least two judges without a conflict before
+            finalists are announced. Program staff assign additional judges where recusals leave a
+            gap.
           </p>
           <h2>Nominations by judges</h2>
           <p>Judges may not submit nominations in the cycle they judge.</p>

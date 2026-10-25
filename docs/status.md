@@ -4,8 +4,8 @@
 
 ## Now
 
-- **Done:** #1, #2, #3, #4
-- **In progress:** #5 Public program site (branch `5-public-site`)
+- **Done:** #1, #2, #3, #4, #5
+- **In progress:** —
 - **Next:** #6 Admin program settings
 - **Blockers:** none
 
@@ -18,7 +18,7 @@
 - **HSTS scope (#2):** production sends `Strict-Transport-Security: max-age=63072000` without `includeSubDomains`/`preload`. Adding those commits the whole parent domain; Syracuse IT decides (LAUNCH_READINESS).
 
 - **Program dates and finalist fee (#3):** nominations open 2027-01-26 (given). The early/regular/final deadlines (Feb 26 / Mar 26 / Apr 23, 2027) and the $1,500 finalist package fee are placeholders in `src/lib/program-defaults.ts`. Admins can change all of them in the app (#6). CCE to confirm.
-- **Copy review (#3, #5):** category descriptions, the conflict-of-interest policy and the refund wording are placeholder copy marked `TODO(copy)` for CCE staff (and counsel for the COI policy).
+- **Copy and legal review (#3, #5):** all public copy is marked `TODO(copy)`: category descriptions, home thesis (the "first academically credentialed" claim needs substantiating), methodology, fees and refund wording (no contact address yet), and the COI policy (the 3-year lookback and the finalist-package requirement for round two need counsel sign-off). The payment copy names Stripe, which assumes it is approved as the university's processor.
 
 ## Open technical threads
 
@@ -33,6 +33,7 @@
 
 ### 2026-10-25 — v1 build started
 
+- #5 — Public site (home, categories, fees, methodology, panel, COI policy) driven by the live cycle; demo banner; nav current-page state; Eastern-time helpers (`src/lib/zoned-time.ts`). Review APPROVE WITH FIXES: copy now promises only what is enforced, and the spec additions on #9, #11, #12 make the rest enforceable. Evaluator PASS.
 - #4 — Magic-link auth (confirm step, single-use hashed 15-min tokens, login-CSRF and open-redirect defenses, allow-listed auth HTTP surface), DB sessions, requireUser/requireRole + assertRole, grantRole/setUserDisabled + CLI, audit service, sliding-window Postgres rate limits with trusted-proxy IPs, email outbox/SMTP. Review BLOCK → all fixed → re-review APPROVE; evaluator FAIL (rate-limit window) → fixed.
 - #3 — Drizzle schema for the whole program with policy constraints (composite FKs, restrict deletes, partial unique indexes, CHECKs), append-only audit trigger, idempotent fake seed (63 entries), pricing module, factories. Review APPROVE WITH FIXES; all High fixed.
 - #2 — Next.js 16 foundation: env validation (exits on bad config), nonce CSP + security headers, Drizzle/Postgres (DECISIONS 004 replaced Prisma), health route, accessible layout + tokens, Vitest + Playwright/axe, CI staged at `docs/ci/ci.yml`. Review APPROVE WITH FIXES and evaluator FAIL on the 404 CSP; all fixed.

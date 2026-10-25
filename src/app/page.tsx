@@ -1,10 +1,13 @@
 import Link from "next/link";
 import { KeyDates } from "@/components/public/key-dates";
-import { formatDate } from "@/lib/dates";
+import { formatDateTime } from "@/lib/dates";
+import { entryFeeFor } from "@/lib/pricing";
 import { getActiveCycle, getPublicCategories } from "@/server/services/public-program";
 
+// TODO(copy): home page thesis and claims to be approved by CCE before launch.
 export default async function HomePage() {
   const cycle = await getActiveCycle();
+  const nominationWindow = cycle ? entryFeeFor(cycle, new Date()) : null;
   const categories = cycle ? await getPublicCategories(cycle.id) : [];
   return (
     <>
@@ -21,17 +24,23 @@ export default async function HomePage() {
           {cycle && (
             <p className="mt-10 text-base">
               <span className="font-semibold text-signal">
-                {cycle.name}: nominations open {formatDate(cycle.nominationsOpenAt)}.
+                {nominationWindow?.open
+                  ? `${cycle.name}: nominations are open.`
+                  : nominationWindow?.reason === "NOT_OPEN"
+                    ? `${cycle.name}: nominations open ${formatDateTime(cycle.nominationsOpenAt)}.`
+                    : `${cycle.name}: nominations have closed.`}
               </span>
             </p>
           )}
           <div className="mt-8 flex flex-wrap gap-4">
-            <Link
-              href="/entries"
-              className="rounded bg-signal px-5 py-3 font-semibold text-ink hover:bg-on-ink"
-            >
-              Start a nomination
-            </Link>
+            {nominationWindow?.open && (
+              <Link
+                href="/entries"
+                className="rounded bg-signal px-5 py-3 font-semibold text-ink hover:bg-on-ink"
+              >
+                Start a nomination
+              </Link>
+            )}
             <Link
               href="/methodology"
               className="rounded border-2 border-on-ink-muted px-5 py-3 font-semibold text-on-ink hover:border-on-ink"
@@ -78,8 +87,12 @@ export default async function HomePage() {
             <p className="mt-2 text-slate">
               Judges are identified publicly. Each one declares conflicts of interest and is recused
               from any entry they are connected to.{" "}
+              <Link href="/judges" className="font-semibold text-ink underline">
+                Meet the panel
+              </Link>{" "}
+              and{" "}
               <Link href="/conflict-of-interest" className="font-semibold text-ink underline">
-                Read the policy
+                read the policy
               </Link>
               .
             </p>

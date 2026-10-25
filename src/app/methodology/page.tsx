@@ -24,6 +24,7 @@ const CRITERION_HELP: Record<string, string> = {
     "How well references from people who worked with the nominee support the claims.",
 };
 
+// TODO(copy): methodology wording to be approved by CCE before launch.
 export default async function MethodologyPage() {
   const cycle = await getActiveCycle();
   if (!cycle) return <NoCycle />;
@@ -53,12 +54,14 @@ export default async function MethodologyPage() {
               entry.
             </li>
             <li>
-              <strong>Round one.</strong> At least two judges score each entry in their categories.
-              Each category is narrowed to three to five finalists by average weighted score.
+              <strong>Round one.</strong> At least two judges without a conflict score each entry in
+              their categories. The three to five entries with the highest average weighted scores
+              in each category become finalists.
             </li>
             <li>
-              <strong>Round two.</strong> Judges score the finalists again. The finalist with the
-              highest average weighted score wins the category.
+              <strong>Round two.</strong> Finalists who purchase the finalist package (or receive a
+              fee waiver from the program) are judged again. The finalist with the highest average
+              weighted score wins the category.
             </li>
             <li>
               <strong>Results.</strong> Winners are kept confidential until the program announces
@@ -72,21 +75,21 @@ export default async function MethodologyPage() {
             The rubric
           </h2>
           <p className="mt-4 max-w-[68ch]">
-            Judges score each criterion from 1 to 10. A judge&apos;s weighted score is the sum of
-            each score times its weight, on a 0 to 100 scale. An entry&apos;s score is the average
-            of its judges&apos; weighted scores.
+            Judges score each criterion from 1 to 10. A judge&apos;s weighted score is each score
+            times its weight, added up and divided by 10, for a score out of 100. An entry&apos;s
+            score is the average of its judges&apos; weighted scores.
           </p>
           {profiles.map((p) => {
             const used = categories.filter((c) => c.rubricProfileId === p.id);
             return (
-              <div key={p.id} className="mt-10">
+              <div key={p.key} className="mt-10">
                 <h3 className="text-lg font-semibold">{p.name}</h3>
                 {used.length > 0 && (
                   <p className="mt-1 text-sm text-slate">
                     Used for {used.map((c) => c.name).join(", ")}.
                   </p>
                 )}
-                <div className="mt-4 overflow-x-auto">
+                <div className="mt-4">
                   <table className="w-full border-collapse text-left">
                     <caption className="sr-only">Rubric weights: {p.name}</caption>
                     <thead>
@@ -122,17 +125,20 @@ export default async function MethodologyPage() {
         <Prose>
           <h2>Finalists and ties</h2>
           <p>
-            Each category has three to five finalists. If fewer than three eligible entries are
-            received, all eligible entries may advance. When scores tie at the finalist cut-off or
-            for the winner, a program administrator breaks the tie between the tied entries only,
-            and records the reason.
+            Each category has three to five finalists, chosen strictly in score order. If fewer than
+            three eligible entries are received, all eligible entries may advance. Scores tie when
+            their averages are equal to two decimal places. A tie at the finalist cut-off or for the
+            winner is broken by a program administrator, who may choose only among the tied entries
+            and must record the reason.
           </p>
           <h2>Confidentiality</h2>
           <p>
-            Entries, references and scores are visible only to program staff and to the assigned
-            judges who have declared no conflict. Judges do not see nominator identities, payment
-            details, references&apos; contact details, or other judges&apos; scores. Every staff and
-            judge action is recorded in an audit log.
+            An entry and its references are visible only to the nominator, program staff, and the
+            assigned judges who have declared no conflict. Scores are visible only to program staff
+            and the judge who gave them. Judges do not see nominator identities, payment details,
+            references&apos; contact details, or other judges&apos; scores. Every staff and judge
+            decision, and every staff view of reference contact details or supporting files, is
+            recorded in an audit log.
           </p>
           <h2>Disclosure</h2>
           <p>

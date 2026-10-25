@@ -34,6 +34,16 @@ test.describe("public program site", () => {
     for (const name of ["Categories", "Fees and deadlines", "Methodology", "Judges"]) {
       await expect(nav.getByRole("link", { name })).toBeVisible();
     }
+    const footer = page.getByRole("navigation", { name: "Program" });
+    await expect(footer.getByRole("link", { name: "Conflict-of-interest policy" })).toBeVisible();
+    await expect(
+      page.getByRole("main").getByRole("link", { name: "Meet the panel" }),
+    ).toHaveAttribute("href", "/judges");
+    await page.goto("/fees");
+    await expect(nav.getByRole("link", { name: "Fees and deadlines" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
   });
 
   test("categories lists enabled categories only", async ({ page }) => {
@@ -63,6 +73,9 @@ test.describe("public program site", () => {
       await expect(
         page.getByText("each entry is billed separately", { exact: false }),
       ).toBeVisible();
+      // Times are derived from the stored deadlines (the seed uses Eastern midnights).
+      await expect(page.getByRole("row", { name: /Early/ })).toContainText(/11:59 PM E[SD]T/);
+      await expect(page.getByText("purchased the package or received a fee waiver")).toBeVisible();
     } finally {
       await e2eDb().query(`UPDATE award_cycle SET regular_fee_cents = $1 WHERE is_active`, [
         rows[0].regular_fee_cents,
@@ -71,6 +84,9 @@ test.describe("public program site", () => {
   });
 
   test("methodology shows the weights stored for each rubric profile", async ({ page }) => {
+    const { rows: saved } = await e2eDb().query(
+      `SELECT weight_impact, weight_innovation, weight_influence, weight_references FROM rubric_profile WHERE key = 'initiative'`,
+    );
     await e2eDb().query(
       `UPDATE rubric_profile SET weight_impact = 50, weight_innovation = 20, weight_influence = 15, weight_references = 15 WHERE key = 'initiative'`,
     );
@@ -81,8 +97,10 @@ test.describe("public program site", () => {
       const exec = page.getByRole("table", { name: /Individual executive categories/ });
       await expect(exec.getByRole("row", { name: /Impact & Results/ })).toContainText("40%");
     } finally {
+      const w = saved[0];
       await e2eDb().query(
-        `UPDATE rubric_profile SET weight_impact = 40, weight_innovation = 20, weight_influence = 20, weight_references = 20 WHERE key = 'initiative'`,
+        `UPDATE rubric_profile SET weight_impact = $1, weight_innovation = $2, weight_influence = $3, weight_references = $4 WHERE key = 'initiative'`,
+        [w.weight_impact, w.weight_innovation, w.weight_influence, w.weight_references],
       );
     }
   });

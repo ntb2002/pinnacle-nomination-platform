@@ -2,6 +2,7 @@ import { and, eq } from "drizzle-orm";
 import type { Database } from "@/server/db";
 import { CATEGORIES, CYCLE_2027, DEFAULT_FEES, RUBRIC_PROFILES } from "@/lib/program-defaults";
 import { awardCycle, category, rubricProfile } from "@/server/db/schema";
+import { endOfDayDeadline, toZonedDateInput, zonedToUtc } from "@/lib/zoned-time";
 import { stableId } from "./ids";
 
 const DAY = 86_400_000;
@@ -12,15 +13,24 @@ export interface ProgramOptions {
   now: Date;
 }
 
+/** Eastern calendar date (YYYY-MM-DD) `days` from `now`. */
+const easternDay = (now: Date, days: number) =>
+  toZonedDateInput(new Date(now.getTime() + days * DAY));
+
 function cycleDates({ openNow, now }: ProgramOptions) {
   if (!openNow) return CYCLE_2027;
-  const t = now.getTime();
+  // Opened a week ago at 9:00 a.m. Eastern; deadlines at the end of an Eastern day,
+  // the same shape admins enter (src/lib/zoned-time.ts).
+  const at = (d: Date | null) => {
+    if (!d) throw new Error("seed: bad date");
+    return d;
+  };
   return {
     ...CYCLE_2027,
-    nominationsOpenAt: new Date(t - 7 * DAY),
-    earlyDeadline: new Date(t + 14 * DAY),
-    regularDeadline: new Date(t + 35 * DAY),
-    finalDeadline: new Date(t + 63 * DAY),
+    nominationsOpenAt: at(zonedToUtc(easternDay(now, -7), "09:00")),
+    earlyDeadline: at(endOfDayDeadline(easternDay(now, 14))),
+    regularDeadline: at(endOfDayDeadline(easternDay(now, 35))),
+    finalDeadline: at(endOfDayDeadline(easternDay(now, 63))),
   };
 }
 

@@ -37,3 +37,19 @@ export const formatDateTime = (d: Date) => dateTimeFmt.format(d);
 
 /** The calendar day a deadline closes on: the instant minus one millisecond. */
 export const deadlineDay = (exclusiveDeadline: Date) => new Date(exclusiveDeadline.getTime() - 1);
+
+const timeFmt = new Intl.DateTimeFormat("en-US", {
+  timeZone: PROGRAM_TIME_ZONE,
+  hour: "numeric",
+  minute: "2-digit",
+  timeZoneName: "short",
+});
+
+/**
+ * A deadline as people read it: "February 26, 2027, 11:59 PM EST". The time is derived
+ * from the stored instant (one minute before the exclusive deadline), never assumed.
+ */
+export function formatDeadline(exclusiveDeadline: Date): string {
+  const lastMinute = new Date(exclusiveDeadline.getTime() - 60_000);
+  return `${formatShortDate(lastMinute)}, ${timeFmt.format(lastMinute)}`;
+}
