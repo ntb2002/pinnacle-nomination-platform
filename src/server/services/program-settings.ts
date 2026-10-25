@@ -4,7 +4,7 @@ import { z } from "zod";
 import {
   categoryUpdateSchema,
   parseCycleSettings,
-  rubricWeightsSchema,
+  parseRubricWeights,
   type CycleSettings,
 } from "@/lib/validation/program-settings";
 import { audit } from "@/server/audit";
@@ -153,10 +153,8 @@ export async function updateRubricWeights(
 ) {
   assertRole(actor, "ADMIN");
   if (!isUuid(profileId)) throw new NotFoundError("rubric profile");
-  const parsed = rubricWeightsSchema.safeParse(raw);
-  if (!parsed.success) {
-    throw new ValidationError("Check the weights.", fieldErrorsOf(parsed.error));
-  }
+  const parsed = parseRubricWeights(raw);
+  if (!parsed.success) throw new ValidationError("Check the weights.", parsed.fieldErrors);
   const next = parsed.data;
   await db.transaction(async (tx) => {
     const cycle = await lockActiveCycle(tx);

@@ -64,6 +64,12 @@ test.describe("admin program settings", () => {
     const totalHref = await alert.getByRole("link", { name: /Total/ }).getAttribute("href");
     await expect(page.locator(totalHref!)).toHaveCount(1);
     await expect(form.getByLabel("Impact & Results (%)")).toHaveAttribute("aria-invalid", "true");
+    // Each weight points at the Total line that explains the problem.
+    const describedBy = await form
+      .getByLabel("Impact & Results (%)")
+      .getAttribute("aria-describedby");
+    expect(describedBy?.split(" ")).toContain(totalHref!.slice(1));
+    await expect(page.locator(totalHref!)).toContainText("The four weights must add up to 100");
     await e2eDb().query(`UPDATE award_cycle SET phase = 'ROUND1_OPEN' WHERE is_active`);
     try {
       await page.reload();

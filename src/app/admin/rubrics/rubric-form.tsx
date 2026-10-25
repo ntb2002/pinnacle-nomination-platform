@@ -55,7 +55,7 @@ export function RubricForm({
             value={Number.isFinite(values[c.weightKey]) ? values[c.weightKey] : ""}
             onChange={(e) => setValues({ ...values, [c.weightKey]: e.target.valueAsNumber })}
             errors={state.fieldErrors?.[c.weightKey]}
-            aria-invalid={totalError || state.fieldErrors?.[c.weightKey] ? true : undefined}
+            invalidBecause={totalError ? `${prefix}total` : undefined}
           />
         ))}
       </fieldset>
@@ -66,6 +66,7 @@ export function RubricForm({
         className={`font-semibold ${total === 100 ? "text-success" : "text-danger"}`}
       >
         Total: {total}%{total === 100 ? "" : " (must be 100%)"}
+        {totalError && <span className="block text-danger">{totalError.join(" ")}</span>}
       </p>
       {!locked && (
         <div>

@@ -5,16 +5,27 @@ interface FieldProps extends InputHTMLAttributes<HTMLInputElement> {
   label: string;
   hint?: string;
   errors?: string[];
+  /** Mark invalid because of an error shown elsewhere (its element id), e.g. a form total. */
+  invalidBecause?: string;
 }
 
 /**
  * Labelled input with hint and error text wired up for assistive tech
  * (aria-describedby, aria-invalid). Use for every text-like input.
  */
-export function Field({ id, label, hint, errors, className, ...input }: FieldProps) {
+export function Field({
+  id,
+  label,
+  hint,
+  errors,
+  invalidBecause,
+  className,
+  ...input
+}: FieldProps) {
   const hintId = hint ? `${id}-hint` : undefined;
   const errorId = errors?.length ? `${id}-error` : undefined;
-  const describedBy = [hintId, errorId].filter(Boolean).join(" ") || undefined;
+  const describedBy = [hintId, errorId, invalidBecause].filter(Boolean).join(" ") || undefined;
+  const invalid = !!errorId || !!invalidBecause;
   return (
     <div className="flex flex-col gap-1.5">
       <label htmlFor={id} className="font-semibold">
@@ -32,9 +43,9 @@ export function Field({ id, label, hint, errors, className, ...input }: FieldPro
       )}
       <input
         id={id}
-        aria-invalid={errorId ? true : undefined}
+        aria-invalid={invalid ? true : undefined}
         aria-describedby={describedBy}
-        className={`w-full rounded border-2 bg-surface px-3 py-2 text-base text-ink ${errorId ? "border-danger" : "border-control"} ${className ?? ""}`}
+        className={`w-full rounded border-2 bg-surface px-3 py-2 text-base text-ink ${invalid ? "border-danger" : "border-control"} ${className ?? ""}`}
         {...input}
       />
     </div>

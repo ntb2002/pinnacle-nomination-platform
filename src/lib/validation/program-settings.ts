@@ -5,7 +5,7 @@ const dollars = (label: string) =>
   z
     .string()
     .trim()
-    .min(1, `Enter the ${label}`)
+    .min(1, { message: `Enter the ${label}`, abort: true })
     .regex(/^\d+$/, `Enter the ${label} in whole dollars, digits only`)
     .pipe(
       z.coerce
@@ -114,21 +114,36 @@ export interface CycleSettings extends FeeCents {
 const weight = z
   .string()
   .trim()
-  .min(1, "Enter a weight (0 to 100)")
+  .min(1, { message: "Enter a weight (0 to 100)", abort: true })
   .regex(/^\d+$/, "Weights are whole numbers from 0 to 100")
   .pipe(z.coerce.number<string>().max(100, "A weight cannot exceed 100"));
 
-export const rubricWeightsSchema = z
-  .object({
-    weightImpact: weight,
-    weightInnovation: weight,
-    weightInfluence: weight,
-    weightReferences: weight,
-  })
-  .refine(
-    (w) => w.weightImpact + w.weightInnovation + w.weightInfluence + w.weightReferences === 100,
-    { message: "The four weights must add up to 100", path: ["total"] },
-  );
+const rubricWeightsSchema = z.object({
+  weightImpact: weight,
+  weightInnovation: weight,
+  weightInfluence: weight,
+  weightReferences: weight,
+});
+export type RubricWeights = z.output<typeof rubricWeightsSchema>;
+
+/** Four whole-number weights; the "add up to 100" rule is checked only once each is valid. */
+export function parseRubricWeights(
+  raw: Record<string, unknown>,
+):
+  | { success: true; data: RubricWeights }
+  | { success: false; fieldErrors: Record<string, string[]> } {
+  const r = rubricWeightsSchema.safeParse(raw);
+  if (!r.success) {
+    const errors: Record<string, string[]> = {};
+    for (const i of r.error.issues) (errors[String(i.path[0])] ??= []).push(i.message);
+    return { success: false, fieldErrors: errors };
+  }
+  const w = r.data;
+  if (w.weightImpact + w.weightInnovation + w.weightInfluence + w.weightReferences !== 100) {
+    return { success: false, fieldErrors: { total: ["The four weights must add up to 100"] } };
+  }
+  return { success: true, data: w };
+}
 
 export const categoryUpdateSchema = z.object({
   description: z
