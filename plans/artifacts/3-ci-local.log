@@ -1,0 +1,37 @@
+ci-local: b3d50d5 on 3-data-model-seed, node v24.22.1
+
+==> lint
+
+==> format:check
+Checking formatting...
+All matched files use Prettier code style!
+
+==> typecheck
+Generating route types...
+✓ Types generated successfully
+tests/e2e/global-setup.ts(7,75): error TS2769: No overload matches this call.
+  Overload 1 of 8, '(file: string, args: readonly string[], options: ExecFileSyncOptionsWithStringEncoding): string', gave the following error.
+    Type '{ NODE_ENV: string; DATABASE_URL: string; }' is not assignable to type 'ProcessEnv'.
+      Types of property 'NODE_ENV' are incompatible.
+        Type 'string' is not assignable to type '"development" | "production" | "test"'.
+  Overload 2 of 8, '(file: string, args: readonly string[], options: ExecFileSyncOptionsWithBufferEncoding): NonSharedBuffer', gave the following error.
+    Type '{ NODE_ENV: string; DATABASE_URL: string; }' is not assignable to type 'ProcessEnv'.
+      Types of property 'NODE_ENV' are incompatible.
+        Type 'string' is not assignable to type '"development" | "production" | "test"'.
+  Overload 3 of 8, '(file: string, args?: readonly string[] | undefined, options?: ExecFileSyncOptions | undefined): string | NonSharedBuffer', gave the following error.
+    Type '{ NODE_ENV: string; DATABASE_URL: string; }' is not assignable to type 'ProcessEnv'.
+      Types of property 'NODE_ENV' are incompatible.
+        Type 'string' is not assignable to type '"development" | "production" | "test"'.
+tests/e2e/global-setup.ts(8,85): error TS2769: No overload matches this call.
+  Overload 1 of 8, '(file: string, args: readonly string[], options: ExecFileSyncOptionsWithStringEncoding): string', gave the following error.
+    Type '{ NODE_ENV: string; DATABASE_URL: string; }' is not assignable to type 'ProcessEnv'.
+      Types of property 'NODE_ENV' are incompatible.
+        Type 'string' is not assignable to type '"development" | "production" | "test"'.
+  Overload 2 of 8, '(file: string, args: readonly string[], options: ExecFileSyncOptionsWithBufferEncoding): NonSharedBuffer', gave the following error.
+    Type '{ NODE_ENV: string; DATABASE_URL: string; }' is not assignable to type 'ProcessEnv'.
+      Types of property 'NODE_ENV' are incompatible.
+        Type 'string' is not assignable to type '"development" | "production" | "test"'.
+  Overload 3 of 8, '(file: string, args?: readonly string[] | undefined, options?: ExecFileSyncOptions | undefined): string | NonSharedBuffer', gave the following error.
+    Type '{ NODE_ENV: string; DATABASE_URL: string; }' is not assignable to type 'ProcessEnv'.
+      Types of property 'NODE_ENV' are incompatible.
+        Type 'string' is not assignable to type '"development" | "production" | "test"'.
