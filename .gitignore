@@ -29,3 +29,15 @@ build/
 
 # Claude Code local settings (not shared)
 .claude/settings.local.json
+
+# Next.js / tests
+/.next/
+/out/
+next-env.d.ts
+*.tsbuildinfo
+/coverage
+/playwright-report/
+/test-results/
+/blob-report/
+# Local uploads (dev storage driver)
+/storage/

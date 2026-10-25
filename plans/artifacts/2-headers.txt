@@ -1,0 +1,19 @@
+$ curl -sI http://localhost:3100/
+HTTP/1.1 200 OK
+X-Content-Type-Options: nosniff
+Referrer-Policy: strict-origin-when-cross-origin
+X-Frame-Options: DENY
+Cross-Origin-Opener-Policy: same-origin
+Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()
+Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
+content-security-policy: default-src 'self'; script-src 'self' 'nonce-MDEyZDlkOGMtYTM2NC00YzgyLTkzN2ItZmRjODI0OGJmMWVl' 'strict-dynamic'; style-src 'self' 'nonce-MDEyZDlkOGMtYTM2NC00YzgyLTkzN2ItZmRjODI0OGJmMWVl'; style-src-attr 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self' https://checkout.stripe.com; frame-ancestors 'none'
+Vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch, Accept-Encoding
+Link: </>; rel=preconnect; crossorigin=""
+Cache-Control: private, no-cache, no-store, max-age=0, must-revalidate
+Content-Type: text/html; charset=utf-8
+Date: Sun, 25 Oct 2026 19:59:19 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+$ curl -s http://localhost:3100/api/health
+{"status":"ok","db":"ok"}

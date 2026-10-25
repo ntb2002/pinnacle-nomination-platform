@@ -5,11 +5,13 @@
 ## Now
 
 - **Done:** #1
-- **In progress:** —
-- **Next:** #2 App foundation
+- **In progress:** #2 App foundation (branch `2-app-foundation`)
+- **Next:** #3 Data model and seeded demo data
 - **Blockers:** none
 
 ## Needs human (collected from issues)
+
+- **Install the CI workflow (#2):** `cp docs/ci/ci.yml .github/workflows/ci.yml` and push. The agent's deny list blocks it from writing `.github/workflows/` (the permission prompt was denied, so I did not work around it). Until then each issue's [CI] evidence is a full `scripts/ci-local.sh` run, with the log committed under `plans/artifacts/`.
 
 - Enable the pre-commit hook once per clone: `git config core.hooksPath .githooks`. The agent's deny list blocks it from doing this itself (by design); until then the agent runs `.githooks/pre-commit` by hand before each commit, and CI will run the same checks once #2 replaces the placeholder workflow.
 
