@@ -1,0 +1,125 @@
+import { z } from "zod";
+import { endOfDayDeadline, zonedToUtc } from "@/lib/zoned-time";
+
+const dollars = (label: string) =>
+  z.coerce
+    .number({ error: `Enter the ${label} in whole dollars` })
+    .int(`Enter the ${label} in whole dollars`)
+    .min(1, `The ${label} must be at least $1`)
+    .max(100_000, `The ${label} must be $100,000 or less`);
+
+const dateField = (label: string) =>
+  z.string().regex(/^\d{4}-\d{2}-\d{2}$/, `Enter the ${label} as a date`);
+
+const datesSchema = z.object({
+  opensDate: dateField("opening date"),
+  opensTime: z.string().regex(/^\d{2}:\d{2}$/, "Enter the opening time"),
+  earlyDate: dateField("early deadline"),
+  regularDate: dateField("regular deadline"),
+  finalDate: dateField("final deadline"),
+});
+
+const feesSchema = z.object({
+  earlyFee: dollars("early fee"),
+  regularFee: dollars("regular fee"),
+  lateFee: dollars("late fee"),
+  finalistFee: dollars("finalist package fee"),
+});
+
+/**
+ * Cycle settings as entered in the admin form: Eastern dates/times and whole dollars,
+ * returned as exclusive UTC deadlines and cents. Dates and fees are validated
+ * independently so every problem is reported in one pass.
+ */
+export function parseCycleSettings(
+  raw: Record<string, unknown>,
+):
+  | { success: true; data: CycleSettings }
+  | { success: false; fieldErrors: Record<string, string[]> } {
+  const errors: Record<string, string[]> = {};
+  const add = (field: string, message: string) => (errors[field] ??= []).push(message);
+  const dates = datesSchema.safeParse(raw);
+  const fees = feesSchema.safeParse(raw);
+  for (const r of [dates, fees]) {
+    if (!r.success) for (const i of r.error.issues) add(String(i.path[0] ?? "_form"), i.message);
+  }
+  let window: Omit<CycleSettings, keyof FeeCents> | undefined;
+  if (dates.success) {
+    const v = dates.data;
+    const nominationsOpenAt = zonedToUtc(v.opensDate, v.opensTime);
+    const earlyDeadline = endOfDayDeadline(v.earlyDate);
+    const regularDeadline = endOfDayDeadline(v.regularDate);
+    const finalDeadline = endOfDayDeadline(v.finalDate);
+    if (!nominationsOpenAt) add("opensDate", "Enter a real opening date and time");
+    if (!earlyDeadline) add("earlyDate", "Enter a real early deadline");
+    if (!regularDeadline) add("regularDate", "Enter a real regular deadline");
+    if (!finalDeadline) add("finalDate", "Enter a real final deadline");
+    if (nominationsOpenAt && earlyDeadline && earlyDeadline <= nominationsOpenAt) {
+      add("earlyDate", "The early deadline must be after nominations open");
+    }
+    if (earlyDeadline && regularDeadline && regularDeadline <= earlyDeadline) {
+      add("regularDate", "The regular deadline must be after the early deadline");
+    }
+    if (regularDeadline && finalDeadline && finalDeadline <= regularDeadline) {
+      add("finalDate", "The final deadline must be after the regular deadline");
+    }
+    if (nominationsOpenAt && earlyDeadline && regularDeadline && finalDeadline) {
+      window = { nominationsOpenAt, earlyDeadline, regularDeadline, finalDeadline };
+    }
+  }
+  if (Object.keys(errors).length > 0 || !window || !fees.success) {
+    return { success: false, fieldErrors: errors };
+  }
+  return {
+    success: true,
+    data: {
+      ...window,
+      earlyFeeCents: fees.data.earlyFee * 100,
+      regularFeeCents: fees.data.regularFee * 100,
+      lateFeeCents: fees.data.lateFee * 100,
+      finalistFeeCents: fees.data.finalistFee * 100,
+    },
+  };
+}
+
+interface FeeCents {
+  earlyFeeCents: number;
+  regularFeeCents: number;
+  lateFeeCents: number;
+  finalistFeeCents: number;
+}
+
+export interface CycleSettings extends FeeCents {
+  nominationsOpenAt: Date;
+  earlyDeadline: Date;
+  regularDeadline: Date;
+  finalDeadline: Date;
+}
+
+const weight = z.coerce
+  .number()
+  .int("Weights are whole numbers")
+  .min(0, "Weights cannot be negative")
+  .max(100, "A weight cannot exceed 100");
+
+export const rubricWeightsSchema = z
+  .object({
+    weightImpact: weight,
+    weightInnovation: weight,
+    weightInfluence: weight,
+    weightReferences: weight,
+  })
+  .refine(
+    (w) => w.weightImpact + w.weightInnovation + w.weightInfluence + w.weightReferences === 100,
+    { message: "The four weights must add up to 100", path: ["total"] },
+  );
+
+export const categoryUpdateSchema = z.object({
+  description: z
+    .string()
+    .trim()
+    .min(20, "Write at least 20 characters")
+    .max(600, "Keep the description under 600 characters"),
+  rubricProfileId: z.uuid("Choose a rubric"),
+  enabled: z.boolean(),
+});

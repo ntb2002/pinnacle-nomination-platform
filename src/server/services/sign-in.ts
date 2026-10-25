@@ -36,7 +36,7 @@ export interface SignInRequest {
 export async function requestSignIn(req: SignInRequest): Promise<void> {
   const parsed = emailSchema.safeParse(req.email);
   if (!parsed.success) {
-    throw new ValidationError("Enter a valid email address.", {
+    throw new ValidationError("Check your email address.", {
       email: [parsed.error.issues[0]?.message ?? "Enter a valid email address."],
     });
   }

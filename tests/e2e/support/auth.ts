@@ -31,3 +31,22 @@ export async function requestLink(page: Page, email: string): Promise<string> {
   await expect(page.getByRole("status")).toContainText("Check your email");
   return latestSignInLink(email);
 }
+
+type Cookies = Awaited<ReturnType<ReturnType<Page["context"]>["cookies"]>>;
+const sessions = new Map<string, Cookies>();
+
+/**
+ * Signs in once per account per test run and reuses the session cookie afterwards, so
+ * suites that need a role don't exhaust the per-email sign-in rate limit. Falls back to
+ * the full flow when the cached session is no longer valid (e.g. after sign-out).
+ */
+export async function signInAs(page: Page, email: string, next = "/") {
+  const cached = sessions.get(email);
+  if (cached) {
+    await page.context().addCookies(cached);
+    await page.goto(next);
+    if (await page.getByRole("button", { name: "Sign out" }).isVisible()) return;
+  }
+  await signIn(page, email, next);
+  sessions.set(email, await page.context().cookies());
+}

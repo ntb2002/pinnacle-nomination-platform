@@ -35,6 +35,10 @@ docs/ci/ci.yml            the CI workflow (install to .github/workflows/)
 
 Pages `/`, `/categories`, `/fees`, `/methodology`, `/judges`, `/conflict-of-interest` render per request from `src/server/services/public-program.ts`, which selects only public columns: the active cycle's dates, fees and phase; enabled categories; rubric weights; judges with `is_public`, `active`, role JUDGE and not disabled. Fees and the current tier come from `entryFeeFor`, and the weights shown are the stored ones the scoring uses. `DEMO_MODE=true` adds a banner saying the data is fictional.
 
+## Admin program settings
+
+`/admin/settings`, `/admin/categories`, `/admin/rubrics` (admin layout + `requireRole` on every page and action) call `src/server/services/program-settings.ts`. Each change locks the active cycle row (`SELECT … FOR UPDATE`), validates (`src/lib/validation/program-settings.ts`), writes, and audits before/after in one transaction. Rules: deadlines entered as Eastern dates and stored as exclusive end-of-day instants, strictly ordered; fees in whole dollars stored as cents; rubric weights integers summing to 100 and frozen once the cycle leaves NOMINATION; a category's rubric is frozen too; core categories are always offered; an optional category with submitted entries cannot be withdrawn.
+
 ## Authentication and authorization
 
 - **Sign-in** is passwordless (Better Auth magic links, `src/server/auth/auth.ts`). The sign-in form posts to a server action (`src/app/actions/auth.ts` → `src/server/services/sign-in.ts`) that validates and lowercases the email, rate-limits per IP (20/15 min, IPv6 by /64; checked first) and per email (5/15 min) with a sliding window in Postgres (`src/server/rate-limit.ts`, hashed keys). The client IP is the `TRUSTED_PROXY_HOPS`-th `X-Forwarded-For` entry from the right (`src/server/request.ts`); the spoofable leftmost value is never used, and an unknown IP is not bucketed, then asks Better Auth to issue a token (stored hashed, 15-minute expiry, single use). The response is the same whether or not an account exists.

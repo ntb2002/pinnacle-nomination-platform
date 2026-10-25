@@ -5,8 +5,8 @@
 ## Now
 
 - **Done:** #1, #2, #3, #4, #5
-- **In progress:** —
-- **Next:** #6 Admin program settings
+- **In progress:** #6 Admin program settings (branch `6-admin-settings`)
+- **Next:** #7 Nomination form and nominator dashboard
 - **Blockers:** none
 
 ## Needs human (collected from issues)

@@ -3,15 +3,25 @@
 import { useEffect, useRef } from "react";
 import type { ActionState } from "@/lib/action-state";
 
-/** Announces a form's result (alert for errors, status for success) and takes focus. */
-export function FormMessage({ state }: { state: ActionState }) {
+/**
+ * Announces a form's result and takes focus. Errors list each field problem as a link
+ * to the field (the error-summary pattern), so keyboard and screen-reader users can
+ * jump straight to it. `labels` maps field names to the label text shown in the list.
+ */
+export function FormMessage({
+  state,
+  labels = {},
+}: {
+  state: ActionState;
+  labels?: Record<string, string>;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    // Move focus to the result so keyboard and screen-reader users hear it.
     if (state.status !== "idle") ref.current?.focus();
   }, [state]);
   if (state.status === "idle" || !state.message) return null;
   const error = state.status === "error";
+  const fieldErrors = Object.entries(state.fieldErrors ?? {}).filter(([k]) => k !== "_form");
   return (
     <div
       ref={ref}
@@ -20,6 +30,18 @@ export function FormMessage({ state }: { state: ActionState }) {
       className={`rounded border-l-4 px-4 py-3 ${error ? "border-danger bg-danger-bg text-danger" : "border-success bg-success-bg text-success"}`}
     >
       <p className="font-semibold">{state.message}</p>
+      {error && fieldErrors.length > 0 && (
+        <ul className="mt-2 list-disc pl-5">
+          {fieldErrors.map(([field, messages]) => (
+            <li key={field}>
+              <a href={`#${field}`} className="underline">
+                {labels[field] ? `${labels[field]}: ` : ""}
+                {messages[0]}
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

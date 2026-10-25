@@ -5,6 +5,10 @@ import { env } from "@/lib/env";
 import * as schema from "./schema";
 
 export type Database = NodePgDatabase<typeof schema>;
+/** A transaction handle, as passed to `db.transaction(async (tx) => …)`. */
+export type Transaction = Parameters<Parameters<Database["transaction"]>[0]>[0];
+/** Anything queries can run on: the shared client or an open transaction. */
+export type DbExecutor = Database | Transaction;
 
 // One pool per server process, created on first use (so `next build` does not need
 // DATABASE_URL). In dev, hot reload re-evaluates modules, so the pool lives on globalThis.

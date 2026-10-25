@@ -83,6 +83,8 @@ npm run db:generate           # after editing src/server/db/tables/*: writes a n
 - **Status changes go through the service state machines** (`docs/architecture.md`), never `db.update(entry).set({ status })` from a route.
 - **Accessibility is a requirement (WCAG 2.1 AA).** Use the shared form primitives (`Field`, `ErrorSummary`), real labels, `aria-describedby` for hints/errors, visible focus, colour tokens from `globals.css`. Every new page gets an axe check in e2e.
 - **Files under ~300 lines.** Split by responsibility when a file grows.
+- **E2E sign-in:** suites that just need a role use `signInAs()` (cached session per account); only auth tests use the full `signIn()` flow. Repeated full sign-ins hit the real per-email rate limit.
+- **Dates:** admins enter Eastern dates/times; convert with `src/lib/zoned-time.ts` (deadlines are exclusive instants at the end of an Eastern day) and display with `src/lib/dates.ts`.
 - **Tests with every unit.** Pure logic → unit test; service rules → integration test on Postgres; user flow → Playwright. Seed and fixtures use fake data only (`example.com`/`example.org`).
 
 ## Common-mistake antipatterns
