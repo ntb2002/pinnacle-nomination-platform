@@ -5,6 +5,7 @@ const valid = {
   NODE_ENV: "development",
   APP_URL: "http://localhost:3000",
   DATABASE_URL: "postgresql://u:p@localhost:5432/db",
+  BETTER_AUTH_SECRET: "x".repeat(32),
 };
 
 describe("parseEnv", () => {
@@ -32,11 +33,56 @@ describe("parseEnv", () => {
       APP_URL: valid.APP_URL,
     });
     expect(
-      parseEnv({ ...valid, NODE_ENV: "production", APP_URL: "https://pinnacle.example.edu" }),
+      parseEnv({
+        ...valid,
+        NODE_ENV: "production",
+        APP_URL: "https://pinnacle.example.edu",
+        EMAIL_TRANSPORT: "smtp",
+        SMTP_URL: "smtps://u:p@smtp.example.edu:465",
+        EMAIL_FROM: "Pinnacle Awards <pinnacle@example.edu>",
+      }),
     ).toMatchObject({ NODE_ENV: "production" });
+  });
+
+  it("requires SMTP in real production and a strong auth secret", () => {
+    const prod = { ...valid, NODE_ENV: "production", APP_URL: "https://pinnacle.example.edu" };
+    expect(() => parseEnv(prod)).toThrow(/EMAIL_TRANSPORT/);
+    expect(() => parseEnv({ ...prod, EMAIL_TRANSPORT: "smtp" })).toThrow(/SMTP_URL/);
+    expect(() => parseEnv({ ...valid, BETTER_AUTH_SECRET: "short" })).toThrow(/BETTER_AUTH_SECRET/);
+    expect(() => parseEnv({ ...valid, BETTER_AUTH_SECRET: undefined })).toThrow(
+      /BETTER_AUTH_SECRET/,
+    );
   });
 
   it("rejects a non-postgres DATABASE_URL", () => {
     expect(() => parseEnv({ ...valid, DATABASE_URL: "mysql://x" })).toThrow(/DATABASE_URL/);
+  });
+});
+
+describe("production-only rules", () => {
+  const prod = {
+    ...valid,
+    NODE_ENV: "production",
+    APP_URL: "https://pinnacle.example.edu",
+    EMAIL_TRANSPORT: "smtp",
+    SMTP_URL: "smtps://u:p@smtp.example.edu:465",
+    EMAIL_FROM: "Pinnacle Awards <pinnacle@example.edu>",
+  };
+  it("requires a sender and implicit-TLS SMTP", () => {
+    expect(parseEnv(prod)).toMatchObject({ EMAIL_TRANSPORT: "smtp" });
+    expect(() => parseEnv({ ...prod, EMAIL_FROM: undefined })).toThrow(/EMAIL_FROM/);
+    expect(() => parseEnv({ ...prod, SMTP_URL: "smtp://u:p@smtp.example.edu:587" })).toThrow(
+      /smtps/,
+    );
+  });
+  it("refuses BETTER_AUTH_TRUSTED_ORIGINS", () => {
+    expect(() =>
+      parseEnv({ ...valid, BETTER_AUTH_TRUSTED_ORIGINS: "https://evil.example" }),
+    ).toThrow(/BETTER_AUTH_TRUSTED_ORIGINS/);
+  });
+  it("tells real production from a local production build", async () => {
+    const { isRealProduction } = await import("@/lib/env");
+    expect(isRealProduction(parseEnv(prod))).toBe(true);
+    expect(isRealProduction(parseEnv({ ...valid, NODE_ENV: "production" }))).toBe(false);
   });
 });

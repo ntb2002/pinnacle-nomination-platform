@@ -44,6 +44,8 @@ jobs:
       DATABASE_URL: postgresql://pinnacle:pinnacle@localhost:5432/pinnacle_test
       TEST_DATABASE_URL: postgresql://pinnacle:pinnacle@localhost:5432/pinnacle_test
       E2E_DATABASE_URL: postgresql://pinnacle:pinnacle@localhost:5432/pinnacle_e2e
+      BETTER_AUTH_SECRET: test-only-secret-not-for-production-000000
+      EMAIL_TRANSPORT: outbox
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5

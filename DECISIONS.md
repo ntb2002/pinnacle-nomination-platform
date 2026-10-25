@@ -4,6 +4,13 @@
 >
 > Format: `### NNN — Title (date) — Status` · **Decision** · **Why** · **Rejected** · **Reverse cost**.
 
+### 005 — Passwordless sign-in with a confirmation step and a minimal auth surface (2026-10) — Accepted
+
+- **Decision:** Magic-link sign-in only (no passwords). Emailed links open a confirmation page; the single-use token is spent only by its button. Better Auth's HTTP API is allow-listed to the verify endpoint; sign-in requests and sign-out are server actions; rate limits live in Postgres. Roles are read from the database on every request.
+- **Why:** Nominators sign in a few times a year, so passwords would mostly generate resets and reuse risk. University mail runs link scanners that would otherwise burn tokens. Exposing only one auth endpoint removes sign-up/update APIs we don't use. Database-backed limits hold across instances without Redis. A per-request role read makes revocation immediate, which matters for judges with access to confidential entries.
+- **Rejected:** Passwords (support burden); Better Auth's built-in rate limiting (memory by default; a second mechanism); session cookie caching (stale roles); Syracuse SSO for staff now (needs IT onboarding: LAUNCH_READINESS).
+- **Reverse cost:** low to medium. SSO can be added as another Better Auth plugin for admins and judges.
+
 ### 004 — Drizzle ORM instead of Prisma (2026-10) — Accepted (supersedes the ORM part of 003)
 
 - **Decision:** Use Drizzle ORM 0.45 with `node-postgres` for data access. Schema in TypeScript (`src/server/db/tables/*`); `drizzle-kit generate` writes plain SQL migrations to `drizzle/`; `npm run db:migrate` applies them with drizzle's migrator (no CLI or binary needed at deploy time).

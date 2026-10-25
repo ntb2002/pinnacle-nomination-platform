@@ -23,6 +23,8 @@ export default defineConfig({
       NODE_ENV: "test",
       APP_URL: "http://localhost:3000",
       DATABASE_URL: testDatabaseUrl,
+      BETTER_AUTH_SECRET: "test-only-secret-not-for-production-000000",
+      EMAIL_TRANSPORT: "outbox",
     },
   },
 });

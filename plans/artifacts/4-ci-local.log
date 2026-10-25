@@ -1,0 +1,102 @@
+ci-local: 593079f on 4-auth-rbac-audit, node v24.22.1
+
+==> lint
+
+==> format:check
+Checking formatting...
+All matched files use Prettier code style!
+
+==> typecheck
+Generating route types...
+✓ Types generated successfully
+
+==> unit + integration tests
+
+ RUN  v5.0.5 /home/user/pinnacle-nomination-platform
+
+Database reset and migrated.
+
+ Test Files  14 passed (14)
+      Tests  64 passed (64)
+   Start at  20:59:45
+   Duration  14.56s (import 48%, tests 46%, transform 5%, worker 1%)
+
+    Isolate  14 workers spawned · ~146ms startup each (spawn + environment, per file)
+             at least ~1.90s faster with isolate: false — reuses workers across files instead of one per file
+
+
+==> build
+▲ Next.js 16.4.3 (Turbopack)
+- Environments: .env
+✓ Running next.config.ts took 73ms
+- Experiments (use with caution):
+  ✓ authInterrupts
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 725ms
+  Running TypeScript ...
+  Finished TypeScript in 3.6s ...
+  Collecting page data using 3 workers ...
+  Generating static pages using 3 workers (0/1) ...
+✓ Generating static pages using 3 workers (1/1) in 113ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ƒ /
+├ ƒ /_not-found
+├ ƒ /admin
+├ ƒ /api/auth/[...all]
+├ ƒ /api/health
+├ ƒ /dev/mailbox
+├ ƒ /entries
+├ ƒ /judge
+├ ƒ /sign-in
+└ ƒ /sign-in/confirm
+
+
+ƒ Proxy (Middleware)
+
+ƒ  (Dynamic)  server-rendered on demand
+
+Standalone output prepared.
+
+==> e2e
+Database reset and migrated.
+Seed complete. Row counts:
+  award_cycle          1
+  rubric_profile       2
+  category             9
+  user                 19
+  judge_profile        6
+  judge_assignment     36
+  entry                63
+  entry_outcome        148
+  entry_reference      88
+  entry_status_event   105
+  payment              57
+
+Running 18 tests using 1 worker
+
+  ✓   1 [chromium] › tests/e2e/auth.spec.ts:7:3 › authentication and role gates › sign-in page is accessible (2.4s)
+  ✓   2 [chromium] › tests/e2e/auth.spec.ts:17:3 › authentication and role gates › a nominator signs in with an emailed link and lands where they were going (2.2s)
+  ✓   3 [chromium] › tests/e2e/auth.spec.ts:30:3 › authentication and role gates › the emailed link works once; opening it does not spend it (2.9s)
+  ✓   4 [chromium] › tests/e2e/auth.spec.ts:46:3 › authentication and role gates › an expired link is refused (736ms)
+  ✓   5 [chromium] › tests/e2e/auth.spec.ts:55:3 › authentication and role gates › a link for a since-disabled account creates no session (863ms)
+[WebServer] 2026-10-25T21:00:23.312Z ERROR [Better Auth]: Invalid callbackURL: https://evil.example/
+  ✓   6 [chromium] › tests/e2e/auth.spec.ts:75:3 › authentication and role gates › verify refuses cross-site requests and foreign redirect targets (611ms)
+  ✓   7 [chromium] › tests/e2e/auth.spec.ts:104:3 › authentication and role gates › a signed-in user is never redirected off-site by next (1.7s)
+  ✓   8 [chromium] › tests/e2e/auth.spec.ts:113:3 › authentication and role gates › the confirmation page warns before switching accounts (1.8s)
+  ✓   9 [chromium] › tests/e2e/auth.spec.ts:125:3 › authentication and role gates › a nominator gets 403 on /admin and /judge (2.2s)
+  ✓  10 [chromium] › tests/e2e/auth.spec.ts:137:3 › authentication and role gates › anonymous visitors to protected areas are sent to sign-in (668ms)
+  ✓  11 [chromium] › tests/e2e/auth.spec.ts:146:3 › authentication and role gates › an admin reaches the admin area and the sign-in is audited (1.0s)
+  ✓  12 [chromium] › tests/e2e/auth.spec.ts:158:3 › authentication and role gates › Better Auth endpoints other than verify are not exposed (38ms)
+  ✓  13 [chromium] › tests/e2e/boot.spec.ts:4:1 › the server exits at boot when configuration is invalid (462ms)
+  ✓  14 [chromium] › tests/e2e/home.spec.ts:5:3 › home and base layout › renders the home page with no accessibility violations (1.3s)
+  ✓  15 [chromium] › tests/e2e/home.spec.ts:15:3 › home and base layout › skip link moves focus to main content (437ms)
+  ✓  16 [chromium] › tests/e2e/home.spec.ts:24:3 › home and base layout › sends a nonce-based CSP and security headers (26ms)
+  ✓  17 [chromium] › tests/e2e/home.spec.ts:35:3 › home and base layout › unknown routes get a branded 404 with no CSP violations (1.8s)
+  ✓  18 [chromium] › tests/e2e/home.spec.ts:50:3 › home and base layout › health endpoint reports the database (24ms)
+
+  18 passed (27.0s)
+
+ci-local: all steps passed
