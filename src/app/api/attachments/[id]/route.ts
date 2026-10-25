@@ -1,14 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { contentDisposition } from "@/lib/file-rules";
 import { clientIpFrom } from "@/server/request";
 import { getActor } from "@/server/auth/session";
 import { NotFoundError } from "@/server/errors";
 import { openAttachment } from "@/server/services/attachments";
-
-/** `filename*` (RFC 6266/5987) for the real name, plus a plain ASCII fallback. */
-function contentDisposition(name: string) {
-  const ascii = name.replace(/[^\x20-\x7e]/g, "_").replace(/["\\]/g, "_");
-  return `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(name)}`;
-}
 
 /**
  * Downloads a supporting file for anyone allowed to read its entry (see

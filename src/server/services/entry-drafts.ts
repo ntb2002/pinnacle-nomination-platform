@@ -6,8 +6,8 @@ import { assertRole, type Actor } from "@/server/auth/actor";
 import { db, type Transaction } from "@/server/db";
 import { attachment, entry, entryOutcome, entryReference, payment } from "@/server/db/schema";
 import { ConflictError, NotFoundError, ValidationError } from "@/server/errors";
-import { storage } from "@/server/storage";
 import { fieldErrorsOf } from "@/server/validation";
+import { removeBytes } from "./attachments";
 import { EDITABLE_STATUSES } from "./entries";
 
 const blankToNull = (v: string | undefined) => (v && v.trim() !== "" ? v.trim() : null);
@@ -131,7 +131,6 @@ export async function deleteDraft(actor: Actor, entryId: string) {
     await tx.delete(entry).where(eq(entry.id, entryId));
     return files.map((f) => f.key);
   });
-  // The rows went with the entry; now the stored bytes. A failure here leaves an
-  // orphaned file but never a dangling row.
-  for (const key of keys) await storage().delete(key);
+  // The rows went with the entry; now the stored bytes (best effort).
+  await removeBytes(keys);
 }

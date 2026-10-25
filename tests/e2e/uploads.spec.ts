@@ -1,6 +1,9 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 import { expectNoAxeViolations } from "./support/axe";
 import { signInAs } from "./support/auth";
+import { e2eDb } from "./support/db";
 
 const PDF = Buffer.from("%PDF-1.4\n1 0 obj << >> endobj\ntrailer << >>\n%%EOF\n");
 
@@ -42,6 +45,7 @@ test.describe("supporting files", () => {
     expect(res.headers()["content-disposition"]).toContain("filename*=UTF-8''Q3%20results.pdf");
     expect(res.headers()["x-content-type-options"]).toBe("nosniff");
     expect(res.headers()["cache-control"]).toBe("private, no-store");
+    expect(res.headers()["content-security-policy"]).toBe("default-src 'none'; sandbox");
     expect(Buffer.from(await res.body()).equals(PDF)).toBe(true);
 
     // HTML renamed to .pdf is refused by its content.
@@ -65,6 +69,21 @@ test.describe("supporting files", () => {
     await expect(page.getByRole("status").filter({ hasText: "File removed." })).toBeFocused();
     await expect(files.getByText("No files added.")).toBeVisible();
     expect((await page.request.get(href)).status()).toBe(404);
+  });
+
+  test("uploading keeps unsaved changes in the entry form", async ({ page }) => {
+    await startDraft(page, "nominator17@example.com");
+    await page.getByLabel("Full name").first().fill("Not Yet Saved");
+    const files = page.locator("#files");
+    await files.getByLabel("Add a file").setInputFiles({
+      name: "evidence.png",
+      mimeType: "image/png",
+      buffer: readFileSync(path.join(import.meta.dirname, "../fixtures/sample.png")),
+    });
+    await files.getByRole("button", { name: "Upload the file" }).click();
+    await expect(page.getByRole("status").filter({ hasText: "File uploaded." })).toBeFocused();
+    await expect(files.getByRole("link", { name: "evidence.png" })).toBeVisible();
+    await expect(page.getByLabel("Full name").first()).toHaveValue("Not Yet Saved");
   });
 
   test("an oversized file is stopped before it is sent", async ({ page }) => {
@@ -107,5 +126,31 @@ test.describe("supporting files", () => {
     expect((await anon.request.get(new URL(href, page.url()).href)).status()).toBe(404);
     await other.close();
     await anon.close();
+  });
+
+  test("the server refuses oversized bodies and entries that are not editable", async ({
+    page,
+  }) => {
+    const { rows } = await e2eDb().query(
+      `SELECT e.id, u.email FROM entry e JOIN "user" u ON u.id = e.nominator_id
+       WHERE e.status = 'SUBMITTED' ORDER BY u.email LIMIT 1`,
+    );
+    const { id, email } = rows[0] as { id: string; email: string };
+    await signInAs(page, email);
+    const origin = new URL(page.url()).origin;
+    const post = (buffer: Buffer) =>
+      page.request.post(`/api/entries/${id}/attachments`, {
+        headers: { origin },
+        multipart: { file: { name: "x.pdf", mimeType: "application/pdf", buffer } },
+        maxRedirects: 0,
+      });
+    const closed = await post(
+      readFileSync(path.join(import.meta.dirname, "../fixtures/sample.pdf")),
+    );
+    expect(closed.status()).toBe(303);
+    expect(closed.headers()["location"]).toContain("uploadError=closed");
+    const big = await post(Buffer.alloc(11 * 1024 * 1024, 0x25));
+    expect(big.status()).toBe(303);
+    expect(big.headers()["location"]).toContain("uploadError=size");
   });
 });

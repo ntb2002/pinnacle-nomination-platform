@@ -1,5 +1,8 @@
+import { readdir, rm } from "node:fs/promises";
+import path from "node:path";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
+import { env } from "@/lib/env";
 import type { Actor } from "@/server/auth/actor";
 import { closeDb } from "@/server/db";
 import { attachment, auditLog, conflictDeclaration, entry } from "@/server/db/schema";
@@ -17,7 +20,11 @@ import { createActor } from "../support/actors";
 import { db, resetTables } from "../support/db";
 import { assignJudge, createCategory, createEntry, createProgram } from "../support/factories";
 
-beforeEach(resetTables);
+beforeEach(async () => {
+  await resetTables();
+  // Start each test with empty storage (the test STORAGE_DIR, see vitest.config.ts).
+  await rm(path.resolve(env().STORAGE_DIR), { recursive: true, force: true });
+});
 afterAll(closeDb);
 
 const pdf = (body = "hello") => ({
@@ -80,6 +87,23 @@ describe("uploading", () => {
     const { owner, entry } = await setup();
     for (let i = 0; i < 5; i++) await uploadAttachment(owner, entry.id, pdf(String(i)));
     expect(await rejection(uploadAttachment(owner, entry.id, pdf()))).toBe("count");
+  });
+
+  it("keeps the five-file limit under concurrent uploads", async () => {
+    const { owner, entry: e } = await setup();
+    const results = await Promise.allSettled(
+      Array.from({ length: 6 }, (_, i) => uploadAttachment(owner, e.id, pdf(String(i)))),
+    );
+    expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(5);
+    expect(await db.select().from(attachment)).toHaveLength(5);
+    // The refused upload's bytes were removed again: only five files on disk.
+    const dir = path.resolve(env().STORAGE_DIR);
+    const stored = (await readdir(dir, { recursive: true, withFileTypes: true })).filter((d) =>
+      d.isFile(),
+    );
+    const keys = new Set((await db.select().from(attachment)).map((r) => r.storageKey));
+    expect(stored.filter((d) => keys.has(d.name))).toHaveLength(5);
+    expect(stored.filter((d) => !keys.has(d.name))).toEqual([]);
   });
 
   it("refuses another nominator's entry, a submitted entry, and other roles", async () => {
@@ -181,6 +205,14 @@ describe("removing", () => {
     await deleteAttachment(owner, row.id);
     expect(await db.select().from(attachment)).toHaveLength(0);
     expect(await storage().get(row.storageKey)).toBeNull();
+  });
+
+  it("refuses removal once the entry is submitted", async () => {
+    const { owner, entry: e } = await setup();
+    const row = await uploaded(owner, e.id);
+    await db.update(entry).set({ status: "SUBMITTED" }).where(eq(entry.id, e.id));
+    await expect(deleteAttachment(owner, row.id)).rejects.toBeInstanceOf(NotFoundError);
+    expect(await storage().get(row.storageKey)).not.toBeNull();
   });
 
   it("deleting a draft removes its stored files too", async () => {

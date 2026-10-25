@@ -11,7 +11,7 @@ const ENVELOPE_BYTES = 64 * 1024;
 /**
  * Uploads one supporting file from the plain multipart form on the edit page, then
  * redirects back to it (303) with ?upload=ok or ?uploadError=<code>. Works without
- * JavaScript. Excluded from the proxy (src/proxy.ts) so the proxy does not buffer
+ * JavaScript; the page's script sends `x-upload-client: fetch` and gets JSON instead. Excluded from the proxy (src/proxy.ts) so the proxy does not buffer
  * the body; this handler checks origin, size and session itself.
  */
 export async function POST(
@@ -25,7 +25,11 @@ export async function POST(
     return new NextResponse("Cross-origin upload refused.", { status: 403 });
   }
   if (!isUuid(id)) return new NextResponse("Not found.", { status: 404 });
+  // The page's script uploads with fetch (so unsaved form edits survive) and asks for
+  // JSON; a plain form post gets a redirect.
+  const wantsJson = request.headers.get("x-upload-client") === "fetch";
   const back = (result: { ok: true } | { error: UploadErrorCode }) => {
+    if (wantsJson) return NextResponse.json(result, { status: "ok" in result ? 200 : 400 });
     const url = new URL(`/entries/${id}/edit`, appOrigin);
     if ("ok" in result) url.searchParams.set("upload", "ok");
     else url.searchParams.set("uploadError", result.error);
@@ -35,6 +39,7 @@ export async function POST(
 
   const actor = await getActor();
   if (!actor) {
+    if (wantsJson) return NextResponse.json({ error: "signin" }, { status: 401 });
     const signIn = new URL("/sign-in", appOrigin);
     signIn.searchParams.set("next", `/entries/${id}/edit`);
     return NextResponse.redirect(signIn, 303);

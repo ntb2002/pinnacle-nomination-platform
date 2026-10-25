@@ -43,7 +43,7 @@ export function FilesSection({
       </p>
       {n && (
         <FlashNotice
-          key={`${n.text}:${files.map((f) => f.id).join(",")}`}
+          key={`${n.text}:${String(query.t ?? "")}:${files.map((f) => f.id).join(",")}`}
           id="files-message"
           error={n.error}
           text={n.text}
@@ -59,7 +59,11 @@ export function FilesSection({
           </form>
         )}
       />
-      <UploadForm entryId={entryId} full={files.length >= UPLOAD_RULES.maxFiles} />
+      <UploadForm
+        entryId={entryId}
+        full={files.length >= UPLOAD_RULES.maxFiles}
+        serverError={n?.error ? "files-message" : undefined}
+      />
     </section>
   );
 }

@@ -57,6 +57,8 @@ export function s3Storage(cfg: { bucket: string; region: string; endpoint?: stri
     region: cfg.region,
     endpoint: cfg.endpoint,
     forcePathStyle: !!cfg.endpoint,
+    // Bounded waits: a hung storage service fails the upload instead of hanging it.
+    requestHandler: { connectionTimeout: 5_000, requestTimeout: 30_000 },
   });
   return {
     async put(key, bytes, contentType) {
@@ -77,7 +79,9 @@ export function s3Storage(cfg: { bucket: string; region: string; endpoint?: stri
         const res = await client.send(new GetObjectCommand({ Bucket: cfg.bucket, Key: key }));
         return res.Body ? new Uint8Array(await res.Body.transformToByteArray()) : null;
       } catch (err) {
-        if ((err as { name?: string }).name === "NoSuchKey") return null;
+        const e = err as { name?: string; $metadata?: { httpStatusCode?: number } };
+        // AWS names it; some S3-compatible services only send the status.
+        if (e.name === "NoSuchKey" || e.$metadata?.httpStatusCode === 404) return null;
         throw err;
       }
     },

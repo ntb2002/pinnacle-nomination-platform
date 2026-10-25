@@ -11,7 +11,7 @@ import {
 import { isUuid } from "@/lib/ids";
 import { audit } from "@/server/audit";
 import { assertRole, type Actor } from "@/server/auth/actor";
-import { db } from "@/server/db";
+import { db, type DbExecutor } from "@/server/db";
 import { attachment, entry } from "@/server/db/schema";
 import { NotFoundError, ValidationError } from "@/server/errors";
 import { storage } from "@/server/storage";
@@ -44,29 +44,15 @@ export async function uploadAttachment(
 
   const key = randomUUID();
   const sha256 = createHash("sha256").update(file.bytes).digest("hex");
-  await db
-    .transaction(async (tx) => {
-      const [owned] = await tx
-        .select({ id: entry.id })
-        .from(entry)
-        .where(
-          and(
-            eq(entry.id, entryId),
-            eq(entry.nominatorId, actor.id),
-            inArray(entry.status, [...EDITABLE_STATUSES]),
-          ),
-        )
-        .for("update");
-      if (!owned) throw new UploadRejected("closed");
-      const [existing] = await tx
-        .select({ n: count() })
-        .from(attachment)
-        .where(eq(attachment.entryId, entryId));
-      if ((existing?.n ?? 0) >= UPLOAD_RULES.maxFiles) {
-        throw new UploadRejected("count");
-      }
-      // Store first, then record: a failed insert removes the stored file below.
-      await storage().put(key, file.bytes, type);
+  // Cheap refusal before anything is stored; re-checked under the lock below.
+  await checkUploadAllowed(db, actor, entryId);
+  // The bytes are written outside the transaction, so a slow storage service never
+  // holds a database connection or the entry lock. Any refusal or failure afterwards
+  // removes them again.
+  await storage().put(key, file.bytes, type);
+  try {
+    await db.transaction(async (tx) => {
+      await checkUploadAllowed(tx, actor, entryId, true);
       await tx.insert(attachment).values({
         entryId,
         storageKey: key,
@@ -76,13 +62,46 @@ export async function uploadAttachment(
         sha256,
         uploadedById: actor.id,
       });
-    })
-    .catch(async (err) => {
-      await storage()
-        .delete(key)
-        .catch(() => undefined);
-      throw err;
     });
+  } catch (err) {
+    await removeBytes([key]);
+    throw err;
+  }
+}
+
+/** The entry is the actor's, editable, and below the file limit. `lock` serializes uploads. */
+async function checkUploadAllowed(tx: DbExecutor, actor: Actor, entryId: string, lock = false) {
+  const owned = tx
+    .select({ id: entry.id })
+    .from(entry)
+    .where(
+      and(
+        eq(entry.id, entryId),
+        eq(entry.nominatorId, actor.id),
+        inArray(entry.status, [...EDITABLE_STATUSES]),
+      ),
+    );
+  const [row] = lock ? await owned.for("update") : await owned;
+  if (!row) throw new UploadRejected("closed");
+  const [existing] = await tx
+    .select({ n: count() })
+    .from(attachment)
+    .where(eq(attachment.entryId, entryId));
+  if ((existing?.n ?? 0) >= UPLOAD_RULES.maxFiles) throw new UploadRejected("count");
+}
+
+/**
+ * Deletes stored bytes whose rows are already gone. Best effort: a failure leaves an
+ * orphaned file (logged, never a dangling row) and does not fail the user's action.
+ */
+export async function removeBytes(keys: string[]) {
+  const results = await Promise.allSettled(keys.map((k) => storage().delete(k)));
+  for (const r of results) {
+    if (r.status === "rejected") {
+      const e = r.reason as { name?: string; code?: string };
+      console.error("Stored file not removed:", e?.name ?? typeof r.reason, e?.code ?? "");
+    }
+  }
 }
 
 /** Files on an entry, for anyone allowed to read the entry. */
@@ -101,11 +120,11 @@ export async function listAttachments(actor: Actor, entryId: string) {
     .orderBy(asc(attachment.createdAt));
 }
 
-/** Nominator: removes a file from their own editable entry (row and stored bytes). */
+/** Nominator: removes a file from their own editable entry (row, then bytes). Returns its entry id. */
 export async function deleteAttachment(actor: Actor, attachmentId: string) {
   assertRole(actor, "NOMINATOR");
   if (!isUuid(attachmentId)) throw new NotFoundError("file");
-  const key = await db.transaction(async (tx) => {
+  const removed = await db.transaction(async (tx) => {
     const [row] = await tx
       .select({ key: attachment.storageKey, entryId: attachment.entryId })
       .from(attachment)
@@ -120,9 +139,10 @@ export async function deleteAttachment(actor: Actor, attachmentId: string) {
       .for("update");
     if (!row) throw new NotFoundError("file");
     await tx.delete(attachment).where(eq(attachment.id, attachmentId));
-    return row.key;
+    return row;
   });
-  await storage().delete(key);
+  await removeBytes([removed.key]);
+  return removed.entryId;
 }
 
 /**
