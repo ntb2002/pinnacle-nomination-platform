@@ -35,9 +35,12 @@ test.describe("forms without JavaScript", () => {
     const page = await noJsPage(browser, "admin@example.org");
     await page.goto(`/admin/entries/${rows[0].id}`);
     await page.getByRole("button", { name: "Return the entry" }).click();
-    await expect(page.getByText("Choose why the entry is being returned")).toBeVisible({
-      timeout: 5000,
-    });
+    await expect(page.locator("#reason-error")).toHaveText(
+      "Choose why the entry is being returned",
+      {
+        timeout: 5000,
+      },
+    );
     await page.context().close();
   });
 });

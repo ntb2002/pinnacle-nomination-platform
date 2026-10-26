@@ -1,4 +1,4 @@
-ci-local: f3ced73 on 10-admin-triage, node v24.22.1
+ci-local: 0bbdec7 on 10-admin-triage, node v24.22.1
 
 ==> lint
 
@@ -17,37 +17,41 @@ Generating route types...
 Database reset and migrated.
 <claude-code-hint v="1" type="plugin" value="stripe@claude-plugins-official" />
 <claude-code-hint v="1" type="plugin" value="stripe@claude-plugins-official" />
+(node:15324) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
 <claude-code-hint v="1" type="plugin" value="stripe@claude-plugins-official" />
 <claude-code-hint v="1" type="plugin" value="stripe@claude-plugins-official" />
 <claude-code-hint v="1" type="plugin" value="stripe@claude-plugins-official" />
 
  Test Files  24 passed (24)
-      Tests  168 passed (168)
-   Start at  00:16:33
-   Duration  35.86s (tests 57%, import 40%, transform 2%, worker 1%)
+      Tests  173 passed (173)
+   Start at  00:56:32
+   Duration  39.61s (tests 59%, import 38%, transform 2%, worker 1%)
 
-    Isolate  24 workers spawned · ~162ms startup each (spawn + environment, per file)
-             at least ~3.72s faster with isolate: false — reuses workers across files instead of one per file
+    Isolate  24 workers spawned · ~175ms startup each (spawn + environment, per file)
+             at least ~4.02s faster with isolate: false — reuses workers across files instead of one per file
 
 
 ==> build
 ▲ Next.js 16.4.3 (Turbopack)
 - Environments: .env
-✓ Running next.config.ts took 53ms
+✓ Running next.config.ts took 59ms
 - Experiments (use with caution):
   ✓ authInterrupts
 
   Creating an optimized production build ...
-✓ Compiled successfully in 1352ms
+✓ Compiled successfully in 1369ms
   Running TypeScript ...
-  Finished TypeScript in 4.8s ...
+  Finished TypeScript in 6.2s ...
   Collecting page data using 3 workers ...
 <claude-code-hint v="1" type="plugin" value="stripe@claude-plugins-official" />
 <claude-code-hint v="1" type="plugin" value="stripe@claude-plugins-official" />
 <claude-code-hint v="1" type="plugin" value="stripe@claude-plugins-official" />
 <claude-code-hint v="1" type="plugin" value="stripe@claude-plugins-official" />
+<claude-code-hint v="1" type="plugin" value="stripe@claude-plugins-official" />
+<claude-code-hint v="1" type="plugin" value="stripe@claude-plugins-official" />
   Generating static pages using 3 workers (0/2) ...
-✓ Generating static pages using 3 workers (2/2) in 129ms
+✓ Generating static pages using 3 workers (2/2) in 169ms
   Finalizing page optimization ...
 
 Route (app)
@@ -102,61 +106,65 @@ Seed complete. Row counts:
   entry_status_event   105
   payment              57
 
-Running 49 tests using 1 worker
+Running 51 tests using 1 worker
 
-  ✓   1 [chromium] › tests/e2e/admin-settings.spec.ts:11:3 › admin program settings › changing the regular fee updates the public fees page (3.7s)
-  ✓   2 [chromium] › tests/e2e/admin-settings.spec.ts:35:3 › admin program settings › shows linked errors for out-of-order deadlines and keeps the typed values (2.1s)
-  ✓   3 [chromium] › tests/e2e/admin-settings.spec.ts:55:3 › admin program settings › rubric weights must total 100 and lock once judging starts (2.3s)
-  ✓   4 [chromium] › tests/e2e/admin-settings.spec.ts:84:3 › admin program settings › withdrawing an optional category with submitted entries is refused, keeping the typed text (2.7s)
-  ✓   5 [chromium] › tests/e2e/admin-settings.spec.ts:109:3 › admin program settings › non-admins cannot reach admin settings (2.5s)
-  ✓   6 [chromium] › tests/e2e/auth.spec.ts:7:3 › authentication and role gates › sign-in page is accessible (2.3s)
+  ✓   1 [chromium] › tests/e2e/admin-settings.spec.ts:11:3 › admin program settings › changing the regular fee updates the public fees page (4.2s)
+  ✓   2 [chromium] › tests/e2e/admin-settings.spec.ts:35:3 › admin program settings › shows linked errors for out-of-order deadlines and keeps the typed values (2.3s)
+  ✓   3 [chromium] › tests/e2e/admin-settings.spec.ts:55:3 › admin program settings › rubric weights must total 100 and lock once judging starts (2.4s)
+  ✓   4 [chromium] › tests/e2e/admin-settings.spec.ts:84:3 › admin program settings › withdrawing an optional category with submitted entries is refused, keeping the typed text (3.1s)
+  ✓   5 [chromium] › tests/e2e/admin-settings.spec.ts:109:3 › admin program settings › non-admins cannot reach admin settings (2.7s)
+  ✓   6 [chromium] › tests/e2e/auth.spec.ts:7:3 › authentication and role gates › sign-in page is accessible (2.4s)
 [WebServer] <claude-code-hint v="1" type="plugin" value="stripe@claude-plugins-official" />
-  ✓   7 [chromium] › tests/e2e/auth.spec.ts:17:3 › authentication and role gates › a nominator signs in with an emailed link and lands where they were going (2.5s)
+  ✓   7 [chromium] › tests/e2e/auth.spec.ts:17:3 › authentication and role gates › a nominator signs in with an emailed link and lands where they were going (2.2s)
   ✓   8 [chromium] › tests/e2e/auth.spec.ts:30:3 › authentication and role gates › the emailed link works once; opening it does not spend it (3.4s)
-  ✓   9 [chromium] › tests/e2e/auth.spec.ts:46:3 › authentication and role gates › an expired link is refused (846ms)
-  ✓  10 [chromium] › tests/e2e/auth.spec.ts:55:3 › authentication and role gates › a link for a since-disabled account creates no session (1.1s)
-[WebServer] 2026-10-26T00:17:50.624Z ERROR [Better Auth]: Invalid callbackURL: https://evil.example/
-  ✓  11 [chromium] › tests/e2e/auth.spec.ts:75:3 › authentication and role gates › verify refuses cross-site requests and foreign redirect targets (653ms)
-  ✓  12 [chromium] › tests/e2e/auth.spec.ts:104:3 › authentication and role gates › a signed-in user is never redirected off-site by next (1.8s)
-  ✓  13 [chromium] › tests/e2e/auth.spec.ts:113:3 › authentication and role gates › the confirmation page warns before switching accounts (1.9s)
-  ✓  14 [chromium] › tests/e2e/auth.spec.ts:125:3 › authentication and role gates › a nominator gets 403 on /admin and /judge (2.4s)
-  ✓  15 [chromium] › tests/e2e/auth.spec.ts:137:3 › authentication and role gates › anonymous visitors to protected areas are sent to sign-in (747ms)
-  ✓  16 [chromium] › tests/e2e/auth.spec.ts:146:3 › authentication and role gates › an admin reaches the admin area and the sign-in is audited (1.1s)
-  ✓  17 [chromium] › tests/e2e/auth.spec.ts:158:3 › authentication and role gates › Better Auth endpoints other than verify are not exposed (43ms)
-  ✓  18 [chromium] › tests/e2e/boot.spec.ts:4:1 › the server exits at boot when configuration is invalid (610ms)
-  ✓  19 [chromium] › tests/e2e/home.spec.ts:5:3 › home and base layout › renders the home page with no accessibility violations (1.5s)
-  ✓  20 [chromium] › tests/e2e/home.spec.ts:15:3 › home and base layout › skip link moves focus to main content (483ms)
-  ✓  21 [chromium] › tests/e2e/home.spec.ts:24:3 › home and base layout › sends a nonce-based CSP and security headers (30ms)
-  ✓  22 [chromium] › tests/e2e/home.spec.ts:35:3 › home and base layout › unknown routes get a branded 404 with no CSP violations (1.9s)
-  ✓  23 [chromium] › tests/e2e/home.spec.ts:50:3 › home and base layout › health endpoint reports the database (24ms)
-  ✓  24 [chromium] › tests/e2e/nomination.spec.ts:12:3 › nomination form › start, save a partial draft, resume, complete and reach review (8.9s)
-  ✓  25 [chromium] › tests/e2e/nomination.spec.ts:94:3 › nomination form › a nominator cannot open someone else's entry (1.9s)
-  ✓  26 [chromium] › tests/e2e/nomination.spec.ts:109:3 › nomination form › judges cannot start nominations (1.3s)
-  ✓  27 [chromium] › tests/e2e/nomination.spec.ts:115:1 › the dashboard fits a phone screen (2.1s)
-  ✓  28 [chromium] › tests/e2e/payment.spec.ts:51:3 › entry fee payment (mock provider) › pay and submit: the entry is submitted and a receipt is sent (6.2s)
-  ✓  29 [chromium] › tests/e2e/payment.spec.ts:91:3 › entry fee payment (mock provider) › cancel: the entry stays a draft, and cancelling the checkout allows editing (3.3s)
+  ✓   9 [chromium] › tests/e2e/auth.spec.ts:46:3 › authentication and role gates › an expired link is refused (979ms)
+  ✓  10 [chromium] › tests/e2e/auth.spec.ts:55:3 › authentication and role gates › a link for a since-disabled account creates no session (1.3s)
+[WebServer] 2026-10-26T00:57:58.774Z ERROR [Better Auth]: Invalid callbackURL: https://evil.example/
+  ✓  11 [chromium] › tests/e2e/auth.spec.ts:75:3 › authentication and role gates › verify refuses cross-site requests and foreign redirect targets (677ms)
+  ✓  12 [chromium] › tests/e2e/auth.spec.ts:104:3 › authentication and role gates › a signed-in user is never redirected off-site by next (2.0s)
+  ✓  13 [chromium] › tests/e2e/auth.spec.ts:113:3 › authentication and role gates › the confirmation page warns before switching accounts (2.0s)
+  ✓  14 [chromium] › tests/e2e/auth.spec.ts:125:3 › authentication and role gates › a nominator gets 403 on /admin and /judge (2.6s)
+  ✓  15 [chromium] › tests/e2e/auth.spec.ts:137:3 › authentication and role gates › anonymous visitors to protected areas are sent to sign-in (857ms)
+  ✓  16 [chromium] › tests/e2e/auth.spec.ts:146:3 › authentication and role gates › an admin reaches the admin area and the sign-in is audited (1.2s)
+  ✓  17 [chromium] › tests/e2e/auth.spec.ts:158:3 › authentication and role gates › Better Auth endpoints other than verify are not exposed (40ms)
+  ✓  18 [chromium] › tests/e2e/boot.spec.ts:4:1 › the server exits at boot when configuration is invalid (541ms)
+  ✓  19 [chromium] › tests/e2e/home.spec.ts:5:3 › home and base layout › renders the home page with no accessibility violations (1.8s)
+  ✓  20 [chromium] › tests/e2e/home.spec.ts:15:3 › home and base layout › skip link moves focus to main content (630ms)
+  ✓  21 [chromium] › tests/e2e/home.spec.ts:24:3 › home and base layout › sends a nonce-based CSP and security headers (43ms)
+  ✓  22 [chromium] › tests/e2e/home.spec.ts:35:3 › home and base layout › unknown routes get a branded 404 with no CSP violations (2.0s)
+  ✓  23 [chromium] › tests/e2e/home.spec.ts:50:3 › home and base layout › health endpoint reports the database (22ms)
+  ✓  24 [chromium] › tests/e2e/no-js.spec.ts:20:3 › forms without JavaScript › an entry form error comes back as a page (2.0s)
+  ✓  25 [chromium] › tests/e2e/no-js.spec.ts:33:3 › forms without JavaScript › a triage return error comes back as a page (1.3s)
+  ✓  26 [chromium] › tests/e2e/nomination.spec.ts:12:3 › nomination form › start, save a partial draft, resume, complete and reach review (9.2s)
+  ✓  27 [chromium] › tests/e2e/nomination.spec.ts:94:3 › nomination form › a nominator cannot open someone else's entry (2.5s)
+  ✓  28 [chromium] › tests/e2e/nomination.spec.ts:109:3 › nomination form › judges cannot start nominations (1.5s)
+  ✓  29 [chromium] › tests/e2e/nomination.spec.ts:115:1 › the dashboard fits a phone screen (2.5s)
+  ✓  30 [chromium] › tests/e2e/payment.spec.ts:51:3 › entry fee payment (mock provider) › pay and submit: the entry is submitted and a receipt is sent (7.3s)
+  ✓  31 [chromium] › tests/e2e/payment.spec.ts:91:3 › entry fee payment (mock provider) › cancel: the entry stays a draft, and cancelling the checkout allows editing (3.6s)
 [WebServer] <claude-code-hint v="1" type="plugin" value="stripe@claude-plugins-official" />
-  ✓  30 [chromium] › tests/e2e/payment.spec.ts:131:3 › entry fee payment (mock provider) › other people's checkouts and the webhook are not reachable (2.3s)
-  ✓  31 [chromium] › tests/e2e/payment.spec.ts:149:3 › entry fee payment (mock provider) › paying from a stale checkout page charges nothing and says why (1.4s)
-  ✓  32 [chromium] › tests/e2e/public-site.spec.ts:16:5 › public program site › / renders and is accessible (1.5s)
-  ✓  33 [chromium] › tests/e2e/public-site.spec.ts:16:5 › public program site › /categories renders and is accessible (1.4s)
-  ✓  34 [chromium] › tests/e2e/public-site.spec.ts:16:5 › public program site › /fees renders and is accessible (1.4s)
-  ✓  35 [chromium] › tests/e2e/public-site.spec.ts:16:5 › public program site › /methodology renders and is accessible (1.6s)
-  ✓  36 [chromium] › tests/e2e/public-site.spec.ts:16:5 › public program site › /judges renders and is accessible (1.5s)
-  ✓  37 [chromium] › tests/e2e/public-site.spec.ts:16:5 › public program site › /conflict-of-interest renders and is accessible (1.4s)
-  ✓  38 [chromium] › tests/e2e/public-site.spec.ts:25:3 › public program site › every page has a unique title and is reachable from the nav (1.7s)
-  ✓  39 [chromium] › tests/e2e/public-site.spec.ts:49:3 › public program site › categories lists enabled categories only (442ms)
-  ✓  40 [chromium] › tests/e2e/public-site.spec.ts:63:3 › public program site › fees come from the live cycle settings (532ms)
-  ✓  41 [chromium] › tests/e2e/public-site.spec.ts:86:3 › public program site › methodology shows the weights stored for each rubric profile (524ms)
-  ✓  42 [chromium] › tests/e2e/public-site.spec.ts:108:3 › public program site › a judge without a public profile is not listed (707ms)
-  ✓  43 [chromium] › tests/e2e/triage.spec.ts:33:1 › wrong-category return → move → resubmit → approve (10.1s)
-  ✓  44 [chromium] › tests/e2e/triage.spec.ts:121:1 › nominators and judges cannot reach triage (1.5s)
-  ✓  45 [chromium] › tests/e2e/uploads.spec.ts:20:3 › supporting files › upload, list, download, refuse a disguised file, and remove (3.8s)
-  ✓  46 [chromium] › tests/e2e/uploads.spec.ts:74:3 › supporting files › uploading keeps unsaved changes in the entry form (1.1s)
-  ✓  47 [chromium] › tests/e2e/uploads.spec.ts:89:3 › supporting files › an oversized file is stopped before it is sent (4.0s)
-  ✓  48 [chromium] › tests/e2e/uploads.spec.ts:103:3 › supporting files › cross-origin uploads and other people's files are refused (1.8s)
-  ✓  49 [chromium] › tests/e2e/uploads.spec.ts:131:3 › supporting files › the server refuses oversized bodies and entries that are not editable (1.5s)
+  ✓  32 [chromium] › tests/e2e/payment.spec.ts:131:3 › entry fee payment (mock provider) › other people's checkouts and the webhook are not reachable (2.8s)
+  ✓  33 [chromium] › tests/e2e/payment.spec.ts:149:3 › entry fee payment (mock provider) › paying from a stale checkout page charges nothing and says why (1.8s)
+  ✓  34 [chromium] › tests/e2e/public-site.spec.ts:16:5 › public program site › / renders and is accessible (1.8s)
+  ✓  35 [chromium] › tests/e2e/public-site.spec.ts:16:5 › public program site › /categories renders and is accessible (1.5s)
+  ✓  36 [chromium] › tests/e2e/public-site.spec.ts:16:5 › public program site › /fees renders and is accessible (1.5s)
+  ✓  37 [chromium] › tests/e2e/public-site.spec.ts:16:5 › public program site › /methodology renders and is accessible (1.8s)
+  ✓  38 [chromium] › tests/e2e/public-site.spec.ts:16:5 › public program site › /judges renders and is accessible (1.9s)
+  ✓  39 [chromium] › tests/e2e/public-site.spec.ts:16:5 › public program site › /conflict-of-interest renders and is accessible (1.7s)
+  ✓  40 [chromium] › tests/e2e/public-site.spec.ts:25:3 › public program site › every page has a unique title and is reachable from the nav (2.4s)
+  ✓  41 [chromium] › tests/e2e/public-site.spec.ts:49:3 › public program site › categories lists enabled categories only (593ms)
+  ✓  42 [chromium] › tests/e2e/public-site.spec.ts:63:3 › public program site › fees come from the live cycle settings (594ms)
+  ✓  43 [chromium] › tests/e2e/public-site.spec.ts:86:3 › public program site › methodology shows the weights stored for each rubric profile (560ms)
+  ✓  44 [chromium] › tests/e2e/public-site.spec.ts:108:3 › public program site › a judge without a public profile is not listed (888ms)
+[WebServer] (node:15698) DeprecationWarning: Calling client.query() when the client is already executing a query is deprecated and will be removed in pg@9.0. Use async/await or an external async flow control mechanism instead.
+[WebServer] (Use `node --trace-deprecation ...` to show where the warning was created)
+  ✓  45 [chromium] › tests/e2e/triage.spec.ts:33:1 › wrong-category return → move → resubmit → approve (11.5s)
+  ✓  46 [chromium] › tests/e2e/triage.spec.ts:123:1 › nominators and judges cannot reach triage (1.8s)
+  ✓  47 [chromium] › tests/e2e/uploads.spec.ts:20:3 › supporting files › upload, list, download, refuse a disguised file, and remove (3.7s)
+  ✓  48 [chromium] › tests/e2e/uploads.spec.ts:74:3 › supporting files › uploading keeps unsaved changes in the entry form (1.2s)
+  ✓  49 [chromium] › tests/e2e/uploads.spec.ts:89:3 › supporting files › an oversized file is stopped before it is sent (3.7s)
+  ✓  50 [chromium] › tests/e2e/uploads.spec.ts:103:3 › supporting files › cross-origin uploads and other people's files are refused (1.7s)
+  ✓  51 [chromium] › tests/e2e/uploads.spec.ts:131:3 › supporting files › the server refuses oversized bodies and entries that are not editable (1.8s)
 
-  49 passed (1.8m)
+  51 passed (2.1m)
 
 ci-local: all steps passed
