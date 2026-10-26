@@ -84,6 +84,12 @@ test("two judges score, the admin closes round one, picks finalists and announce
     [cat.id],
   );
   try {
+    // Earlier specs leave conflict declarations behind; start this journey from a clean
+    // slate so every entry has two eligible judges.
+    await db().query(
+      `DELETE FROM conflict_declaration WHERE entry_id IN (SELECT id FROM entry WHERE cycle_id = $1)`,
+      [cycle.id],
+    );
     const t = Date.now();
     await db().query(
       `UPDATE award_cycle SET nominations_open_at = $2, early_deadline = $3, regular_deadline = $4, final_deadline = $5 WHERE id = $1`,
