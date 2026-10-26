@@ -1,4 +1,7 @@
-/** Cycle phases in order; they only ever advance (docs/architecture.md → Status machines). */
+/**
+ * Cycle phases in order. They only advance, except reopening round one before finalists
+ * are announced (docs/architecture.md → Status machines).
+ */
 export const PHASES = [
   "NOMINATION",
   "ROUND1_OPEN",

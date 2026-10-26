@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { FlashNotice } from "@/components/flash-notice";
 import { PageHeader } from "@/components/page-header";
 import { formatDateTime } from "@/lib/dates";
-import { NOMINATOR_STATUS, RELATIONSHIP_LABEL } from "@/lib/entry-status";
+import { nominatorStatus, RELATIONSHIP_LABEL } from "@/lib/entry-status";
 import { formatCents } from "@/lib/money";
 import { readinessProblems, toSubmissionInput } from "@/lib/validation/entry";
 import { requireRole } from "@/server/auth/session";
@@ -45,7 +45,7 @@ export default async function EntryPage({ params, searchParams }: PageProps<"/en
     getMyTimeline(actor, id),
     entry.status === "RETURNED" ? latestReturn(actor, id) : null,
   ]);
-  const status = NOMINATOR_STATUS[entry.status];
+  const status = nominatorStatus(entry.status, entry.cyclePhase, entry.isFinalist);
   // A returned entry is frozen once round one opens (it can no longer be resubmitted).
   const frozen = entry.status === "RETURNED" && !entry.triageOpen;
   const locked = (!editable && query.locked === "1") || (frozen && query.locked === "closed");

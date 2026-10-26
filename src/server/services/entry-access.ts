@@ -1,7 +1,7 @@
 import "server-only";
 import { and, eq } from "drizzle-orm";
 import { isUuid } from "@/lib/ids";
-import { roundStarted, type Round } from "@/lib/phases";
+import { reached, roundStarted, type Round } from "@/lib/phases";
 import type { Actor } from "@/server/auth/actor";
 import { db, type DbExecutor } from "@/server/db";
 import {
@@ -23,6 +23,7 @@ export interface JudgeAccess {
   readableRounds: Round[];
   declaration: { hasConflict: boolean } | null;
   categoryId: string;
+  phase: string;
 }
 
 /**
@@ -67,7 +68,11 @@ export async function judgeAccess(
     .where(
       and(eq(judgeAssignment.judgeId, judgeId), eq(judgeAssignment.categoryId, row.categoryId)),
     );
-  const rounds = assigned.map((a) => a.round as Round).filter((r) => r === 1 || row.isFinalist);
+  // Round 2 covers finalists, and only once they are announced (until then the
+  // selection is not public, even to the round-2 panel).
+  const rounds = assigned
+    .map((a) => a.round as Round)
+    .filter((r) => r === 1 || (row.isFinalist && reached(row.phase, "FINALISTS_ANNOUNCED")));
   if (rounds.length === 0) return null;
   const [declared] = await tx
     .select({ hasConflict: conflictDeclaration.hasConflict })
@@ -79,6 +84,7 @@ export async function judgeAccess(
     readableRounds: clear ? rounds.filter((r) => roundStarted(row.phase, r)) : [],
     declaration: declared ?? null,
     categoryId: row.categoryId,
+    phase: row.phase,
   };
 }
 
