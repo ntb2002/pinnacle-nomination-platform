@@ -3,7 +3,9 @@ import {
   allowedCounts,
   checkSelection,
   cutoffTie,
+  displayRanks,
   entryScore,
+  meanHundredths,
   rank,
   weightedScore,
   type Ranked,
@@ -79,6 +81,77 @@ describe("ranking and the cut-off", () => {
     expect(cutoffTie(ranked, 3)).toEqual({ above: ["a", "b"], tied: ["c", "d"], slots: 1 });
     expect(cutoffTie(ranked, 4)).toBeNull(); // the tie sits inside the top 4
     expect(cutoffTie(rank([r("a", 90), r("b", 80), r("c", 75.01), r("d", 75)]), 3)).toBeNull();
+  });
+});
+
+describe("2dp means are exact (methodology tie rule)", () => {
+  // Totals are Σ(score × weight), so a weighted score of 75.1 is a total of 751.
+  it("rounds the true mean half up, whatever the mix of scores", () => {
+    // Both true means are 74.775; floating point gave 74.78 and 74.77.
+    expect(meanHundredths([740, 740, 751, 760])).toBe(7478);
+    expect(meanHundredths([740, 741, 753, 757])).toBe(7478);
+    expect(meanHundredths([750, 749, 750, 750])).toBe(7498); // 74.975, not 74.97
+    expect(meanHundredths([700, 701, 701])).toBe(7007); // 70.0666…
+    expect(meanHundredths([1000])).toBe(10000);
+  });
+
+  it("ties entries whose true means are equal to 2dp", () => {
+    const w = { weightImpact: 37, weightInnovation: 23, weightInfluence: 21, weightReferences: 19 };
+    const judge = (c: ReturnType<typeof s>) => ({
+      judgeId: "j",
+      submitted: true,
+      recused: false,
+      criteria: c,
+    });
+    // Totals 740, 740, 751, 760 and 740, 741, 753, 757: both true means are 74.775.
+    const a = entryScore(
+      [s(4, 10, 10, 8), s(4, 10, 10, 8), s(6, 9, 9, 7), s(6, 6, 10, 10)].map(judge),
+      w,
+    );
+    const b = entryScore(
+      [s(4, 10, 10, 8), s(3, 10, 10, 10), s(6, 9, 10, 6), s(4, 10, 9, 10)].map(judge),
+      w,
+    );
+    expect(a.mean).toBe(74.78);
+    expect(b.mean).toBe(74.78);
+    const ranked = rank([
+      { entryId: "a", mean: a.mean, count: 4 },
+      { entryId: "b", mean: b.mean, count: 4 },
+      r("c", 90),
+      r("d", 80),
+    ]);
+    expect(cutoffTie(ranked, 3)).toEqual({ above: ["c", "d"], tied: ["a", "b"], slots: 1 });
+  });
+});
+
+describe("tie edge cases", () => {
+  it("shows tied entries with a shared rank", () => {
+    const ranked = rank([r("a", 90), r("b", 70), r("c", 70), r("d", 60), r("e", null)]);
+    expect(displayRanks(ranked)).toEqual(["1", "=2", "=2", "4", "—"]);
+  });
+
+  it("all entries equal", () => {
+    const eq = rank(["a", "b", "c", "d", "e"].map((id) => r(id, 70)));
+    expect(cutoffTie(eq, 3)).toEqual({ above: [], tied: ["a", "b", "c", "d", "e"], slots: 3 });
+    expect(checkSelection(eq, 3, ["c", "d", "e"], "Chosen on reference strength").ok).toBe(true);
+  });
+
+  it("a tie at position 1 that crosses the cut", () => {
+    const top = rank([r("a", 90), r("b", 90), r("c", 90), r("d", 90), r("e", 50)]);
+    expect(cutoffTie(top, 3)).toMatchObject({ above: [], slots: 3 });
+  });
+
+  it("a tie spanning past the cut with more than one slot", () => {
+    const span = rank([r("a", 90), r("b", 70), r("c", 70), r("d", 70), r("e", 70), r("f", 40)]);
+    expect(cutoffTie(span, 3)).toEqual({ above: ["a"], tied: ["b", "c", "d", "e"], slots: 2 });
+    expect(checkSelection(span, 3, ["a", "d", "e"], "Stronger references on both").ok).toBe(true);
+    expect(checkSelection(span, 3, ["a", "d", "f"], "Stronger references on both").ok).toBe(false);
+  });
+
+  it("n equal to the number of entries, with a tie", () => {
+    const whole = rank([r("a", 90), r("b", 70), r("c", 70)]);
+    expect(cutoffTie(whole, 3)).toBeNull();
+    expect(checkSelection(whole, 3, ["a", "b", "c"], "")).toEqual({ ok: true, tiebreak: false });
   });
 });
 

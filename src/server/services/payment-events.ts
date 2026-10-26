@@ -3,7 +3,15 @@ import { and, eq, ne } from "drizzle-orm";
 import { env } from "@/lib/env";
 import { audit } from "@/server/audit";
 import { db, type Transaction } from "@/server/db";
-import { category, entry, entryStatusEvent, payment, user, webhookEvent } from "@/server/db/schema";
+import {
+  awardCycle,
+  category,
+  entry,
+  entryStatusEvent,
+  payment,
+  user,
+  webhookEvent,
+} from "@/server/db/schema";
 import { sendEmail } from "@/server/email";
 import { receiptEmail } from "@/server/email/templates";
 import { consume, type RateLimitRule } from "@/server/rate-limit";
@@ -192,8 +200,10 @@ async function fulfil(tx: Transaction, p: Payment, event: Paid) {
       status: entry.status,
       categoryEnabled: category.enabled,
       nominatorRole: user.role,
+      phase: awardCycle.phase,
     })
     .from(entry)
+    .innerJoin(awardCycle, eq(awardCycle.id, entry.cycleId))
     .innerJoin(category, eq(category.id, entry.categoryId))
     .innerJoin(user, eq(user.id, entry.nominatorId))
     .where(eq(entry.id, p.entryId));
@@ -225,6 +235,8 @@ async function fulfil(tx: Transaction, p: Payment, event: Paid) {
         ...(p.status !== "PENDING" ? { paidAfterSessionEnded: p.status } : {}),
         ...(e && !e.categoryEnabled ? { categoryWithdrawn: true } : {}),
         ...(e && e.nominatorRole !== "NOMINATOR" ? { nominatorRole: e.nominatorRole } : {}),
+        // Round one opened before this landed: the entry missed eligibility review.
+        ...(e && e.phase !== "NOMINATION" ? { afterTriageClosed: true } : {}),
       },
     },
     tx,

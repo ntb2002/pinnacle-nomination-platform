@@ -20,6 +20,7 @@ const PHASE: Record<string, string> = {
 const DONE: Record<string, string> = {
   open: "Round one is open. Judges can score.",
   close: "Round one is closed. Choose each category's finalists.",
+  reopen: "Round one is open again. Saved finalist choices were cleared.",
   announce: "Finalists announced. Every nominator has been emailed.",
 };
 
@@ -28,7 +29,10 @@ export default async function AdminJudgingPage({ searchParams }: PageProps<"/adm
   const [o, query] = await Promise.all([getRoundOneOverview(actor), searchParams]);
   if (!o) return <p className="container-page py-12">No active award cycle.</p>;
   const done = typeof query.done === "string" ? DONE[query.done] : undefined;
-  const ready = o.categories.every((c) => c.entries === 0 || (c.selection && c.blockers === 0));
+  const ready = o.categories.every(
+    (c) => c.entries === 0 || (c.selection && !c.selectionStale && c.blockers === 0),
+  );
+  const blockers = o.categories.reduce((n, c) => n + c.blockers, 0);
   return (
     <div className="container-page max-w-4xl py-12">
       <PageHeader title="Judging" intro={`Now: ${PHASE[o.phase] ?? o.phase}.`} />
@@ -42,6 +46,7 @@ export default async function AdminJudgingPage({ searchParams }: PageProps<"/adm
         nominationsClosed={o.nominationsClosed}
         pendingReview={o.pendingReview}
         readyToAnnounce={ready}
+        blockers={blockers}
       />
       <section aria-labelledby="cats-heading" className="mt-10">
         <h2 id="cats-heading" className="font-display text-2xl font-semibold">
@@ -80,7 +85,9 @@ export default async function AdminJudgingPage({ searchParams }: PageProps<"/adm
                   </td>
                   <td className="py-3">
                     {c.selection
-                      ? `${c.selection.entryIds.length} chosen`
+                      ? c.selectionStale
+                        ? "Scores changed: choose again"
+                        : `${c.selection.entryIds.length} chosen`
                       : c.entries
                         ? "Not chosen"
                         : "No entries"}

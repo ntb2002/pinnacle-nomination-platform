@@ -46,7 +46,7 @@ export async function getMyScore(actor: Actor, entryId: string, round: Round) {
 /**
  * Judge: saves a draft or submits a score. Only while the round is open, only for an
  * entry the judge may read in that round (assigned, active, declared no conflict).
- * A submitted score can be revised until the round closes. Submissions are audited.
+ * A submitted score can be revised until the round closes. Every save is audited.
  */
 export async function saveScore(
   actor: Actor,
@@ -62,17 +62,19 @@ export async function saveScore(
     throw new ValidationError("Check the highlighted scores.", fieldErrorsOf(parsed.error));
   const v = parsed.data;
   await db.transaction(async (tx) => {
-    // Lock the entry first: serializes with a judge's own late conflict declaration.
-    await tx.select({ id: entry.id }).from(entry).where(eq(entry.id, entryId)).for("no key update");
-    const access = await judgeAccess(actor.id, entryId, tx);
-    if (!access?.readableRounds.includes(round)) throw new NotFoundError("entry");
+    // Lock order cycle → entry (as triage, conflicts, announcement): the cycle FOR SHARE
+    // serializes with closing the round; the entry with a late conflict declaration.
     const [cycle] = await tx
       .select({ phase: awardCycle.phase })
       .from(entry)
       .innerJoin(awardCycle, eq(awardCycle.id, entry.cycleId))
       .where(eq(entry.id, entryId))
       .for("share", { of: awardCycle });
-    if (!cycle || !roundOpen(cycle.phase, round))
+    if (!cycle) throw new NotFoundError("entry");
+    await tx.select({ id: entry.id }).from(entry).where(eq(entry.id, entryId)).for("no key update");
+    const access = await judgeAccess(actor.id, entryId, tx);
+    if (!access?.readableRounds.includes(round)) throw new NotFoundError("entry");
+    if (!roundOpen(cycle.phase, round))
       throw new ConflictError(`Round ${round} is not open for scoring.`);
     const values = {
       impact: v.impact,
@@ -112,11 +114,11 @@ export async function saveScore(
         },
         tx,
       );
-    } else if (existing?.submittedAt) {
+    } else {
       await audit(
         {
           actor,
-          action: "score.withdrawn",
+          action: existing?.submittedAt ? "score.withdrawn" : "score.draft_saved",
           targetType: "entry",
           targetId: entryId,
           metadata: { round },

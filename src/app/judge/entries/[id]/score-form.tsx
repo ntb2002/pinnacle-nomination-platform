@@ -106,15 +106,22 @@ export function ScoreForm({
         defaultValue={start.comment ?? ""}
         errors={state.fieldErrors?.comment}
       />
+      {submitted && (
+        <p id="withdraw-hint" className="text-sm text-slate">
+          Your score is submitted and counts. Saving it as a draft withdraws it until you submit
+          again.
+        </p>
+      )}
       <div className="flex flex-wrap gap-4">
         <button
           type="submit"
           name="intent"
           value="draft"
           disabled={pending}
+          aria-describedby={submitted ? "withdraw-hint" : undefined}
           className="rounded border-2 border-ink px-5 py-3 font-semibold"
         >
-          Save draft
+          {submitted ? "Withdraw and save as draft" : "Save draft"}
         </button>
         <button
           type="submit"

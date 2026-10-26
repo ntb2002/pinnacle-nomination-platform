@@ -22,10 +22,16 @@ import { judgeAccess } from "./entry-access";
 export const CONFLICT_IS_FINAL =
   "You declared a conflict for this entry. Only the program team can change that.";
 
-/** Serializes declarations for one judge/entry pair (insert-or-update races). */
+/**
+ * Serializes declarations for one judge/entry pair. Cycle FOR SHARE first (order cycle →
+ * entry, as triage and scoring): no conflict commits while finalists are announced. The
+ * entry NO KEY UPDATE does not block inserts referencing it (scores, files).
+ */
 async function lockPair(tx: DbExecutor, judgeId: string, entryId: string) {
-  // NO KEY UPDATE: serializes declarations without blocking inserts that reference the
-  // entry (scores, files), which only take KEY SHARE.
+  const inCycle = and(eq(entry.id, entryId), eq(awardCycle.id, entry.cycleId));
+  await tx.select({ id: awardCycle.id }).from(entry).innerJoin(awardCycle, inCycle).for("share", {
+    of: awardCycle,
+  });
   const [e] = await tx
     .select({ id: entry.id })
     .from(entry)
@@ -59,9 +65,9 @@ export async function declareConflict(
   const hasConflict = parsed.data.conflict === "yes";
   const reason = hasConflict ? parsed.data.reason! : null;
   await db.transaction(async (tx) => {
+    const existing = await lockPair(tx, actor.id, entryId);
     const access = await judgeAccess(actor.id, entryId, tx);
     if (!access?.canDeclare) throw new NotFoundError("entry");
-    const existing = await lockPair(tx, actor.id, entryId);
     if (existing?.hasConflict) throw new ConflictError(CONFLICT_IS_FINAL);
     if (existing && !hasConflict) return; // already "no conflict"
     if (existing) {

@@ -2,7 +2,7 @@ import "server-only";
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import { isUuid } from "@/lib/ids";
 import type { Round } from "@/lib/phases";
-import { entryScore, rank, type Weights } from "@/lib/scoring";
+import { checkSelection, entryScore, rank, type Weights } from "@/lib/scoring";
 import { assertRole, type Actor } from "@/server/auth/actor";
 import { db, type DbExecutor } from "@/server/db";
 import {
@@ -141,5 +141,19 @@ export async function getCategoryRanking(actor: Actor, categoryId: string) {
     .select()
     .from(finalistSelection)
     .where(eq(finalistSelection.categoryId, categoryId));
-  return { ...r, phase: cycle?.phase ?? "NOMINATION", selection: selection ?? null };
+  // A saved selection the current scores no longer support must be made again.
+  const selectionStale =
+    !!selection &&
+    !checkSelection(
+      r.ranked,
+      selection.entryIds.length,
+      selection.entryIds,
+      selection.tiebreakReason ?? "",
+    ).ok;
+  return {
+    ...r,
+    phase: cycle?.phase ?? "NOMINATION",
+    selection: selection ?? null,
+    selectionStale,
+  };
 }

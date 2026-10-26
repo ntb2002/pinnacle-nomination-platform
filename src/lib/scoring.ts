@@ -23,19 +23,32 @@ export const CRITERIA = [
   { key: "referenceValidation", weight: "weightReferences", label: "Reference Validation" },
 ] as const;
 
-/** One judge's weighted score: Σ(score × weight) / 10, from 10 to 100 (weights sum to 100). */
-export function weightedScore(s: Criteria, w: Weights): number {
+/** One judge's weighted total Σ(score × weight): an integer from 100 to 1000. */
+export function weightedTotal(s: Criteria, w: Weights): number {
   return (
-    (s.impact * w.weightImpact +
-      s.innovation * w.weightInnovation +
-      s.influence * w.weightInfluence +
-      s.referenceValidation * w.weightReferences) /
-    10
+    s.impact * w.weightImpact +
+    s.innovation * w.weightInnovation +
+    s.influence * w.weightInfluence +
+    s.referenceValidation * w.weightReferences
   );
 }
 
-/** Rounds to 2 decimal places: how means are shown and compared for ties. */
+/** One judge's weighted score: Σ(score × weight) / 10, from 10 to 100 (weights sum to 100). */
+export const weightedScore = (s: Criteria, w: Weights) => weightedTotal(s, w) / 10;
+
+/** Rounds to 2 decimal places. Idempotent on means from entryScore, which are already 2dp. */
 export const to2dp = (x: number) => Math.round(x * 100) / 100;
+
+/**
+ * The mean of weighted totals in hundredths of a point, rounded half up, computed in
+ * integers so the methodology's "equal to two decimal places" tie rule is exact:
+ * mean = ΣT / (10·n), so hundredths = round(10·ΣT / n) = ⌊(20·ΣT + n) / 2n⌋.
+ */
+export function meanHundredths(totals: number[]): number {
+  const n = totals.length;
+  const sum = totals.reduce((a, b) => a + b, 0);
+  return Math.floor((20 * sum + n) / (2 * n));
+}
 
 export interface JudgeScore {
   judgeId: string;
@@ -45,16 +58,20 @@ export interface JudgeScore {
   recused: boolean;
 }
 
-/** An entry's score: the mean of submitted, unrecused judges' weighted scores. */
+/**
+ * An entry's score: the mean of submitted, unrecused judges' weighted scores, rounded
+ * half up to 2 decimal places (exactly, see meanHundredths), and the population
+ * standard deviation of those scores.
+ */
 export function entryScore(scores: JudgeScore[], w: Weights) {
-  const counted = scores
+  const totals = scores
     .filter((s) => s.submitted && !s.recused && s.criteria)
-    .map((s) => weightedScore(s.criteria!, w));
-  const count = counted.length;
+    .map((s) => weightedTotal(s.criteria!, w));
+  const count = totals.length;
   if (count === 0) return { mean: null, sd: null, count };
-  const mean = counted.reduce((a, b) => a + b, 0) / count;
-  const sd = Math.sqrt(counted.reduce((a, b) => a + (b - mean) ** 2, 0) / count);
-  return { mean, sd, count };
+  const exact = totals.reduce((a, b) => a + b, 0) / 10 / count;
+  const sd = Math.sqrt(totals.reduce((a, t) => a + (t / 10 - exact) ** 2, 0) / count);
+  return { mean: meanHundredths(totals) / 100, sd, count };
 }
 
 export interface Ranked {
@@ -70,6 +87,18 @@ export function rank<T extends Ranked>(rows: T[]): T[] {
       return a.mean === b.mean ? a.entryId.localeCompare(b.entryId) : a.mean === null ? 1 : -1;
     }
     return to2dp(b.mean) - to2dp(a.mean) || a.entryId.localeCompare(b.entryId);
+  });
+}
+
+/** Display ranks for a ranked list: tied entries (equal at 2dp) share a rank shown as "=4". */
+export function displayRanks(ranked: Ranked[]): string[] {
+  const key = (r: Ranked) => (r.mean === null ? null : to2dp(r.mean));
+  return ranked.map((r) => {
+    const k = key(r);
+    if (k === null) return "—";
+    const first = ranked.findIndex((x) => key(x) === k);
+    const shared = ranked.filter((x) => key(x) === k).length > 1;
+    return `${shared ? "=" : ""}${first + 1}`;
   });
 }
 
@@ -98,7 +127,10 @@ export function cutoffTie(ranked: Ranked[], n: number) {
   };
 }
 
-export type SelectionCheck = { ok: true; tiebreak: boolean } | { ok: false; error: string };
+export type SelectionCheck =
+  | { ok: true; tiebreak: boolean }
+  /** `field` is the form field the error belongs to; finalist choices unless "reason". */
+  | { ok: false; error: string; field?: "reason" };
 
 /**
  * Methodology rule (#12 AC 5, 8): finalists are exactly the top `n` by mean. The only
@@ -143,6 +175,7 @@ export function checkSelection(
   if (reason.trim().length < 10) {
     return {
       ok: false,
+      field: "reason",
       error: "Explain the choice among the tied entries (at least 10 characters).",
     };
   }

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { FlashNotice } from "@/components/flash-notice";
 import { PageHeader } from "@/components/page-header";
-import { allowedCounts, CRITERIA, cutoffTie, to2dp } from "@/lib/scoring";
+import { allowedCounts, CRITERIA, cutoffTie, displayRanks, to2dp } from "@/lib/scoring";
 import { requireRole } from "@/server/auth/session";
 import { NotFoundError } from "@/server/errors";
 import { getCategoryRanking, MIN_SCORES } from "@/server/services/rankings";
@@ -35,6 +35,7 @@ export default async function CategoryRankingPage({
         : r.ranked.slice(0, count).map((x) => x.entryId);
   const label = (x: (typeof r.ranked)[number]) =>
     `${x.nomineeName ?? "Unnamed nominee"}${x.mean === null ? "" : `, ${to2dp(x.mean).toFixed(2)}`}`;
+  const ranks = displayRanks(r.ranked);
   const canSelect = r.phase === "ROUND1_CLOSED" && r.blockers.length === 0 && counts.length > 0;
   return (
     <div className="container-page max-w-4xl py-12">
@@ -70,13 +71,18 @@ export default async function CategoryRankingPage({
           <caption className="sr-only">Entries ranked by mean score</caption>
           <thead>
             <tr className="border-b-2 border-ink">
-              {["Rank", "Nominee", "Mean (of 100)", "Judges", "Spread (SD)", "Missing scores"].map(
-                (h) => (
-                  <th key={h} scope="col" className="py-3 pr-4">
-                    {h}
-                  </th>
-                ),
-              )}
+              {[
+                "Rank",
+                "Nominee",
+                "Mean (of 100)",
+                "Judges",
+                "Spread (population SD)",
+                "Missing scores",
+              ].map((h) => (
+                <th key={h} scope="col" className="py-3 pr-4">
+                  {h}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
@@ -85,7 +91,7 @@ export default async function CategoryRankingPage({
                 key={x.entryId}
                 className={`border-b border-line align-top ${tie?.tied.includes(x.entryId) ? "bg-surface" : ""}`}
               >
-                <td className="py-3 pr-4">{i + 1}</td>
+                <td className="py-3 pr-4">{ranks[i]}</td>
                 <th scope="row" className="py-3 pr-4 font-normal">
                   <Link href={`/admin/entries/${x.entryId}`} className="font-semibold underline">
                     {x.nomineeName ?? "Unnamed nominee"}
@@ -100,7 +106,9 @@ export default async function CategoryRankingPage({
                 >
                   {x.count}
                 </td>
-                <td className="py-3 pr-4">{x.sd === null ? "—" : x.sd.toFixed(1)}</td>
+                <td className="py-3 pr-4">
+                  {x.sd === null || x.count < 2 ? "—" : x.sd.toFixed(1)}
+                </td>
                 <td className="py-3 text-sm">{x.missing.length ? x.missing.join(", ") : "None"}</td>
               </tr>
             ))}
@@ -114,7 +122,19 @@ export default async function CategoryRankingPage({
         {r.selection && (
           <p className="mt-3">
             {r.selection.entryIds.length} chosen
-            {r.selection.tiebreakReason ? `, with a tie-break: ${r.selection.tiebreakReason}` : ""}.
+            {r.selection.tiebreakReason
+              ? `, with a tie-break: ${r.selection.tiebreakReason.replace(/\.$/, "")}`
+              : ""}
+            .
+          </p>
+        )}
+        {r.selectionStale && (
+          <p
+            role="note"
+            className="mt-3 rounded border-l-4 border-danger bg-danger-bg px-4 py-3 text-danger"
+          >
+            The scores changed after these finalists were chosen (for example, a late conflict).
+            Choose again before announcing.
           </p>
         )}
         {canSelect ? (

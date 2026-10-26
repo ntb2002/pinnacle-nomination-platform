@@ -25,6 +25,8 @@ export function SelectionForm({
   tie: { tied: string[]; slots: number } | null;
 }) {
   const [state, action] = useActionState(selectFinalistsAction, idleState);
+  // After an error, keep the admin's ticks instead of resetting to the top N.
+  const checked = state.values?.entryIds?.split(",") ?? preselected;
   return (
     <form action={action} className="flex flex-col gap-4 rounded border border-line bg-surface p-6">
       <input type="hidden" name="categoryId" value={categoryId} />
@@ -38,7 +40,7 @@ export function SelectionForm({
               type="checkbox"
               name="entryId"
               value={r.entryId}
-              defaultChecked={preselected.includes(r.entryId)}
+              defaultChecked={checked.includes(r.entryId)}
               className="h-5 w-5 accent-ink"
             />
             <span>

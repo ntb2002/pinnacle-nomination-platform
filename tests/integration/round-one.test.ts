@@ -9,87 +9,21 @@ import {
   emailOutbox,
   entry,
   finalistSelection,
-  judgeProfile,
+  payment,
 } from "@/server/db/schema";
 import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from "@/server/errors";
 import { declareConflict } from "@/server/services/conflicts";
 import { updateRubricWeights } from "@/server/services/program-settings";
 import { computeRanking } from "@/server/services/rankings";
-import {
-  announceFinalists,
-  closeRoundOne,
-  openRoundOne,
-  selectFinalists,
-} from "@/server/services/rounds";
+import { announceFinalists, selectFinalists } from "@/server/services/finalists";
+import { closeRoundOne, openRoundOne, reopenRoundOne } from "@/server/services/rounds";
 import { getMyScore, saveScore } from "@/server/services/scoring";
-import { createActor } from "../support/actors";
 import { db, resetTables } from "../support/db";
-import {
-  assignJudge,
-  createCategory,
-  createCompleteEntry,
-  createCycle,
-} from "../support/factories";
+import { createCompleteEntry } from "../support/factories";
+import { all, DAY, makeJudge, scoreAll, setup } from "../support/round-one";
 
 beforeEach(resetTables);
 afterAll(closeDb);
-
-const DAY = 86_400_000;
-const all = (n: number) => ({
-  impact: String(n),
-  innovation: String(n),
-  influence: String(n),
-  referenceValidation: String(n),
-  comment: "",
-  intent: "submit",
-});
-
-async function makeJudge(categoryId: string) {
-  const j = await createActor("JUDGE");
-  await db.insert(judgeProfile).values({ userId: j.id, displayName: j.name || "Judge" });
-  await assignJudge(j.id, categoryId, 1);
-  return j;
-}
-
-/** A closed nomination window, 6 approved entries, 2 judges with no conflicts. */
-async function setup(entries = 6) {
-  const now = Date.now();
-  const cycle = await createCycle({
-    nominationsOpenAt: new Date(now - 40 * DAY),
-    earlyDeadline: new Date(now - 30 * DAY),
-    regularDeadline: new Date(now - 20 * DAY),
-    finalDeadline: new Date(now - DAY),
-  });
-  const cat = await createCategory(cycle.id);
-  const admin = await createActor("ADMIN");
-  const nominator = await createActor("NOMINATOR");
-  const ids: string[] = [];
-  for (let i = 0; i < entries; i++) {
-    const e = await createCompleteEntry({
-      cycleId: cycle.id,
-      categoryId: cat.id,
-      nominatorId: nominator.id,
-    });
-    ids.push(e.id);
-  }
-  await db
-    .update(entry)
-    .set({ status: "APPROVED", submittedAt: new Date() })
-    .where(eq(entry.cycleId, cycle.id));
-  const judges = [await makeJudge(cat.id), await makeJudge(cat.id)];
-  for (const j of judges)
-    for (const id of ids)
-      await db
-        .insert(conflictDeclaration)
-        .values({ judgeId: j.id, entryId: id, hasConflict: false });
-  return { cycle, category: cat, admin, nominator, ids, judges };
-}
-
-/** Each judge scores entry i with (10 - i), so entry 0 ranks first. */
-async function scoreAll(judges: Actor[], ids: string[], value = (i: number) => 10 - i) {
-  for (const j of judges)
-    for (const [i, id] of ids.entries()) await saveScore(j, id, 1, all(value(i)));
-}
 
 describe("opening and closing round one", () => {
   it("needs closed nominations and a confirmation for entries still in review; locks weights", async () => {
@@ -142,7 +76,8 @@ describe("scoring", () => {
     const actions = (await db.select().from(auditLog).where(eq(auditLog.actorId, j.id))).map(
       (r) => r.action,
     );
-    expect(actions).toEqual(["score.submitted", "score.revised"]);
+    expect(actions).toEqual(["score.draft_saved", "score.submitted", "score.revised"]);
+    await scoreAll(judges, ids); // closing needs 2 scores per entry
     await closeRoundOne(admin);
     await expect(saveScore(j, ids[0]!, 1, all(5))).rejects.toBeInstanceOf(ConflictError);
   });
@@ -230,12 +165,13 @@ describe("finalists", () => {
     );
   });
 
-  it("refuses to announce with an entry that has only one score", async () => {
+  it("refuses to close round one, select or announce with an entry that has only one score", async () => {
     const ctx = await setup(3);
     await openRoundOne(ctx.admin, {});
     await scoreAll(ctx.judges, ctx.ids.slice(0, 2));
     await saveScore(ctx.judges[0]!, ctx.ids[2]!, 1, all(5));
-    await closeRoundOne(ctx.admin);
+    await expect(closeRoundOne(ctx.admin)).rejects.toThrow(/fewer than 2 scores/);
+    expect((await db.select().from(awardCycle))[0]!.phase).toBe("ROUND1_OPEN");
     await expect(
       selectFinalists(ctx.admin, ctx.category.id, { count: 3, entryIds: ctx.ids, reason: "" }),
     ).rejects.toBeInstanceOf(ConflictError);
@@ -281,5 +217,48 @@ describe("finalists", () => {
       .from(auditLog)
       .where(and(eq(auditLog.action, "conflict.changed_to_conflict")));
     expect(flagged).toHaveLength(1);
+
+    // The way out: reopen (with a reason), add a judge, score, close and choose again.
+    await expect(reopenRoundOne(admin, { reason: "" })).rejects.toBeInstanceOf(ValidationError);
+    await reopenRoundOne(admin, { reason: "Late conflict left one entry with one score" });
+    expect(await db.select().from(finalistSelection)).toHaveLength(0);
+    const third = await makeJudge(cat.id);
+    await declareConflict(third, ids[2]!, { conflict: "no" });
+    await saveScore(third, ids[2]!, 1, all(8));
+    await closeRoundOne(admin);
+    await selectFinalists(admin, cat.id, { count: 3, entryIds: ids.slice(0, 3), reason: "" });
+    await announceFinalists(admin);
+    expect((await db.select().from(awardCycle))[0]!.phase).toBe("FINALISTS_ANNOUNCED");
+    await expect(
+      reopenRoundOne(admin, { reason: "Too late to reopen now" }),
+    ).rejects.toBeInstanceOf(ConflictError);
+    const [reopened] = await db
+      .select()
+      .from(auditLog)
+      .where(eq(auditLog.action, "round.reopened"));
+    expect(reopened!.metadata).toMatchObject({ selectionsCleared: 1 });
+  });
+
+  it("will not open round one while an entry-fee checkout can still be paid", async () => {
+    const { admin, cycle, category: cat, nominator } = await setup(3);
+    const draft = await createCompleteEntry({
+      cycleId: cycle.id,
+      categoryId: cat.id,
+      nominatorId: nominator.id,
+    });
+    await db.insert(payment).values({
+      entryId: draft.id,
+      kind: "ENTRY_FEE",
+      tier: "LATE",
+      amountCents: 80000,
+      currency: "usd",
+      provider: "mock",
+      providerSessionId: "cs_test_late",
+      createdById: nominator.id,
+      expiresAt: new Date(Date.now() + 10 * 60_000),
+    });
+    await expect(openRoundOne(admin, {})).rejects.toThrow(/checkout/);
+    await db.update(payment).set({ expiresAt: new Date(Date.now() - 6 * 60_000) });
+    await openRoundOne(admin, {});
   });
 });

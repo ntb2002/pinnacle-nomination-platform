@@ -83,13 +83,20 @@ test("two judges score, the admin closes round one, picks finalists and announce
     `SELECT u.email, u.id FROM judge_assignment a JOIN "user" u ON u.id = a.judge_id WHERE a.category_id = $1 AND a.round = 1 ORDER BY u.email LIMIT 2`,
     [cat.id],
   );
+  // Earlier specs leave conflict declarations and open checkouts behind. Start this
+  // journey from a clean slate (every entry has two eligible judges, and no checkout
+  // blocks opening round one), then put them back.
+  const { rows: savedDeclarations } = await db().query(
+    `DELETE FROM conflict_declaration WHERE entry_id IN (SELECT id FROM entry WHERE cycle_id = $1) RETURNING *`,
+    [cycle.id],
+  );
+  const { rows: openCheckouts } = await db().query(
+    `SELECT id, expires_at FROM payment WHERE status = 'PENDING' AND expires_at > now() - interval '10 minutes'`,
+  );
+  await db().query(`UPDATE payment SET expires_at = now() - interval '1 hour' WHERE id = ANY($1)`, [
+    openCheckouts.map((p) => p.id),
+  ]);
   try {
-    // Earlier specs leave conflict declarations behind; start this journey from a clean
-    // slate so every entry has two eligible judges.
-    await db().query(
-      `DELETE FROM conflict_declaration WHERE entry_id IN (SELECT id FROM entry WHERE cycle_id = $1)`,
-      [cycle.id],
-    );
     const t = Date.now();
     await db().query(
       `UPDATE award_cycle SET nominations_open_at = $2, early_deadline = $3, regular_deadline = $4, final_deadline = $5 WHERE id = $1`,
@@ -181,7 +188,30 @@ test("two judges score, the admin closes round one, picks finalists and announce
     expect(mail.some((m) => m.subject.startsWith(`Finalist: ${first.nominee_name}`))).toBe(true);
   } finally {
     await db().query(`DELETE FROM finalist_selection WHERE cycle_id = $1`, [cycle.id]);
-    await db().query(`DELETE FROM score`);
+    await db().query(
+      `DELETE FROM score WHERE entry_id IN (SELECT id FROM entry WHERE cycle_id = $1)`,
+      [cycle.id],
+    );
+    await db().query(
+      `DELETE FROM conflict_declaration WHERE entry_id IN (SELECT id FROM entry WHERE cycle_id = $1)`,
+      [cycle.id],
+    );
+    for (const d of savedDeclarations)
+      await db().query(
+        `INSERT INTO conflict_declaration (id, judge_id, entry_id, has_conflict, reason, declared_at, recorded_by_id, admin_note) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [
+          d.id,
+          d.judge_id,
+          d.entry_id,
+          d.has_conflict,
+          d.reason,
+          d.declared_at,
+          d.recorded_by_id,
+          d.admin_note,
+        ],
+      );
+    for (const p of openCheckouts)
+      await db().query(`UPDATE payment SET expires_at = $2 WHERE id = $1`, [p.id, p.expires_at]);
     await db().query(`UPDATE entry SET is_finalist = false WHERE cycle_id = $1`, [cycle.id]);
     await db().query(
       `UPDATE award_cycle SET phase = 'NOMINATION', nominations_open_at = $2, early_deadline = $3, regular_deadline = $4, final_deadline = $5 WHERE id = $1`,
