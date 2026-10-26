@@ -47,7 +47,9 @@ export default async function EntryPage({ params, searchParams }: PageProps<"/en
         ? "Checkout cancelled. You can edit the entry again."
         : query.checkout === "stale"
           ? entry.status === "DRAFT"
-            ? "That checkout had already ended, so nothing was charged. Start a new checkout to pay."
+            ? pay.open
+              ? "That checkout page was out of date, so nothing was charged. Use \u201cContinue to payment\u201d below to pay."
+              : "That checkout had already ended, so nothing was charged. Start a new checkout to pay."
             : "This entry is already paid for. Nothing more was charged."
           : query.checkout === "done"
             ? entry.status !== "DRAFT"
