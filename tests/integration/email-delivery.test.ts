@@ -49,7 +49,7 @@ const outbox = () => db.select().from(emailOutbox);
 
 describe("SMTP delivery (#16 reliability)", () => {
   it("delivers through nodemailer and keeps only a delivery record", async () => {
-    expect(await sendEmail(receipt())).toEqual({ delivered: true });
+    expect(await sendEmail(receipt())).toEqual({ delivered: true, failed: false });
     expect(smtp.state.accepted).toHaveLength(1);
     expect(smtp.state.accepted[0]).toContain("Thank you for your entry.");
     const [row] = await outbox();
@@ -65,7 +65,7 @@ describe("SMTP delivery (#16 reliability)", () => {
 
   it("tries twice, then keeps a failed email for the retry sweep", async () => {
     smtp.state.failing = true;
-    expect(await sendEmail(receipt())).toEqual({ delivered: false });
+    expect(await sendEmail(receipt())).toEqual({ delivered: false, failed: true });
     expect(smtp.state.refused).toBe(2);
     const [row] = await outbox();
     expect(row).toMatchObject({ status: "FAILED", attempts: 2 });
@@ -88,13 +88,30 @@ describe("SMTP delivery (#16 reliability)", () => {
   });
 
   it("queues without sending when asked, and the sweep sends it", async () => {
-    expect(await sendEmail(receipt(), { deliverNow: false })).toEqual({ delivered: false });
+    expect(await sendEmail(receipt(), { deliverNow: false })).toEqual({
+      delivered: false,
+      failed: false,
+    });
     expect(smtp.state.accepted).toHaveLength(0);
     expect(await retryDueEmails(new Date(Date.now() + 1000))).toEqual({
       attempted: 1,
       delivered: 1,
     });
     expect(smtp.state.accepted).toHaveLength(1);
+  });
+
+  it("a queued send with the key of a failed one leaves it to the sweep, untouched", async () => {
+    smtp.state.failing = true;
+    await sendEmail(receipt());
+    const [before] = await outbox();
+    smtp.state.failing = false;
+    expect(await sendEmail(receipt(), { deliverNow: false })).toEqual({
+      delivered: false,
+      failed: false,
+    });
+    const [after] = await outbox();
+    expect(after).toMatchObject({ status: "FAILED", nextAttemptAt: before!.nextAttemptAt });
+    expect(smtp.state.accepted).toHaveLength(0);
   });
 
   it("stops retrying after the attempt limit; an admin can still resend", async () => {
@@ -137,7 +154,7 @@ describe("SMTP delivery (#16 reliability)", () => {
     smtp.state.failing = false;
     const admin = await createActor("ADMIN");
     await expect(resendEmail(admin, row!.id)).rejects.toThrow(/being sent right now/);
-    expect(await sendEmail(receipt())).toEqual({ delivered: false });
+    expect(await sendEmail(receipt())).toEqual({ delivered: false, failed: false });
     expect(await retryDueEmails(new Date(Date.now() + 5 * MIN))).toEqual({
       attempted: 0,
       delivered: 0,
@@ -154,8 +171,8 @@ describe("SMTP delivery (#16 reliability)", () => {
     smtp.state.failing = true;
     await sendEmail(receipt());
     smtp.state.failing = false;
-    expect(await sendEmail(receipt())).toEqual({ delivered: true });
-    expect(await sendEmail(receipt())).toEqual({ delivered: false });
+    expect(await sendEmail(receipt())).toEqual({ delivered: true, failed: false });
+    expect(await sendEmail(receipt())).toEqual({ delivered: false, failed: false });
     expect(smtp.state.accepted).toHaveLength(1);
     expect(await outbox()).toHaveLength(1);
   });

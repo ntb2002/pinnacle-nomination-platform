@@ -29,8 +29,10 @@ export async function retryDueEmails(now = new Date(), limit = 20) {
     .limit(limit);
   let attempted = 0;
   let delivered = 0;
+  const started = Date.now();
   for (const { id } of due) {
-    const row = await claimRow(id, now);
+    // Each claim's lease runs from when it is taken, not from the start of the sweep.
+    const row = await claimRow(id, new Date(now.getTime() + (Date.now() - started)));
     if (!row) continue; // delivered or claimed by someone else meanwhile
     attempted++;
     if (await deliverClaimed(row)) delivered++;

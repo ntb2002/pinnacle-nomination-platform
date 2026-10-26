@@ -59,6 +59,8 @@ function errorClass(err: unknown) {
 
 export interface Claimed {
   id: string;
+  /** The claim's lease: outcome writes apply only while the row still carries it. */
+  nextAttemptAt: Date | null;
   toAddress: string;
   subject: string;
   textBody: string;
@@ -68,6 +70,7 @@ export interface Claimed {
 
 const claimedColumns = {
   id: emailOutbox.id,
+  nextAttemptAt: emailOutbox.nextAttemptAt,
   toAddress: emailOutbox.toAddress,
   subject: emailOutbox.subject,
   textBody: emailOutbox.textBody,
@@ -125,6 +128,12 @@ export async function deliverClaimed(
   }
   const now = new Date();
   const attempts = row.attempts + made;
+  // Only while our claim stands: if the lease ran out and someone else claimed the row,
+  // their outcome is the one that counts.
+  const ours = and(
+    eq(emailOutbox.id, row.id),
+    row.nextAttemptAt ? eq(emailOutbox.nextAttemptAt, row.nextAttemptAt) : undefined,
+  );
   if (error === undefined) {
     await db
       .update(emailOutbox)
@@ -150,7 +159,7 @@ export async function deliverClaimed(
       lastAttemptAt: now,
       nextAttemptAt: row.textBody ? nextAttemptAfter(attempts, now) : null,
     })
-    .where(and(eq(emailOutbox.id, row.id), ne(emailOutbox.status, "SENT")));
+    .where(and(ours, ne(emailOutbox.status, "SENT")));
   return false;
 }
 
@@ -162,13 +171,14 @@ export async function deliverClaimed(
  *   now, then the retry sweep with backoff (retryDueEmails), then an admin's resend
  *   (/admin/emails). With `deliverNow: false` the mail is only queued for the sweep
  *   (bulk sends once the mail server is known to be failing).
- * Returns whether the mail was delivered now. Throws only when an unstored mail (a
+ * Returns whether the mail was delivered now, and whether a delivery attempt failed
+ * (false when it was only queued or skipped as a duplicate). Throws only when an unstored mail (a
  * sign-in link) could not be delivered, since nothing can retry it.
  */
 export async function sendEmail(
   msg: OutgoingEmail,
   { deliverNow = true }: { deliverNow?: boolean } = {},
-): Promise<{ delivered: boolean }> {
+): Promise<{ delivered: boolean; failed: boolean }> {
   const rendered = renderEmail(msg.content);
   const to = msg.to.trim().toLowerCase();
 
@@ -186,7 +196,7 @@ export async function sendEmail(
         sentAt: new Date(),
       })
       .onConflictDoNothing({ target: emailOutbox.dedupeKey });
-    return { delivered: true };
+    return { delivered: true, failed: false };
   }
 
   const store = !NOT_STORED.has(msg.template);
@@ -206,15 +216,17 @@ export async function sendEmail(
     .onConflictDoNothing({ target: emailOutbox.dedupeKey })
     .returning(claimedColumns);
   if (!row && msg.dedupeKey) {
-    // Same key seen before: delivered or being sent → skip; failed or abandoned → claim it.
+    // Same key seen before: delivered, being sent or queued → leave it to its owner
+    // (or the sweep); failed or abandoned → claim it and send now.
+    if (!deliverNow && store) return { delivered: false, failed: false };
     const [prior] = await db
       .select({ id: emailOutbox.id })
       .from(emailOutbox)
       .where(eq(emailOutbox.dedupeKey, msg.dedupeKey));
     row = prior ? ((await claimRow(prior.id, now)) ?? undefined) : undefined;
-    if (!row) return { delivered: false };
+    if (!row) return { delivered: false, failed: false };
   }
-  if (!row || (!deliverNow && store)) return { delivered: false };
+  if (!row || (!deliverNow && store)) return { delivered: false, failed: false };
 
   const delivered = await deliverClaimed(row, {
     tries: 2,
@@ -222,5 +234,5 @@ export async function sendEmail(
   });
   if (!delivered && !store) throw new Error(`Email delivery failed (${msg.template}); not stored`);
   if (!delivered) console.error(`Email delivery failed (${msg.template}); kept for retry`);
-  return { delivered };
+  return { delivered, failed: !delivered };
 }

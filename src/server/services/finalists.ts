@@ -186,8 +186,8 @@ export async function announceFinalists(actor: Actor, ip?: string) {
     ).catch((err: unknown) => {
       const x = err as { name?: string; code?: string };
       console.error("Result email failed:", x?.name ?? typeof err, x?.code ?? "");
-      return { delivered: false };
+      return { delivered: false, failed: true };
     });
-    if (!sent.delivered) mailServerUp = false;
+    if (sent.failed) mailServerUp = false;
   }
 }
