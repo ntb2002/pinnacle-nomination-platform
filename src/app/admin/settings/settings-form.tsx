@@ -13,6 +13,8 @@ export interface SettingsValues {
   earlyDate: string;
   regularDate: string;
   finalDate: string;
+  judgingOpensDate: string;
+  judgingClosesDate: string;
   earlyFee: string;
   regularFee: string;
   lateFee: string;
@@ -25,6 +27,8 @@ const LABELS: Record<keyof SettingsValues, string> = {
   earlyDate: "Early deadline",
   regularDate: "Regular deadline",
   finalDate: "Final deadline",
+  judgingOpensDate: "Judging opens",
+  judgingClosesDate: "Judging closes",
   earlyFee: "Early fee",
   regularFee: "Regular fee",
   lateFee: "Late fee",
@@ -102,6 +106,31 @@ export function SettingsForm({ initial }: { initial: SettingsValues }) {
           defaultValue={v.finalDate}
           errors={err("finalDate")}
           required
+        />
+      </fieldset>
+      <fieldset className="grid gap-6 sm:grid-cols-2">
+        <legend className="mb-4 font-display text-2xl font-semibold">Round one judging</legend>
+        <p className="sm:col-span-2">
+          The published judging window, shown on the public site. Opening and closing round one are
+          still done on the Judging page. Leave both blank until the dates are confirmed.
+        </p>
+        <Field
+          id="judgingOpensDate"
+          name="judgingOpensDate"
+          label={LABELS.judgingOpensDate}
+          hint="After the final deadline."
+          type="date"
+          defaultValue={v.judgingOpensDate}
+          errors={err("judgingOpensDate")}
+        />
+        <Field
+          id="judgingClosesDate"
+          name="judgingClosesDate"
+          label={LABELS.judgingClosesDate}
+          hint="Last day of judging. Ends 11:59 p.m. Eastern."
+          type="date"
+          defaultValue={v.judgingClosesDate}
+          errors={err("judgingClosesDate")}
         />
       </fieldset>
       <fieldset className="grid gap-6 sm:grid-cols-2">

@@ -1,4 +1,4 @@
-import { deadlineDay, formatShortDate } from "@/lib/dates";
+import { deadlineDay, formatDayRange, formatShortDate } from "@/lib/dates";
 import { formatCents } from "@/lib/money";
 import type { PublicCycle } from "@/server/services/public-program";
 
@@ -22,8 +22,17 @@ export function KeyDates({ cycle }: { cycle: PublicCycle }) {
       note: `${formatCents(cycle.lateFeeCents)} per entry`,
     },
   ];
+  if (cycle.judgingOpensAt && cycle.judgingClosesAt) {
+    items.push({
+      label: "Round one judging",
+      value: formatDayRange(cycle.judgingOpensAt, cycle.judgingClosesAt),
+      note: "Finalists are announced after judging",
+    });
+  }
   return (
-    <dl className="grid gap-px overflow-hidden rounded border border-line bg-line sm:grid-cols-4">
+    <dl
+      className={`grid gap-px overflow-hidden rounded border border-line bg-line sm:grid-cols-2 ${items.length > 4 ? "lg:grid-cols-5" : "lg:grid-cols-4"}`}
+    >
       {items.map((i) => (
         <div key={i.label} className="bg-surface p-5">
           <dt className="text-sm text-slate">{i.label}</dt>

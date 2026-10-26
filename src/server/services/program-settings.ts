@@ -36,9 +36,11 @@ const SETTINGS_KEYS = [
   "regularFeeCents",
   "lateFeeCents",
   "finalistFeeCents",
+  "judgingOpensAt",
+  "judgingClosesAt",
 ] as const;
 
-function snapshot(c: Record<(typeof SETTINGS_KEYS)[number], Date | number>) {
+function snapshot(c: Record<(typeof SETTINGS_KEYS)[number], Date | number | null>) {
   return Object.fromEntries(
     SETTINGS_KEYS.map((k) => [k, c[k] instanceof Date ? (c[k] as Date).toISOString() : c[k]]),
   );

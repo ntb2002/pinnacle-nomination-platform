@@ -17,7 +17,7 @@ export default async function AdminSettingsPage() {
     <div className="container-page max-w-3xl py-12">
       <PageHeader
         title="Dates and fees"
-        intro={`${c.name}. Times are Eastern. Changes apply immediately to the public site and to new checkouts; entries already paid keep the fee they paid.`}
+        intro={`${c.name}. Times are Eastern. Changes apply immediately to the public site and to new checkouts; entries already paid keep the fee they paid. Every change is recorded in the audit log.`}
       />
       <SettingsForm
         initial={{
@@ -26,6 +26,8 @@ export default async function AdminSettingsPage() {
           earlyDate: deadlineToDateInput(c.earlyDeadline),
           regularDate: deadlineToDateInput(c.regularDeadline),
           finalDate: deadlineToDateInput(c.finalDeadline),
+          judgingOpensDate: c.judgingOpensAt ? toZonedDateInput(c.judgingOpensAt) : "",
+          judgingClosesDate: c.judgingClosesAt ? deadlineToDateInput(c.judgingClosesAt) : "",
           earlyFee: dollars(c.earlyFeeCents),
           regularFee: dollars(c.regularFeeCents),
           lateFee: dollars(c.lateFeeCents),

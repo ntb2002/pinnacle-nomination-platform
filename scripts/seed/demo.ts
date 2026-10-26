@@ -110,10 +110,12 @@ export async function seedDemo(db: Database, cycleId: string, now: Date) {
     cats.map((c) => c.id),
   );
 
-  // Submissions are spread from opening day up to now (or the first 50 days of a future cycle).
+  // Submissions are spread from opening day up to now (or across the whole window of a
+  // cycle that has not opened yet).
   const open = cycle.nominationsOpenAt.getTime();
   const span =
-    Math.max(Math.min(now.getTime(), cycle.finalDeadline.getTime()) - open, 0) || 50 * 86_400_000;
+    Math.max(Math.min(now.getTime(), cycle.finalDeadline.getTime()) - open, 0) ||
+    cycle.finalDeadline.getTime() - open - 1;
   const total = cats.length * PER_CATEGORY;
 
   for (let i = 0; i < total; i++) {

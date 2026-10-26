@@ -126,7 +126,7 @@ erDiagram
 | Table | Holds | Who may read |
 |---|---|---|
 | `user`, `session`, `account`, `verification` | Better Auth identity; `user.role` = NOMINATOR / JUDGE / ADMIN | self, admins |
-| `award_cycle` | one awards year: deadlines, fees (cents), phase, publication timestamps; one row `is_active` | public (dates, fees) |
+| `award_cycle` | one awards year: deadlines, fees (cents), optional published round-one judging window (`judging_opens_at`/`judging_closes_at`, both or neither, after the final deadline), phase, publication timestamps; one row `is_active` | public (dates, fees) |
 | `rubric_profile` | four integer weights per category type, CHECK sum = 100 | public |
 | `category` | 7 core + 2 optional per cycle, enable flag, rubric profile | public (enabled only) |
 | `judge_profile` | public name/title/org/bio; shown on `/judges` only when `is_public` | public (if public) |
