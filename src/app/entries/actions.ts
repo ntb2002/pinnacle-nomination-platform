@@ -125,7 +125,9 @@ export async function resubmitEntryAction(
   try {
     await resubmitEntry(actor, entryId);
   } catch (err) {
-    return toActionState(err);
+    // Field problems are listed on this page already; link-free message only.
+    const { fieldErrors: _fields, ...state } = toActionState(err);
+    return state;
   }
   revalidatePath(`/entries/${entryId}`, "layout");
   redirect(`/entries/${entryId}?resubmitted=1`);

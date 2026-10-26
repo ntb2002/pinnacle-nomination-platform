@@ -3,6 +3,7 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import type { Actor } from "@/server/auth/actor";
 import { closeDb } from "@/server/db";
 import {
+  attachment,
   auditLog,
   awardCycle,
   emailOutbox,
@@ -189,7 +190,7 @@ describe("triage state machine", () => {
       .where(
         and(eq(entryStatusEvent.entryId, second.id), eq(entryStatusEvent.fromStatus, "RETURNED")),
       );
-    expect(ev!.note).toBe("Changed: Category.");
+    expect(ev!.note).toMatch(/^Changed: Category \(was .+\)\.$/);
   });
 
   it("closes triage when round one opens", async () => {
@@ -207,6 +208,85 @@ async function approveEntryAfterResubmit(admin: Actor, nominator: Actor, id: str
   await resubmitEntry(nominator, id);
   await approveEntry(admin, id);
 }
+
+describe("review regressions", () => {
+  it("audits returns and refuses an approval from a page that is out of date", async () => {
+    const { admin, nominator, entry: e } = await setup();
+    const [seen] = await db
+      .select({ id: entryStatusEvent.id })
+      .from(entryStatusEvent)
+      .where(eq(entryStatusEvent.entryId, e.id));
+    await returnEntry(admin, e.id, RETURN, "203.0.113.9");
+    const [a] = await db.select().from(auditLog).where(eq(auditLog.action, "entry.returned"));
+    expect(a).toMatchObject({
+      actorId: admin.id,
+      targetId: e.id,
+      metadata: { reason: "INCOMPLETE" },
+    });
+    await resubmitEntry(nominator, e.id);
+    // A second admin's page still shows the version from before the return.
+    await expect(approveEntry(admin, e.id, { version: seen!.id })).rejects.toBeInstanceOf(
+      ConflictError,
+    );
+    const [latest] = await db
+      .select({ id: entryStatusEvent.id })
+      .from(entryStatusEvent)
+      .where(and(eq(entryStatusEvent.entryId, e.id), eq(entryStatusEvent.fromStatus, "RETURNED")));
+    await approveEntry(admin, e.id, { version: latest!.id });
+    expect(await statusOf(e.id)).toBe("APPROVED");
+  });
+
+  it("refuses a move onto an existing entry for the same nominee, and after judging starts", async () => {
+    const { admin, nominator, entry: e, other, cycle } = await setup();
+    // A draft for the same nominee already sits in the other category.
+    await createCompleteEntry({
+      cycleId: cycle.id,
+      categoryId: other.id,
+      nominatorId: nominator.id,
+    }).then((d) =>
+      db.update(entry).set({ nomineeEmail: e.nomineeEmail }).where(eq(entry.id, d.id)),
+    );
+    await returnEntry(admin, e.id, {
+      reason: "WRONG_CATEGORY",
+      message: "Belongs elsewhere, please move it.",
+    });
+    const err = await moveReturnedEntry(nominator, e.id, other.id).catch((x: unknown) => x);
+    expect(err).toBeInstanceOf(ValidationError);
+    expect((err as ValidationError).fieldErrors.categoryId?.[0]).toMatch(/already have an entry/);
+    const third = await createCategory(cycle.id);
+    await db.update(awardCycle).set({ phase: "ROUND1_OPEN" }).where(eq(awardCycle.id, cycle.id));
+    await expect(moveReturnedEntry(nominator, e.id, third.id)).rejects.toBeInstanceOf(
+      ConflictError,
+    );
+  });
+
+  it("lists added or removed files in the change summary", async () => {
+    const { admin, nominator, entry: e } = await setup();
+    await returnEntry(admin, e.id, RETURN);
+    await db.insert(attachment).values({
+      entryId: e.id,
+      storageKey: crypto.randomUUID(),
+      originalName: "report.pdf",
+      contentType: "application/pdf",
+      sizeBytes: 10,
+      sha256: "c".repeat(64),
+      uploadedById: nominator.id,
+    });
+    await resubmitEntry(nominator, e.id);
+    const [ev] = await db
+      .select()
+      .from(entryStatusEvent)
+      .where(and(eq(entryStatusEvent.entryId, e.id), eq(entryStatusEvent.fromStatus, "RETURNED")));
+    expect(ev!.note).toBe("Changed: Supporting files.");
+  });
+
+  it("does not let a nominator probe or lock someone else's returned entry", async () => {
+    const { admin, entry: e } = await setup();
+    await returnEntry(admin, e.id, RETURN);
+    const stranger = await createActor("NOMINATOR");
+    await expect(resubmitEntry(stranger, e.id)).rejects.toBeInstanceOf(NotFoundError);
+  });
+});
 
 describe("admin access", () => {
   it("is admin-only", async () => {

@@ -37,7 +37,7 @@ export default async function EditEntryPage({
   const [files, query, returned] = await Promise.all([
     listAttachments(actor, id),
     searchParams,
-    entry.status === "RETURNED" ? latestReturn(id) : null,
+    entry.status === "RETURNED" ? latestReturn(actor, id) : null,
   ]);
 
   const initial: Record<string, string> = {
@@ -78,7 +78,7 @@ export default async function EditEntryPage({
         <MoveCategory
           entryId={entry.id}
           current={entry.categoryName}
-          options={await moveTargets(entry.id)}
+          options={await moveTargets(actor, entry.id)}
         />
       )}
       {!entry.categoryEnabled && (

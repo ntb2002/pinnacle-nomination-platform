@@ -9,6 +9,7 @@ import { audit } from "@/server/audit";
 import { assertRole, type Actor } from "@/server/auth/actor";
 import { db, type DbExecutor } from "@/server/db";
 import {
+  attachment,
   awardCycle,
   category,
   entry,
@@ -24,34 +25,56 @@ import {
   entryResubmittedEmail,
   entryReturnedEmail,
 } from "@/server/email/templates";
-import { changedFields, contentHashes } from "@/server/entry-changes";
+import { CATEGORY_NAME_KEY, changedFields, contentHashes } from "@/server/entry-changes";
 import { ConflictError, NotFoundError, ValidationError } from "@/server/errors";
 import { fieldErrorsOf } from "@/server/validation";
 
 export const TRIAGE_CLOSED_MESSAGE =
   "Eligibility review has closed because round one judging has opened.";
 
-/** Locks the entry and requires triage to be open (the cycle still in NOMINATION). */
-async function lockForTriage(tx: DbExecutor, entryId: string) {
-  const [row] = await tx
-    .select({ entry, phase: awardCycle.phase })
-    .from(entry)
-    .innerJoin(awardCycle, eq(awardCycle.id, entry.cycleId))
-    .where(eq(entry.id, entryId))
-    .for("update", { of: entry });
-  if (!row) throw new NotFoundError("entry");
-  // FOR SHARE on the cycle serializes with an admin opening round one (#12).
-  await tx
-    .select({ id: awardCycle.id })
+/**
+ * Locks the cycle FOR SHARE (serializes with an admin opening round one, #12), checks
+ * triage is open on the locked row, then locks the entry FOR UPDATE: cycle before
+ * entry, the same order as the other cycle-level locks. `ownerId` scopes the entry to
+ * its nominator, so nobody can lock (or probe) someone else's entry.
+ */
+async function lockForTriage(tx: DbExecutor, entryId: string, ownerId?: string) {
+  const owned = (id: string) =>
+    ownerId ? and(eq(entry.id, id), eq(entry.nominatorId, ownerId)) : eq(entry.id, id);
+  const [ref] = await tx.select({ cycleId: entry.cycleId }).from(entry).where(owned(entryId));
+  if (!ref) throw new NotFoundError("entry");
+  const [cycle] = await tx
+    .select({ phase: awardCycle.phase })
     .from(awardCycle)
-    .where(eq(awardCycle.id, row.entry.cycleId))
+    .where(eq(awardCycle.id, ref.cycleId))
     .for("share");
-  if (row.phase !== "NOMINATION") throw new ConflictError(TRIAGE_CLOSED_MESSAGE);
-  return row.entry;
+  if (cycle?.phase !== "NOMINATION") throw new ConflictError(TRIAGE_CLOSED_MESSAGE);
+  const [locked] = await tx.select().from(entry).where(owned(entryId)).for("update");
+  if (!locked) throw new NotFoundError("entry");
+  return locked;
+}
+
+/**
+ * Refuses when the entry changed (a newer status event) after the admin's page was
+ * rendered, so nobody approves or returns content they have not seen.
+ */
+async function assertCurrent(tx: DbExecutor, entryId: string, version: string | undefined) {
+  if (!version) return;
+  const [latest] = await tx
+    .select({ id: entryStatusEvent.id })
+    .from(entryStatusEvent)
+    .where(eq(entryStatusEvent.entryId, entryId))
+    .orderBy(desc(entryStatusEvent.createdAt))
+    .limit(1);
+  if (latest && latest.id !== version) {
+    throw new ConflictError(
+      "This entry changed after you opened it. Reload the page and review it again.",
+    );
+  }
 }
 
 export async function loadContent(tx: DbExecutor, e: typeof entry.$inferSelect) {
-  const [outcomes, references] = await Promise.all([
+  const [outcomes, references, files] = await Promise.all([
     tx
       .select()
       .from(entryOutcome)
@@ -62,8 +85,9 @@ export async function loadContent(tx: DbExecutor, e: typeof entry.$inferSelect) 
       .from(entryReference)
       .where(eq(entryReference.entryId, e.id))
       .orderBy(asc(entryReference.position)),
+    tx.select({ sha256: attachment.sha256 }).from(attachment).where(eq(attachment.entryId, e.id)),
   ]);
-  return { ...e, outcomes, references };
+  return { ...e, outcomes, references, fileHashes: files.map((f) => f.sha256) };
 }
 
 /** Admin: SUBMITTED → APPROVED (eligible for judging). Emails the nominator. */
@@ -81,6 +105,7 @@ export async function approveEntry(
     const e = await lockForTriage(tx, entryId);
     if (e.status !== "SUBMITTED")
       throw new ConflictError("Only submitted entries can be approved.");
+    await assertCurrent(tx, entryId, parsed.data.version);
     await tx.update(entry).set({ status: "APPROVED" }).where(eq(entry.id, entryId));
     const [ev] = await tx
       .insert(entryStatusEvent)
@@ -118,6 +143,7 @@ export async function returnEntry(
     const e = await lockForTriage(tx, entryId);
     if (e.status !== "SUBMITTED")
       throw new ConflictError("Only submitted entries can be returned.");
+    await assertCurrent(tx, entryId, parsed.data.version);
     await tx.update(entry).set({ status: "RETURNED" }).where(eq(entry.id, entryId));
     const [ev] = await tx
       .insert(entryStatusEvent)
@@ -128,7 +154,11 @@ export async function returnEntry(
         actorId: actor.id,
         returnReason: reason,
         note: message,
-        contentHashes: contentHashes(await loadContent(tx, e)),
+        contentHashes: {
+          ...contentHashes(await loadContent(tx, e)),
+          // Category names are not confidential: lets the summary say "was …".
+          [CATEGORY_NAME_KEY]: await categoryName(tx, e.categoryId),
+        },
       })
       .returning({ id: entryStatusEvent.id });
     await audit(
@@ -157,14 +187,13 @@ export async function resubmitEntry(actor: Actor, entryId: string) {
   assertRole(actor, "NOMINATOR");
   if (!isUuid(entryId)) throw new NotFoundError("entry");
   const result = await db.transaction(async (tx) => {
-    const e = await lockForTriage(tx, entryId).catch((err: unknown) => {
+    const e = await lockForTriage(tx, entryId, actor.id).catch((err: unknown) => {
       throw err instanceof ConflictError
         ? new ConflictError(
             "Judging has started, so returned entries can no longer be resubmitted.",
           )
         : err;
     });
-    if (e.nominatorId !== actor.id) throw new NotFoundError("entry");
     if (e.status !== "RETURNED")
       throw new ConflictError("Only returned entries can be resubmitted.");
     const [cat] = await tx
@@ -275,4 +304,9 @@ async function safeSend(msg: Parameters<typeof sendEmail>[0]) {
     const e = err as { name?: string; code?: string };
     console.error("Status email failed:", e?.name ?? typeof err, e?.code ?? "");
   });
+}
+
+async function categoryName(tx: DbExecutor, id: string) {
+  const [c] = await tx.select({ name: category.name }).from(category).where(eq(category.id, id));
+  return c?.name ?? "";
 }

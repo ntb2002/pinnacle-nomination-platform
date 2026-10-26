@@ -11,7 +11,7 @@ import { approveEntryAction, returnEntryAction } from "../actions";
 const LABELS = { reason: "Reason", message: "Message to the nominator", note: "Internal note" };
 
 /** Approve or return a submitted entry. Both forms work without JavaScript. */
-export function TriageForms({ entryId }: { entryId: string }) {
+export function TriageForms({ entryId, version }: { entryId: string; version?: string }) {
   const [approveState, approve] = useActionState(approveEntryAction.bind(null, entryId), idleState);
   const [returnState, sendBack] = useActionState(returnEntryAction.bind(null, entryId), idleState);
   const rv = returnState.values ?? {};
@@ -23,6 +23,7 @@ export function TriageForms({ entryId }: { entryId: string }) {
       >
         <h3 className="font-display text-xl font-semibold">Approve for judging</h3>
         <FormMessage state={approveState} labels={LABELS} idPrefix="approve-" />
+        {version && <input type="hidden" name="version" value={version} />}
         <p>The entry is complete and in the right category. The nominator is emailed.</p>
         <TextArea
           id="approve-note"
@@ -44,6 +45,7 @@ export function TriageForms({ entryId }: { entryId: string }) {
       >
         <h3 className="font-display text-xl font-semibold">Return to the nominator</h3>
         <FormMessage state={returnState} labels={LABELS} />
+        {version && <input type="hidden" name="version" value={version} />}
         <RadioGroup
           name="reason"
           legend="Reason"

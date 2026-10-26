@@ -81,7 +81,9 @@ test("wrong-category return → move → resubmit → approve", async ({ browser
 
   // The admin sees what changed and approves.
   await admin.goto(`/admin/entries/${e.id}`);
-  await expect(admin.getByText("Resubmitted after a return. Changed: Category.")).toBeVisible();
+  await expect(
+    admin.getByText(/Resubmitted after a return\. Changed: Category \(was .+\)\./),
+  ).toBeVisible();
   await admin.getByRole("button", { name: "Approve the entry" }).click();
   await expect(admin.getByRole("status").filter({ hasText: "Entry approved." })).toBeFocused();
   const history = admin.locator("section", {

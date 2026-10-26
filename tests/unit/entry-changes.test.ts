@@ -24,6 +24,7 @@ const base: EntryContent = {
       relationship: "Partner",
     },
   ],
+  fileHashes: ["a".repeat(64)],
 };
 
 describe("entry change summary", () => {
@@ -41,12 +42,20 @@ describe("entry change summary", () => {
     after.outcomes[1]!.dataPoint = "15 people";
     after.outcomes.push({ position: 3, description: "New", dataPoint: "1" });
     after.references = [];
+    after.fileHashes.push("b".repeat(64));
     expect(changedFields(contentHashes(base), contentHashes(after))).toEqual([
       "Category",
       "Narrative",
       "Outcome 2",
       "Outcome 3",
       "Reference 1",
+      "Supporting files",
     ]);
+  });
+
+  it("names the old category when it is known, and ignores plain context", () => {
+    const before = { ...contentHashes(base), "meta.categoryName": "Top Strategist" };
+    const after = contentHashes({ ...structuredClone(base), categoryId: "c9" });
+    expect(changedFields(before, after)).toEqual(["Category (was Top Strategist)"]);
   });
 });

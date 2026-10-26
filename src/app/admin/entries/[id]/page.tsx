@@ -65,15 +65,18 @@ export default async function AdminEntryPage({
         )}
         {e.entry.status === "SUBMITTED" && e.triageOpen ? (
           <div className="mt-6">
-            <TriageForms entryId={e.entry.id} />
+            <TriageForms entryId={e.entry.id} version={e.history.at(-1)?.id} />
           </div>
         ) : (
           <p className="mt-3">
             {!e.triageOpen
               ? "Eligibility review closed when round one opened."
-              : e.entry.status === "RETURNED"
-                ? "Waiting for the nominator to make changes and resubmit."
-                : "This entry is approved for judging."}
+              : {
+                  RETURNED: "Waiting for the nominator to make changes and resubmit.",
+                  APPROVED: "This entry is approved for judging.",
+                  DRAFT: "This entry is a draft and has not been submitted.",
+                  SUBMITTED: "",
+                }[e.entry.status]}
           </p>
         )}
       </section>
@@ -126,6 +129,8 @@ export default async function AdminEntryPage({
             Contact details are hidden.{" "}
             <Link
               href={`/admin/entries/${e.entry.id}?contacts=1#references-heading`}
+              // Following it writes an audit row: never fetch it ahead of a click.
+              prefetch={false}
               className="font-semibold underline"
             >
               Show reference contact details

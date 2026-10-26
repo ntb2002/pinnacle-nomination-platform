@@ -43,7 +43,7 @@ export default async function EntryPage({ params, searchParams }: PageProps<"/en
   ]);
   const [timeline, returned] = await Promise.all([
     getMyTimeline(actor, id),
-    entry.status === "RETURNED" ? latestReturn(id) : null,
+    entry.status === "RETURNED" ? latestReturn(actor, id) : null,
   ]);
   const status = NOMINATOR_STATUS[entry.status];
   const locked = !editable && query.locked === "1";

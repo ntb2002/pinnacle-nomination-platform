@@ -1,5 +1,6 @@
 import "server-only";
 import { and, asc, count, desc, eq, ne, type SQL } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { z } from "zod";
 import { isUuid } from "@/lib/ids";
 import { audit } from "@/server/audit";
@@ -108,10 +109,7 @@ export async function getAdminEntry(
     .innerJoin(user, eq(user.id, entry.nominatorId))
     .where(eq(entry.id, entryId));
   if (!row) throw new NotFoundError("entry");
-  const actorUser = db
-    .select({ id: user.id, name: user.name, role: user.role })
-    .from(user)
-    .as("actor_user");
+  const actorUser = alias(user, "actor_user");
   const [content, files, payments, history] = await Promise.all([
     loadContent(db, row.entry),
     db

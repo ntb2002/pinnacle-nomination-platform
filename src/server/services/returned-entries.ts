@@ -2,20 +2,27 @@ import "server-only";
 import { and, asc, desc, eq, ne } from "drizzle-orm";
 import { isUuid } from "@/lib/ids";
 import { assertRole, type Actor } from "@/server/auth/actor";
-import { db } from "@/server/db";
-import { category, entry, entryStatusEvent } from "@/server/db/schema";
+import { db, type DbExecutor } from "@/server/db";
+import { awardCycle, category, entry, entryStatusEvent } from "@/server/db/schema";
 import { ConflictError, NotFoundError, ValidationError } from "@/server/errors";
 
-/** The latest return of an entry: reason and the team's message to the nominator. */
-export async function latestReturn(entryId: string) {
-  const [r] = await db
+/** The latest return of the nominator's own entry: reason and the team's message. */
+export async function latestReturn(actor: Actor, entryId: string, tx: DbExecutor = db) {
+  const [r] = await tx
     .select({
       reason: entryStatusEvent.returnReason,
       message: entryStatusEvent.note,
       at: entryStatusEvent.createdAt,
     })
     .from(entryStatusEvent)
-    .where(and(eq(entryStatusEvent.entryId, entryId), eq(entryStatusEvent.toStatus, "RETURNED")))
+    .innerJoin(entry, eq(entry.id, entryStatusEvent.entryId))
+    .where(
+      and(
+        eq(entryStatusEvent.entryId, entryId),
+        eq(entryStatusEvent.toStatus, "RETURNED"),
+        eq(entry.nominatorId, actor.id),
+      ),
+    )
     .orderBy(desc(entryStatusEvent.createdAt))
     .limit(1);
   return r ?? null;
@@ -49,11 +56,11 @@ export async function getMyTimeline(actor: Actor, entryId: string) {
 }
 
 /** Enabled categories a returned entry could move to (for a wrong-category return). */
-export async function moveTargets(entryId: string) {
+export async function moveTargets(actor: Actor, entryId: string) {
   const [e] = await db
     .select({ cycleId: entry.cycleId, categoryId: entry.categoryId })
     .from(entry)
-    .where(eq(entry.id, entryId));
+    .where(and(eq(entry.id, entryId), eq(entry.nominatorId, actor.id)));
   if (!e) return [];
   return db
     .select({ id: category.id, name: category.name })
@@ -87,7 +94,14 @@ export async function moveReturnedEntry(actor: Actor, entryId: string, categoryI
         )
         .for("update");
       if (!e) throw new NotFoundError("returned entry");
-      const last = await latestReturn(entryId);
+      const [cycle] = await tx
+        .select({ phase: awardCycle.phase })
+        .from(awardCycle)
+        .where(eq(awardCycle.id, e.cycleId));
+      if (cycle?.phase !== "NOMINATION") {
+        throw new ConflictError("Judging has started, so returned entries can no longer change.");
+      }
+      const last = await latestReturn(actor, entryId, tx);
       if (last?.reason !== "WRONG_CATEGORY") {
         throw new ConflictError(
           "Only entries returned as in the wrong category can change category.",

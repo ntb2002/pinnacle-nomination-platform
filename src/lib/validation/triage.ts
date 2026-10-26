@@ -1,7 +1,11 @@
 import { z } from "zod";
 
+/** The latest status event the admin's page was showing (stale-page guard). */
+const version = z.uuid().optional().catch(undefined);
+
 /** An admin returning an entry: a reason and a message the nominator will read. */
 export const returnEntrySchema = z.object({
+  version,
   reason: z.enum(["INCOMPLETE", "WRONG_CATEGORY", "OTHER"], {
     error: "Choose why the entry is being returned",
   }),
@@ -14,5 +18,6 @@ export const returnEntrySchema = z.object({
 
 /** Optional internal note on approval (admins only). */
 export const approveEntrySchema = z.object({
+  version,
   note: z.string().trim().max(500, "Keep the note under 500 characters").optional(),
 });

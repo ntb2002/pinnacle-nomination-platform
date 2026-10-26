@@ -82,7 +82,12 @@ export function entryReturnedEmail(r: {
     subject: `Changes needed: ${r.nomineeName}, ${r.categoryName}`,
     paragraphs: [
       `The program team reviewed your entry for ${r.nomineeName} in ${r.categoryName} and returned it for changes (${r.reasonLabel.toLowerCase()}).`,
-      `Their message: ${r.message}`,
+      "Their message:",
+      // One paragraph per line, so the team's line breaks survive in the HTML email.
+      ...r.message
+        .split(/\n+/)
+        .map((line) => line.trim())
+        .filter(Boolean),
       "Update the entry and resubmit it. There is no new fee. Entries must be resubmitted before judging opens.",
     ],
     action: { label: "Update your entry", url: r.entryUrl },
