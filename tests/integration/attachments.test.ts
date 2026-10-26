@@ -5,7 +5,14 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { env } from "@/lib/env";
 import type { Actor } from "@/server/auth/actor";
 import { closeDb } from "@/server/db";
-import { attachment, auditLog, conflictDeclaration, entry } from "@/server/db/schema";
+import {
+  attachment,
+  auditLog,
+  awardCycle,
+  conflictDeclaration,
+  entry,
+  judgeProfile,
+} from "@/server/db/schema";
 import { ForbiddenError, NotFoundError } from "@/server/errors";
 import { storage } from "@/server/storage";
 import {
@@ -143,6 +150,10 @@ describe("downloading", () => {
     const row = await uploaded(owner, e.id);
     await db.update(entry).set({ status: "APPROVED" }).where(eq(entry.id, e.id));
     const judge = await createActor("JUDGE");
+    // #11 tightened the judge rule (agreed in #8's review): judges need an active profile
+    // and read content only once their round opens. Set that up; assertions unchanged.
+    await db.insert(judgeProfile).values({ userId: judge.id, displayName: "Test Judge" });
+    await db.update(awardCycle).set({ phase: "ROUND1_OPEN" }).where(eq(awardCycle.id, e.cycleId));
     // Not assigned yet, then assigned but no declaration yet.
     await expect(openAttachment(judge, row.id)).rejects.toBeInstanceOf(NotFoundError);
     await assignJudge(judge.id, category.id);

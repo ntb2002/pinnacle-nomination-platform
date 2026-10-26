@@ -187,9 +187,15 @@ async function fulfil(tx: Transaction, p: Payment, event: Paid) {
     .set({ status: "PAID", paidAt, providerPaymentIntentId: event.paymentIntentId })
     .where(eq(payment.id, p.id));
   const [e] = await tx
-    .select({ id: entry.id, status: entry.status, categoryEnabled: category.enabled })
+    .select({
+      id: entry.id,
+      status: entry.status,
+      categoryEnabled: category.enabled,
+      nominatorRole: user.role,
+    })
     .from(entry)
     .innerJoin(category, eq(category.id, entry.categoryId))
+    .innerJoin(user, eq(user.id, entry.nominatorId))
     .where(eq(entry.id, p.entryId));
   if (p.kind === "ENTRY_FEE" && e?.status === "DRAFT") {
     await tx
@@ -218,6 +224,7 @@ async function fulfil(tx: Transaction, p: Payment, event: Paid) {
         // Money was taken, so the entry is accepted; these flag it for a person to check.
         ...(p.status !== "PENDING" ? { paidAfterSessionEnded: p.status } : {}),
         ...(e && !e.categoryEnabled ? { categoryWithdrawn: true } : {}),
+        ...(e && e.nominatorRole !== "NOMINATOR" ? { nominatorRole: e.nominatorRole } : {}),
       },
     },
     tx,

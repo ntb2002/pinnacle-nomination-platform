@@ -107,3 +107,16 @@ export function entryResubmittedEmail(r: {
     action: { label: "Review the entry", url: r.adminUrl },
   };
 }
+
+/** To a new judge: what the role involves and how to sign in. */
+export function judgeInviteEmail(r: { name: string; signInUrl: string }): EmailContent {
+  return {
+    subject: "You are invited to judge the Pinnacle Awards",
+    paragraphs: [
+      `${r.name}, the Pinnacle Awards program team has added you to the judging panel.`,
+      "Before you read an entry you will be asked, for each one, whether you have a conflict of interest. You only see the nominee's name, title and company until you answer.",
+      "Sign in with this email address to see your categories.",
+    ],
+    action: { label: "Sign in to judge", url: r.signInUrl },
+  };
+}

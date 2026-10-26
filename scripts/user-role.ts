@@ -4,7 +4,7 @@
 import "dotenv/config";
 import { randomUUID } from "node:crypto";
 import { userInfo } from "node:os";
-import { eq } from "drizzle-orm";
+import { and, eq, gt, ne } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { emailSchema } from "@/lib/validation/common";
@@ -31,6 +31,68 @@ async function main() {
         .from(schema.user)
         .where(eq(schema.user.email, email.data));
       const id = existing?.id ?? randomUUID();
+      // ...and a judge who has declared on this cycle's entries cannot become a nominator.
+      if (existing?.role === "JUDGE" && role === "NOMINATOR") {
+        const [declared] = await tx
+          .select({ id: schema.conflictDeclaration.id })
+          .from(schema.conflictDeclaration)
+          .innerJoin(schema.entry, eq(schema.entry.id, schema.conflictDeclaration.entryId))
+          .innerJoin(
+            schema.awardCycle,
+            and(
+              eq(schema.awardCycle.id, schema.entry.cycleId),
+              eq(schema.awardCycle.isActive, true),
+            ),
+          )
+          .where(eq(schema.conflictDeclaration.judgeId, id))
+          .limit(1);
+        if (declared) {
+          throw new Error(
+            "This judge has declared on entries in the current cycle, so they cannot become a nominator in it.",
+          );
+        }
+      }
+      // Conflict policy (as in the app): no judging a cycle you submitted nominations to.
+      if (existing && role === "JUDGE") {
+        const [submitted] = await tx
+          .select({ id: schema.entry.id })
+          .from(schema.entry)
+          .innerJoin(schema.awardCycle, eq(schema.awardCycle.id, schema.entry.cycleId))
+          .where(
+            and(
+              eq(schema.entry.nominatorId, id),
+              ne(schema.entry.status, "DRAFT"),
+              eq(schema.awardCycle.isActive, true),
+            ),
+          )
+          .limit(1);
+        const [paying] = await tx
+          .select({ id: schema.payment.id })
+          .from(schema.payment)
+          .innerJoin(schema.entry, eq(schema.entry.id, schema.payment.entryId))
+          .innerJoin(
+            schema.awardCycle,
+            and(
+              eq(schema.awardCycle.id, schema.entry.cycleId),
+              eq(schema.awardCycle.isActive, true),
+            ),
+          )
+          .where(
+            and(
+              eq(schema.entry.nominatorId, id),
+              eq(schema.payment.status, "PENDING"),
+              gt(schema.payment.expiresAt, new Date(Date.now() - 5 * 60 * 1000)),
+            ),
+          )
+          .limit(1);
+        if (paying)
+          throw new Error("This person is paying for a nomination right now. Try again later.");
+        if (submitted) {
+          throw new Error(
+            "This person has submitted nominations in the current cycle, so they cannot judge it.",
+          );
+        }
+      }
       if (existing) await tx.update(schema.user).set({ role }).where(eq(schema.user.id, id));
       else
         await tx

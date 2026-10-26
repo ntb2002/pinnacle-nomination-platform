@@ -4,6 +4,13 @@
 >
 > Format: `### NNN — Title (date) — Status` · **Decision** · **Why** · **Rejected** · **Reverse cost**.
 
+### 010 — How judges reach entries (2026-10) — Accepted
+
+- **Decision:** Judge access is two permissions computed by one function (`judgeAccess`). *Declaring* (seeing nominee name, title and company) starts when an entry is approved in a category the judge is assigned to; *reading* (narrative, outcomes, references without contact details, files) needs a "no conflict" declaration, an assignment for that round, the round open, and for round 2 a finalist. A judge's conflict is final for them; admins may reverse it only with a recorded reason. Judges must have an active profile, may not be admins, and may not have submitted entries in the cycle.
+- **Why:** Declaring before reading is the published policy, and judges can declare during triage so admins see coverage gaps before round one. Keeping reading closed until the round opens stops early reading of a still-changing pool. One function for every path (pages, files, scores in #12) means a recusal cannot be bypassed through a forgotten route.
+- **Rejected:** Declaring per category (too coarse: conflicts are with people); letting judges undo a conflict (invites pressure); showing reference contact details to judges (the program team verifies references).
+- **Reverse cost:** low. The rule lives in `judgeAccess`.
+
 ### 009 — What a returned entry may change (2026-10) — Accepted
 
 - **Decision:** After a return, the nominator may edit everything except the nominee's email, which is fixed from the first payment. The category may change only when the return reason is "wrong category", and only to another enabled category of the same cycle. Resubmission is free and allowed until round one opens. At each return the app stores a SHA-256 per content field; on resubmission admins see the list of changed fields ("Changed: Category, Outcome 2").
