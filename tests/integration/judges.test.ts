@@ -18,6 +18,7 @@ import { openAttachment } from "@/server/services/attachments";
 import {
   clearConflict,
   coverageWarnings,
+  declarationsForJudge,
   declareConflict,
   recordConflict,
 } from "@/server/services/conflicts";
@@ -243,6 +244,20 @@ describe("conflict of interest", () => {
     expect((await getJudgeHome(j)).active).toBe(false);
   });
 
+  it("lists every approved entry in the judge's categories once, with their declaration", async () => {
+    const { admin, judge: j, a, b, category: cat } = await setup();
+    await setAssignments(admin, j.id, 2, [cat.id]); // both rounds: still one row per entry
+    await declareConflict(j, a.id, conflict);
+    const rows = await declarationsForJudge(admin, j.id);
+    expect(rows.map((r) => r.entryId).sort()).toEqual([a.id, b.id].sort());
+    expect(rows.find((r) => r.entryId === a.id)).toMatchObject({
+      hasConflict: true,
+      reason: conflict.reason,
+    });
+    expect(rows.find((r) => r.entryId === b.id)?.hasConflict).toBeNull();
+    await expect(declarationsForJudge(j, j.id)).rejects.toBeInstanceOf(ForbiddenError);
+  });
+
   it("admins record and clear recusals with reasons, all audited", async () => {
     const { admin, judge: j, a, cycle } = await setup();
     await openRound1(cycle.id);
@@ -326,18 +341,16 @@ describe("review regressions", () => {
       categoryId: cat.id,
       nominatorId: payer.id,
     });
-    await db
-      .insert(payment)
-      .values({
-        entryId: draft.id,
-        kind: "ENTRY_FEE",
-        tier: "EARLY",
-        amountCents: 50_000,
-        provider: "mock",
-        providerSessionId: "mock_cs_open",
-        createdById: payer.id,
-        expiresAt: new Date(Date.now() + 20 * 60_000),
-      });
+    await db.insert(payment).values({
+      entryId: draft.id,
+      kind: "ENTRY_FEE",
+      tier: "EARLY",
+      amountCents: 50_000,
+      provider: "mock",
+      providerSessionId: "mock_cs_open",
+      createdById: payer.id,
+      expiresAt: new Date(Date.now() + 20 * 60_000),
+    });
     const err = await inviteJudge(admin, {
       email: payer.email,
       displayName: "Payer Person",

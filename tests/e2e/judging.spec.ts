@@ -75,6 +75,12 @@ test("a judge declares a conflict on one entry and no conflict on another; only 
   await expect(admin.getByRole("heading", { name: "Coverage" })).toBeVisible();
   await expect(admin.getByText(/fewer than 2 eligible/)).toBeVisible();
   await expectNoAxeViolations(admin);
+  // The judge's admin page: profile, assignments, declarations (axe-clean).
+  const { rows: j } = await e2eDb().query(`SELECT id FROM "user" WHERE email = $1`, [JUDGE]);
+  await admin.goto(`/admin/judges/${j[0].id}`);
+  await expect(admin.getByRole("heading", { name: "Conflict declarations" })).toBeVisible();
+  await expect(admin.getByText(/Conflict \(recused\)/).first()).toBeVisible();
+  await expectNoAxeViolations(admin);
   await admin.goto(`/admin/entries/${idOf(first)}`);
   const decl = admin.locator("section", {
     has: admin.getByRole("heading", { name: /conflict declarations/ }),

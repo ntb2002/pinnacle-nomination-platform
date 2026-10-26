@@ -22,7 +22,9 @@ export default async function JudgeCategoryPage({
       ? "Conflict recorded. You are recused from that entry, and it is no longer in your list."
       : query.declared === "clear"
         ? "Thank you. Your answer is saved."
-        : null;
+        : query.declared === "final"
+          ? "You declared a conflict for that entry earlier, which only the program team can change."
+          : null;
   const q = await getJudgeQueue(actor, id, round).catch((err) => {
     if (err instanceof NotFoundError) notFound();
     throw err;

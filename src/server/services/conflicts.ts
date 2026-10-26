@@ -185,6 +185,9 @@ export async function declarationsForJudge(actor: Actor, judgeId: string) {
       nomineeName: entry.nomineeName,
       nomineeCompany: entry.nomineeCompany,
       categoryName: category.name,
+      // DISTINCT (one row per entry, even when assigned for both rounds) needs every
+      // ORDER BY expression in the select list.
+      categorySort: category.sortOrder,
       isFinalist: entry.isFinalist,
       hasConflict: conflictDeclaration.hasConflict,
       reason: conflictDeclaration.reason,
