@@ -45,6 +45,22 @@ const envSchema = z
     S3_REGION: z.string().min(2).optional(),
     /** Only for S3-compatible services (MinIO, Wasabi, …); omit for AWS S3. */
     S3_ENDPOINT: z.url().optional(),
+    /**
+     * stripe: Stripe hosted Checkout. mock: the built-in checkout simulator (development,
+     * CI, demo). Unset means stripe in real production and mock elsewhere.
+     * Cross-field rules are in paymentConfigProblems (checked at boot).
+     */
+    PAYMENTS_PROVIDER: z.enum(["stripe", "mock"]).optional(),
+    /** sk_test_… in development and staging; sk_live_… only in real production. */
+    STRIPE_SECRET_KEY: z
+      .string()
+      .regex(/^(sk|rk)_(test|live)_[A-Za-z0-9]+$/, "must be a Stripe secret or restricted key")
+      .optional(),
+    /** Signing secret of the webhook endpoint (whsec_…), from the Stripe dashboard or `stripe listen`. */
+    STRIPE_WEBHOOK_SECRET: z
+      .string()
+      .regex(/^whsec_[A-Za-z0-9]+$/, "must be a webhook signing secret (whsec_…)")
+      .optional(),
     /** "true" shows a banner saying people and entries are fictional (demo deployments). */
     DEMO_MODE: z.enum(["true", "false"]).default("false"),
     /** Must stay unset: Better Auth would silently trust extra origins from it. */
@@ -127,4 +143,39 @@ export function env(): Env {
 /** True for a real deployment: production build on a non-loopback URL. */
 export function isRealProduction(cfg: Env = env()): boolean {
   return cfg.NODE_ENV === "production" && !isLoopback(cfg.APP_URL);
+}
+
+/** The payment provider in use: PAYMENTS_PROVIDER, else stripe in real production, else mock. */
+export function paymentsProvider(cfg: Env = env()): "stripe" | "mock" {
+  return cfg.PAYMENTS_PROVIDER ?? (isRealProduction(cfg) ? "stripe" : "mock");
+}
+
+/**
+ * Payment configuration problems, empty when fine. Checked at boot (src/instrumentation.ts)
+ * and before any payment is created, so a misconfigured server never takes money:
+ * - the mock provider is refused in real production;
+ * - stripe needs a secret key and a webhook signing secret;
+ * - live keys are refused anywhere but real production;
+ * - test keys are refused in real production, except on a demo deployment.
+ */
+export function paymentConfigProblems(cfg: Env = env()): string[] {
+  const problems: string[] = [];
+  const provider = paymentsProvider(cfg);
+  const real = isRealProduction(cfg);
+  if (provider === "mock" && real) {
+    problems.push("PAYMENTS_PROVIDER=mock is refused in production: use stripe");
+  }
+  if (provider === "stripe") {
+    if (!cfg.STRIPE_SECRET_KEY) problems.push("STRIPE_SECRET_KEY is required for stripe");
+    if (!cfg.STRIPE_WEBHOOK_SECRET) problems.push("STRIPE_WEBHOOK_SECRET is required for stripe");
+  }
+  // A test key in production would let anyone "pay" with a test card. Allowed only on a
+  // demo deployment, which says so on every page (DEMO_MODE).
+  if (/^(sk|rk)_test_/.test(cfg.STRIPE_SECRET_KEY ?? "") && real && cfg.DEMO_MODE !== "true") {
+    problems.push("STRIPE_SECRET_KEY: test keys are refused in production unless DEMO_MODE=true");
+  }
+  if (/^(sk|rk)_live_/.test(cfg.STRIPE_SECRET_KEY ?? "") && !real) {
+    problems.push("STRIPE_SECRET_KEY: live keys are refused outside production; use a test key");
+  }
+  return problems;
 }

@@ -94,3 +94,58 @@ describe("production-only rules", () => {
     expect(isRealProduction(parseEnv({ ...valid, NODE_ENV: "production" }))).toBe(false);
   });
 });
+
+describe("payment configuration", () => {
+  const prod = {
+    ...valid,
+    NODE_ENV: "production",
+    APP_URL: "https://pinnacle.example.edu",
+    EMAIL_TRANSPORT: "smtp",
+    SMTP_URL: "smtps://u:p@smtp.example.edu:465",
+    EMAIL_FROM: "Pinnacle Awards <pinnacle@example.edu>",
+  };
+  const stripeTest = { STRIPE_SECRET_KEY: "sk_test_abc123", STRIPE_WEBHOOK_SECRET: "whsec_abc123" };
+
+  it("uses the mock outside production and stripe in production by default", async () => {
+    const { paymentsProvider, paymentConfigProblems } = await import("@/lib/env");
+    expect(paymentsProvider(parseEnv(valid))).toBe("mock");
+    expect(paymentConfigProblems(parseEnv(valid))).toEqual([]);
+    expect(paymentsProvider(parseEnv(prod))).toBe("stripe");
+    expect(paymentConfigProblems(parseEnv({ ...prod, ...stripeTest }))).toEqual([
+      expect.stringMatching(/test keys are refused in production/),
+    ]);
+    // A public demo deployment may use test keys; it shows the demo banner.
+    expect(paymentConfigProblems(parseEnv({ ...prod, ...stripeTest, DEMO_MODE: "true" }))).toEqual(
+      [],
+    );
+  });
+
+  it("refuses the mock provider in production", async () => {
+    const { paymentConfigProblems } = await import("@/lib/env");
+    expect(paymentConfigProblems(parseEnv({ ...prod, PAYMENTS_PROVIDER: "mock" }))).toEqual([
+      expect.stringMatching(/mock is refused in production/),
+    ]);
+    // A local production build (loopback) may still use it, e.g. for e2e.
+    expect(
+      paymentConfigProblems(
+        parseEnv({ ...valid, NODE_ENV: "production", PAYMENTS_PROVIDER: "mock" }),
+      ),
+    ).toEqual([]);
+  });
+
+  it("refuses live keys outside production and requires both Stripe secrets", async () => {
+    const { paymentConfigProblems } = await import("@/lib/env");
+    const live = { STRIPE_SECRET_KEY: "sk_live_abc123", STRIPE_WEBHOOK_SECRET: "whsec_abc123" };
+    expect(
+      paymentConfigProblems(parseEnv({ ...valid, PAYMENTS_PROVIDER: "stripe", ...live })),
+    ).toEqual([expect.stringMatching(/live keys are refused outside production/)]);
+    expect(paymentConfigProblems(parseEnv({ ...prod, ...live }))).toEqual([]);
+    expect(paymentConfigProblems(parseEnv({ ...valid, PAYMENTS_PROVIDER: "stripe" }))).toEqual([
+      expect.stringMatching(/STRIPE_SECRET_KEY/),
+      expect.stringMatching(/STRIPE_WEBHOOK_SECRET/),
+    ]);
+    expect(() => parseEnv({ ...valid, STRIPE_SECRET_KEY: "pk_test_abc" })).toThrow(
+      /STRIPE_SECRET_KEY/,
+    );
+  });
+});

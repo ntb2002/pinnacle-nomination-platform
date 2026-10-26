@@ -13,8 +13,9 @@ import { audit } from "@/server/audit";
 import { assertRole, type Actor } from "@/server/auth/actor";
 import { db, type DbExecutor } from "@/server/db";
 import { attachment, entry } from "@/server/db/schema";
-import { NotFoundError, ValidationError } from "@/server/errors";
+import { ConflictError, NotFoundError, ValidationError } from "@/server/errors";
 import { storage } from "@/server/storage";
+import { assertNoOpenCheckout } from "./checkout";
 import { EDITABLE_STATUSES } from "./entries";
 import { entryAccessFor } from "./entry-access";
 
@@ -83,6 +84,11 @@ async function checkUploadAllowed(tx: DbExecutor, actor: Actor, entryId: string,
     );
   const [row] = lock ? await owned.for("update") : await owned;
   if (!row) throw new UploadRejected("closed");
+  if (lock) {
+    await assertNoOpenCheckout(tx, entryId).catch((err: unknown) => {
+      throw err instanceof ConflictError ? new UploadRejected("checkout") : err;
+    });
+  }
   const [existing] = await tx
     .select({ n: count() })
     .from(attachment)
@@ -138,6 +144,7 @@ export async function deleteAttachment(actor: Actor, attachmentId: string) {
       )
       .for("update");
     if (!row) throw new NotFoundError("file");
+    await assertNoOpenCheckout(tx, row.entryId);
     await tx.delete(attachment).where(eq(attachment.id, attachmentId));
     return row;
   });

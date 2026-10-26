@@ -7,6 +7,7 @@ import { RELATIONSHIP_LABEL } from "@/lib/entry-status";
 import { requireRole } from "@/server/auth/session";
 import { NotFoundError } from "@/server/errors";
 import { listAttachments } from "@/server/services/attachments";
+import { getMyEntryPayment } from "@/server/services/checkout";
 import { EDITABLE_STATUSES, getMyEntry } from "@/server/services/entries";
 import { EntryForm } from "./entry-form";
 import { FilesSection } from "./files-section";
@@ -28,6 +29,8 @@ export default async function EditEntryPage({
   if (!(EDITABLE_STATUSES as readonly string[]).includes(entry.status)) {
     redirect(`/entries/${id}?locked=1`);
   }
+  // While a checkout is open the entry is frozen; the review page explains and offers cancel.
+  if ((await getMyEntryPayment(actor, id)).open) redirect(`/entries/${id}`);
   const [files, query] = await Promise.all([listAttachments(actor, id), searchParams]);
 
   const initial: Record<string, string> = {

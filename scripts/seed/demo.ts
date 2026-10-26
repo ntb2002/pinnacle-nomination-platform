@@ -194,6 +194,7 @@ export async function seedDemo(db: Database, cycleId: string, now: Date) {
         provider: "mock",
         providerSessionId: `seed_cs_${i}`,
         createdById: nominatorId,
+        expiresAt: new Date(submittedAt.getTime() + 31 * 60 * 1000),
         paidAt: submittedAt,
       })
       .onConflictDoNothing();

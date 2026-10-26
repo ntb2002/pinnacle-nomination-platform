@@ -36,6 +36,11 @@ export default defineConfig({
       BETTER_AUTH_SECRET: "test-only-secret-not-for-production-000000",
       EMAIL_TRANSPORT: "outbox",
       DEMO_MODE: "true",
+      // No proxy sits in front of the e2e server, so there is no trusted client IP: every
+      // browser counts as "unknown" and shares that sign-in bucket (200 per 15 minutes)
+      // instead of one IP's 20. The per-IP and per-email limits are covered by
+      // tests/integration/rate-limit.test.ts.
+      TRUSTED_PROXY_HOPS: "0",
       STORAGE_DIR: path.resolve(import.meta.dirname, "storage/e2e"),
     },
   },

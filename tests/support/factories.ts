@@ -4,6 +4,8 @@ import {
   awardCycle,
   category,
   entry,
+  entryOutcome,
+  entryReference,
   judgeAssignment,
   rubricProfile,
   user,
@@ -119,4 +121,39 @@ export async function createProgram(now = new Date()) {
   const cat = await createCategory(cycle.id);
   const nominator = await createUser("NOMINATOR");
   return { cycle, category: cat, nominator };
+}
+
+/** A DRAFT entry that passes every submission rule (ready to pay for). */
+export async function createCompleteEntry(values: {
+  cycleId: string;
+  categoryId: string;
+  nominatorId: string;
+}) {
+  const words = Array.from({ length: 300 }, (_, i) => ["growth", "creators", "results"][i % 3]);
+  const e = await createEntry({
+    ...values,
+    nomineeTitle: "Chief Executive Officer",
+    nomineeCompany: "Example Media Co.",
+    narrative: words.join(" "),
+  });
+  await db.insert(entryOutcome).values([
+    { entryId: e.id, position: 1, description: "Grew creator revenue", dataPoint: "+48% YoY" },
+    {
+      entryId: e.id,
+      position: 2,
+      description: "Expanded the partner program",
+      dataPoint: "120 partners",
+    },
+  ]);
+  await db.insert(entryReference).values({
+    entryId: e.id,
+    position: 1,
+    name: "Morgan Ellis",
+    title: "VP, Partnerships",
+    organization: "Example Brand Co.",
+    email: "morgan.ellis@example.org",
+    phone: "+1 315 555 0142",
+    relationship: "Brand partner for three years",
+  });
+  return e;
 }
