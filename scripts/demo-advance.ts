@@ -5,11 +5,13 @@
 //                      conflict: those are left for the presenter to score live
 //   select-others      (round one closed) choose the top finalists in every category
 //                      except one with a recusal, which the presenter chooses live
-// Runs the real services (rules, locks and audit rows apply). See DEMO.md.
+// Runs the real services (rules, locks and audit rows apply), as admin@example.org and
+// the seeded judges. Local *_dev/_test/_e2e databases only (scripts/lib/db-guard.ts).
+// See DEMO.md.
 import "dotenv/config";
 import { createHash } from "node:crypto";
 import { and, eq, inArray, sql } from "drizzle-orm";
-import { endOfDayDeadline, toZonedDateInput, zonedToUtc } from "@/lib/zoned-time";
+import { deadlineToDateInput, toZonedDateInput, toZonedTimeInput } from "@/lib/zoned-time";
 import { allowedCounts, cutoffTie } from "@/lib/scoring";
 import type { Actor } from "@/server/auth/actor";
 import { closeDb, db } from "@/server/db";
@@ -25,11 +27,16 @@ import {
 } from "@/server/db/schema";
 import { declareConflict } from "@/server/services/conflicts";
 import { selectFinalists } from "@/server/services/finalists";
+import { updateCycleSettings } from "@/server/services/program-settings";
 import { computeRanking } from "@/server/services/rankings";
 import { saveScore } from "@/server/services/scoring";
+import { assertSafeToReset } from "./lib/db-guard";
 
-const DAY = 86_400_000;
-const day = (offset: number) => toZonedDateInput(new Date(Date.now() + offset * DAY));
+/** The Eastern calendar date `offset` days from today (calendar days, DST-safe). */
+function day(offset: number) {
+  const [y, m, d] = toZonedDateInput(new Date()).split("-").map(Number) as [number, number, number];
+  return new Date(Date.UTC(y, m - 1, d + offset)).toISOString().slice(0, 10);
+}
 const must = <T>(v: T | null | undefined, what: string): T => {
   if (v === null || v === undefined) throw new Error(`demo: ${what}`);
   return v;
@@ -58,20 +65,27 @@ async function recusedEntryIds(cycleId: string) {
   return new Set(rows.map((r) => r.id));
 }
 
-async function closeNominations() {
+async function closeNominations(admin: Actor) {
   const c = await activeCycle();
   if (c.phase !== "NOMINATION") throw new Error("demo: nominations are already closed");
-  await db
-    .update(awardCycle)
-    .set({
-      earlyDeadline: must(endOfDayDeadline(day(-3)), "date"),
-      regularDeadline: must(endOfDayDeadline(day(-2)), "date"),
-      finalDeadline: must(endOfDayDeadline(day(-1)), "date"),
-      judgingOpensAt: must(zonedToUtc(day(0)), "date"),
-      judgingClosesAt: must(endOfDayDeadline(day(18)), "date"),
-    })
-    .where(eq(awardCycle.id, c.id));
-  console.log("Nominations closed yesterday. Open round one in Admin → Judging.");
+  // Through the admin settings service: validated, locked and audited like the form.
+  const dollars = (cents: number) => String(cents / 100);
+  await updateCycleSettings(admin, {
+    opensDate: toZonedDateInput(c.nominationsOpenAt),
+    opensTime: toZonedTimeInput(c.nominationsOpenAt),
+    earlyDate: day(-3),
+    regularDate: day(-2),
+    finalDate: day(-1),
+    judgingOpensDate: day(0),
+    judgingClosesDate: day(18),
+    earlyFee: dollars(c.earlyFeeCents),
+    regularFee: dollars(c.regularFeeCents),
+    lateFee: dollars(c.lateFeeCents),
+    finalistFee: dollars(c.finalistFeeCents),
+  });
+  console.log(
+    `Nominations closed at the end of ${deadlineToDateInput(must((await activeCycle()).finalDeadline, "date"))}. Open round one in Admin → Judging.`,
+  );
 }
 
 /** A deterministic 4-10 score per criterion, so reruns give the same rankings. */
@@ -120,10 +134,9 @@ async function fillScores() {
   console.log(`Submitted ${scored} scores. Left for you to score live: ${live.size} entries.`);
 }
 
-async function selectOthers() {
+async function selectOthers(admin: Actor) {
   const c = await activeCycle();
   if (c.phase !== "ROUND1_CLOSED") throw new Error("demo: close round one first");
-  const admin = await actorFor("admin@example.org");
   const live = await recusedEntryIds(c.id);
   const liveCats = live.size
     ? (
@@ -167,11 +180,13 @@ async function selectOthers() {
 }
 
 async function main() {
-  if (process.env.NODE_ENV === "production") throw new Error("Refused: demo helper in production.");
+  // Same rule as db:reset: never production, only a local *_dev/_test/_e2e database.
+  assertSafeToReset(must(process.env.DATABASE_URL, "DATABASE_URL is not set"), process.env);
+  const admin = await actorFor("admin@example.org"); // the seeded demo admin, or stop
   const step = process.argv[2];
-  if (step === "close-nominations") await closeNominations();
+  if (step === "close-nominations") await closeNominations(admin);
   else if (step === "fill-scores") await fillScores();
-  else if (step === "select-others") await selectOthers();
+  else if (step === "select-others") await selectOthers(admin);
   else
     throw new Error("Usage: npm run demo:advance -- close-nominations|fill-scores|select-others");
 }

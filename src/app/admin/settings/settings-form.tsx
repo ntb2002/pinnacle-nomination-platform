@@ -108,9 +108,9 @@ export function SettingsForm({ initial }: { initial: SettingsValues }) {
           required
         />
       </fieldset>
-      <fieldset className="grid gap-6 sm:grid-cols-2">
+      <fieldset className="grid gap-6 sm:grid-cols-2" aria-describedby="judging-help">
         <legend className="mb-4 font-display text-2xl font-semibold">Round one judging</legend>
-        <p className="sm:col-span-2">
+        <p id="judging-help" className="sm:col-span-2">
           The published judging window, shown on the public site. Opening and closing round one are
           still done on the Judging page. Leave both blank until the dates are confirmed.
         </p>

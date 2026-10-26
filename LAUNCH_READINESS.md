@@ -6,14 +6,14 @@
 
 Done and merged into `v1`, each issue closed with evidence: #1-#12. That covers the public site, sign-in and roles, program settings, nominations, supporting files, entry-fee payment, eligibility review, judges and conflicts of interest, and round-one scoring with finalist selection and announcement.
 
-Since #12, on the `v1` line:
+Since #12 (branch `launch-demo-hardening`, merged into `v1` with this audit):
 - Nodemailer was upgraded past its high-severity advisories.
 - Failed transactional email is now recoverable: stored until delivered, retried automatically, and resendable by admins.
 - A race between conflict declarations and the finalist announcement was reproduced by a test and fixed.
 - Every date and fee is admin-editable, with the CCE timeline set as defaults.
 - A scripted, repeatable demo was added (`DEMO.md`).
 
-Everything a nominator needs on January 26 is built. What remains is needed later in the cycle: the finalist fee before finalists are announced (planned for late March), then round two and results.
+Every feature a nominator needs on January 26 is built. Opening day is still gated by #16 (security), #17 (accessibility) and #18 (deployment), and by the human actions below. Later in the cycle come #13 (the finalist fee, before finalists are announced in late March), #15, and then #14 (round two and results).
 
 ## Remaining issues
 

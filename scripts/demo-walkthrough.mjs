@@ -176,9 +176,11 @@ await admin.getByRole("status").filter({ hasText: "Finalists announced." }).wait
 await nom.goto("/entries");
 await nom.getByRole("row", { name: /Jordan Demo/ }).waitFor();
 await shot(nom, "8-finalist");
-console.log(
-  "Jordan Demo:",
-  (await nom.getByRole("row", { name: /Jordan Demo/ }).innerText()).replace(/\s+/g, " "),
+const result = (await nom.getByRole("row", { name: /Jordan Demo/ }).innerText()).replace(
+  /\s+/g,
+  " ",
 );
+console.log("Jordan Demo:", result);
+if (!result.includes("Finalist")) throw new Error("demo: Jordan Demo should be a finalist");
 await browser.close();
 await pool.end();

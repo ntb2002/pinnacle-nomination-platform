@@ -6,7 +6,7 @@ It takes about 15 minutes by hand. `npm run demo:walkthrough` runs the same step
 
 ## Set up (once per demo)
 
-Needs Node 24 and a local Postgres 16 with the `.env` from `.env.example` (`DATABASE_URL`, `BETTER_AUTH_SECRET`, `APP_URL`; leave `EMAIL_TRANSPORT=outbox` and `PAYMENTS_PROVIDER` unset).
+Needs Node 24 and a local Postgres 16 with the `.env` from `.env.example` (`DATABASE_URL`, `BETTER_AUTH_SECRET`, `APP_URL`; keep `EMAIL_TRANSPORT=outbox` and `PAYMENTS_PROVIDER=mock`).
 
 ```bash
 npm install
@@ -16,7 +16,7 @@ npm run dev                                         # http://localhost:3000
 
 Set `DEMO_MODE=true` to show the "fictional data" banner.
 
-**Signing in.** Go to **Sign in**, enter an address from the list below, then open **http://localhost:3000/dev/mailbox** and click the newest link. That mailbox exists only on the development outbox; in production the link is emailed. Use a separate browser profile, or a private window, for each person.
+**Signing in.** Go to **Sign in**, enter an address from the list below, then open **http://localhost:3000/dev/mailbox**, click the newest link, and confirm with **Sign in as …**. That mailbox exists only on the development outbox; in production the link is emailed. Use a separate browser profile, or a private window, for each person.
 
 | Person | Email |
 |---|---|
@@ -64,7 +64,7 @@ Judges see only name, title and company until they declare. Reading needs a "no 
 
 ## 5. Close nominations and open round one
 
-Round one opens only after the final deadline. In a real cycle the admin waits for it; for the demo, move the deadlines into the past:
+Round one opens only after the final deadline. In a real cycle the admin waits for it; for the demo, move the deadlines into the past (through the same audited settings service as **Admin → Dates and fees**):
 
 ```bash
 npm run demo:advance -- close-nominations
@@ -72,7 +72,7 @@ npm run demo:advance -- close-nominations
 
 As **admin**: **Admin → Judging**. Tick the confirmation about entries still in eligibility review (they will not be judged), and choose **Open round one**. This locks rubric weights and ends eligibility review.
 
-Then fill in the other judges' scores so the round can close (scoring around 95 entries by hand is not a demo):
+Then fill in the other judges' scores so the round can close (about 90 scores across 46 entries is not a demo):
 
 ```bash
 npm run demo:advance -- fill-scores   # every entry except the one with a recusal
@@ -87,7 +87,7 @@ As **judge4**, then **judge2**: open *Jordan Demo* from **Judging**. Read the en
 ## 7. Close round one, choose and announce finalists (admin)
 
 1. **Admin → Judging → Close round one.** Closing is refused while any entry has fewer than 2 counted scores. If a late conflict leaves an entry short, **Reopen round one** (with a reason) lets another judge score it.
-2. Choose the other categories' finalists (the top 5 of each):
+2. Choose the other categories' finalists (the top 5 of each; each has exactly 5 approved entries in the seed, so all of them advance):
    ```bash
    npm run demo:advance -- select-others
    ```
@@ -111,4 +111,4 @@ As **nominator02**: **Your entries** now shows *Finalist* or *Not advanced* for 
 
 ## Run it again
 
-`npm run db:reset && npm run db:seed -- --open-now` restores the starting point. The `demo:advance` steps refuse to run in production, and the seed refuses demo data there.
+`npm run db:reset && npm run db:seed -- --open-now` restores the starting point. The `demo:advance` steps run only against a local `*_dev`, `*_test` or `*_e2e` database (the same guard as `db:reset`), and the seed refuses demo data in production.

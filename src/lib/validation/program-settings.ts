@@ -86,7 +86,12 @@ export function parseCycleSettings(
       window = { nominationsOpenAt, earlyDeadline, regularDeadline, finalDeadline };
     }
   }
-  const judging = parseJudgingWindow(judgingSchema.parse(raw), window?.finalDeadline, add);
+  const judgingInput = judgingSchema.safeParse(raw);
+  if (!judgingInput.success)
+    for (const i of judgingInput.error.issues) add(String(i.path[0] ?? "_form"), "Enter a date");
+  const judging = judgingInput.success
+    ? parseJudgingWindow(judgingInput.data, window?.finalDeadline, add)
+    : null;
   // Fees escalate by deadline: a later tier never costs less than an earlier one.
   if (fees.success) {
     const f = fees.data;

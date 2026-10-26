@@ -5,7 +5,7 @@
 ## Now
 
 - **Done:** #1-#12, plus the launch-demo hardening pass (below).
-- **In progress:** none. The bounded demo session stopped after #12, by the owner's instruction. The draft PR `v1 → main` summarizes the state.
+- **In progress:** none. The bounded demo session stopped after #12, by the owner's instruction. The hardening branch `launch-demo-hardening` is merged into `v1`, and a draft PR `v1 → main` summarizes the state.
 - **Next:** #13 Finalist package fee. Remaining work and estimates are in `LAUNCH_READINESS.md` (#16-#18 gate opening day; #13-#15 come later in the cycle).
 - **Blockers:** CI must be installed by a human (LAUNCH_READINESS → *Human actions*). The real-Stripe check needs test keys and network access to Stripe.
 - **Demo:** `DEMO.md` (`npm run demo:walkthrough` replays it and saves its screenshots).
@@ -51,7 +51,7 @@
 - Recoverable email: bodies kept until delivered (never sign-in links), two tries, then a sweep with backoff, claim-based so nothing sends twice, and **Admin → Emails** with an audited resend. Review BLOCK (sign-in links sent blank; double-send races) → fixed → re-review APPROVE WITH FIXES → fixed.
 - Program config: CCE timeline defaults; admin-editable judging window (migration 0007) on the public key dates; `docs/open-questions.md`.
 - Stripe: no test keys in the environment and `api.stripe.com` unreachable. What to set is in LAUNCH_READINESS.
-- Demo: `DEMO.md`, `npm run demo:advance` (dev-only helpers using the real services) and `npm run demo:walkthrough` (screenshots in `plans/artifacts/demo-*.png`).
+- Demo: `DEMO.md`, `npm run demo:advance` (helpers for local demo databases that call the real services) and `npm run demo:walkthrough` (screenshots in `plans/artifacts/demo-*.png`).
 
 ### 2026-10-25 — v1 build started
 
