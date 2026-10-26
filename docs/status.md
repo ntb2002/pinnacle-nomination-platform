@@ -4,8 +4,8 @@
 
 ## Now
 
-- **Done:** #1, #2, #3, #4, #5, #6, #7, #8, #9, #10
-- **In progress:** #11 Judges and conflict of interest (built and tested; reviews next)
+- **Done:** #1, #2, #3, #4, #5, #6, #7, #8, #9, #10, #11
+- **In progress:** —
 - **Next:** #12 Round one scoring and finalist selection
 - **Blockers:** none
 
@@ -43,6 +43,7 @@
 
 ### 2026-10-25 — v1 build started
 
+- #11 — Judges and COI: admin panel (invite with profile and email, public profile, per-round assignments, deactivate), one judge rule `judgeAccess` for every path (declare after approval seeing name/title/company; read only with no-conflict, round open, finalists in round 2, active profile, JUDGE role, active cycle), conflicts final for judges (late change to conflict allowed; admins record/clear with reasons), coverage warnings, audited declarations/overrides/views, conflict policy on role grants (incl. open checkouts, both directions, CLI). Changed the setup (not assertions) of one protected #8 test for the agreed stricter rule. Review APPROVE WITH FIXES (checkout-before-promotion gap, #12 hand-off wording, cross-cycle access) → fixed; evaluator FAIL (admin judge page 500) → fixed → re-evaluation PASS on the gate (one no-JS visibility issue fixed and e2e-tested).
 - #10 — Admin triage: queue (status/category filters, submission-date sort, pages), detail with reference contacts revealed on request (audited), approve/return (reason + message) with cycle-then-entry locks, stale-page `version` guard, emails, status history; returned entries editable (nominee email fixed after payment, category move only for wrong-category returns, frozen once round one opens) and resubmitted free with a keyed-hash change summary (incl. files) to the program team; nominator timeline without admin identities. Also fixed a severe pre-existing bug: no-JS form errors on `[id]` pages hung and pinned a CPU (bound `useActionState` actions in Next 16.4) — ids now travel as hidden inputs, ESLint forbids binding, no-JS e2e. Review APPROVE WITH FIXES (round-one race, files missing from summary) → fixed; evaluator FAIL (summary, post-close edits, no-JS hang) → fixed → re-evaluation PASS.
 - #9 — Entry fee payment: `PaymentProvider` with Stripe hosted Checkout (cards, 31-minute sessions) and a signed mock simulator; server-side pricing at checkout start under locks with readiness re-checked; entry frozen while a checkout is open (+5-minute confirmation grace); webhook-only fulfilment, idempotent on event id and entry, amount-checked, entry-then-payment lock order; receipts; audited fulfilments and (capped) rejections; boot-time payment config (mock refused in production, live keys refused elsewhere, test keys refused in production unless demo); admin payments page with "Charged, needs review". Review APPROVE WITH FIXES (late-webhook double charge, lock order, unapplied charges, test keys in production, cancel feedback) → fixed; evaluator FAIL (criterion 4 messages) → fixed → re-evaluation PASS. [MANUAL] real-Stripe run awaits a human (README).
 - #8 — Supporting files: multipart upload route (origin + size checked before the body, outside the proxy, fetch with JSON when JS runs so unsaved edits survive), magic-byte types, random keys on local disk or S3 (SSE), 5 x 10 MB, one access rule shared with entry content (`entryAccessFor`), attachment-only downloads with nosniff/no-store/sandbox CSP, audited admin/judge downloads, best-effort byte removal. Metadata now always renders in `<head>` (`htmlLimitedBots`). Review APPROVE WITH FIXES (storage write inside the transaction, lost unsaved edits, removal errors, bidi names) → fixed; evaluator FAIL (bidi names) → fixed → re-evaluation PASS.
