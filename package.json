@@ -23,6 +23,7 @@
     "db:reset": "tsx scripts/db-reset.ts",
     "db:seed": "tsx scripts/seed.ts",
     "user:role": "tsx scripts/user-role.ts",
+    "demo:advance": "tsx --conditions=react-server scripts/demo-advance.ts",
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {

@@ -1,23 +1,23 @@
 import "server-only";
-import { and, desc, eq, lt, ne, or } from "drizzle-orm";
+import { and, desc, eq, lt, or, sql } from "drizzle-orm";
 import { env } from "@/lib/env";
 import { isUuid } from "@/lib/ids";
 import { audit } from "@/server/audit";
 import { assertRole, type Actor } from "@/server/auth/actor";
 import { db } from "@/server/db";
 import { emailOutbox } from "@/server/db/schema";
-import { attemptDelivery, MAX_ATTEMPTS } from "@/server/email";
+import { claimRow, deliverClaimed, MAX_ATTEMPTS } from "@/server/email";
 import { ConflictError, NotFoundError } from "@/server/errors";
 
-/** A PENDING row older than this was interrupted mid-send. */
-const STUCK_MS = 10 * 60_000;
+/** A queued or interrupted row the sweep has not picked up within this long. */
+const OVERDUE_MS = 5 * 60_000;
 
 const undelivered = (now: Date) =>
   or(
     eq(emailOutbox.status, "FAILED"),
     and(
       eq(emailOutbox.status, "PENDING"),
-      lt(emailOutbox.createdAt, new Date(now.getTime() - STUCK_MS)),
+      lt(emailOutbox.nextAttemptAt, new Date(now.getTime() - OVERDUE_MS)),
     ),
   );
 
@@ -36,7 +36,7 @@ export async function listUndeliveredEmails(actor: Actor, now = new Date()) {
       lastAttemptAt: emailOutbox.lastAttemptAt,
       nextAttemptAt: emailOutbox.nextAttemptAt,
       createdAt: emailOutbox.createdAt,
-      stored: ne(emailOutbox.textBody, ""),
+      stored: sql<boolean>`${emailOutbox.textBody} <> ''`,
     })
     .from(emailOutbox)
     .where(undelivered(now))
@@ -63,14 +63,9 @@ export async function resendEmail(actor: Actor, id: string, ip?: string, now = n
   if (!isUuid(id)) throw new NotFoundError("email");
   const [row] = await db
     .select({
-      id: emailOutbox.id,
-      toAddress: emailOutbox.toAddress,
-      subject: emailOutbox.subject,
-      textBody: emailOutbox.textBody,
-      htmlBody: emailOutbox.htmlBody,
-      attempts: emailOutbox.attempts,
       status: emailOutbox.status,
       template: emailOutbox.template,
+      stored: sql<boolean>`${emailOutbox.textBody} <> ''`,
     })
     .from(emailOutbox)
     .where(eq(emailOutbox.id, id));
@@ -78,17 +73,21 @@ export async function resendEmail(actor: Actor, id: string, ip?: string, now = n
   if (row.status === "SENT") throw new ConflictError("This email was already delivered.");
   if (env().EMAIL_TRANSPORT !== "smtp")
     throw new ConflictError("Email is not being sent over SMTP on this server.");
-  if (!row.textBody)
+  if (!row.stored)
     throw new ConflictError(
       "This email was not stored (sign-in links are not kept). Ask the person to request a new one.",
     );
-  const delivered = await attemptDelivery(row, now);
+  // The same atomic claim as the retry sweep: never two sends of one email at once.
+  const claimed = await claimRow(id, now);
+  if (!claimed)
+    throw new ConflictError("This email is being sent right now. Refresh the page in a minute.");
+  const delivered = await deliverClaimed(claimed);
   await audit({
     actor,
     action: "email.resent",
     targetType: "email",
-    targetId: row.id,
-    metadata: { template: row.template, delivered, attempts: row.attempts + 1 },
+    targetId: id,
+    metadata: { template: row.template, delivered, attempts: claimed.attempts + 1 },
     ip,
   });
   return delivered;

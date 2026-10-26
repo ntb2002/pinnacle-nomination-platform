@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { closeDb } from "@/server/db";
 import { auditLog, emailOutbox } from "@/server/db/schema";
-import { MAX_ATTEMPTS, sendEmail } from "@/server/email";
+import { claimRow, MAX_ATTEMPTS, sendEmail } from "@/server/email";
 import { retryDueEmails } from "@/server/email/retry";
 import { ConflictError, ForbiddenError } from "@/server/errors";
 import { listUndeliveredEmails, resendEmail } from "@/server/services/email-admin";
@@ -30,6 +30,7 @@ beforeEach(async () => {
   await resetTables();
   smtp.state.failing = false;
   smtp.state.accepted = [];
+  smtp.state.refused = 0;
 });
 
 const MIN = 60_000;
@@ -39,21 +40,33 @@ const receipt = (key = "receipt:test-1") => ({
   dedupeKey: key,
   content: { subject: "Receipt: Pinnacle Awards entry", paragraphs: ["Thank you for your entry."] },
 });
+const signIn = {
+  to: "person@example.com",
+  template: "sign-in",
+  content: { subject: "Sign in", paragraphs: ["https://example.org/secret-token"] },
+};
 const outbox = () => db.select().from(emailOutbox);
 
 describe("SMTP delivery (#16 reliability)", () => {
   it("delivers through nodemailer and keeps only a delivery record", async () => {
-    await sendEmail(receipt());
+    expect(await sendEmail(receipt())).toEqual({ delivered: true });
     expect(smtp.state.accepted).toHaveLength(1);
     expect(smtp.state.accepted[0]).toContain("Thank you for your entry.");
     const [row] = await outbox();
     expect(row).toMatchObject({ status: "SENT", attempts: 1, textBody: "", nextAttemptAt: null });
   });
 
-  it("retries at once, then keeps a failed email for the retry sweep", async () => {
+  it("delivers sign-in links without ever storing them", async () => {
+    await sendEmail(signIn);
+    expect(smtp.state.accepted[0]).toContain("https://example.org/secret-token");
+    const [row] = await outbox();
+    expect(row).toMatchObject({ status: "SENT", textBody: "", htmlBody: "" });
+  });
+
+  it("tries twice, then keeps a failed email for the retry sweep", async () => {
     smtp.state.failing = true;
-    await expect(sendEmail(receipt())).rejects.toThrow(/kept for retry/);
-    expect(smtp.state.refused).toBeGreaterThanOrEqual(2);
+    expect(await sendEmail(receipt())).toEqual({ delivered: false });
+    expect(smtp.state.refused).toBe(2);
     const [row] = await outbox();
     expect(row).toMatchObject({ status: "FAILED", attempts: 2 });
     expect(row!.error).toMatch(/451/);
@@ -74,9 +87,19 @@ describe("SMTP delivery (#16 reliability)", () => {
     });
   });
 
+  it("queues without sending when asked, and the sweep sends it", async () => {
+    expect(await sendEmail(receipt(), { deliverNow: false })).toEqual({ delivered: false });
+    expect(smtp.state.accepted).toHaveLength(0);
+    expect(await retryDueEmails(new Date(Date.now() + 1000))).toEqual({
+      attempted: 1,
+      delivered: 1,
+    });
+    expect(smtp.state.accepted).toHaveLength(1);
+  });
+
   it("stops retrying after the attempt limit; an admin can still resend", async () => {
     smtp.state.failing = true;
-    await sendEmail(receipt()).catch(() => {});
+    await sendEmail(receipt());
     let at = Date.now();
     for (let i = 0; i < 10; i++) {
       at += 600 * MIN;
@@ -104,23 +127,42 @@ describe("SMTP delivery (#16 reliability)", () => {
     expect((await listUndeliveredEmails(admin)).rows).toHaveLength(0);
   });
 
+  it("never sends a row someone else has claimed (sweep, resend, repeated send)", async () => {
+    smtp.state.failing = true;
+    await sendEmail(receipt());
+    const [row] = await outbox();
+    // Someone (a sweep elsewhere) claims it and is mid-send.
+    expect(await claimRow(row!.id)).not.toBeNull();
+    expect(await claimRow(row!.id)).toBeNull();
+    smtp.state.failing = false;
+    const admin = await createActor("ADMIN");
+    await expect(resendEmail(admin, row!.id)).rejects.toThrow(/being sent right now/);
+    expect(await sendEmail(receipt())).toEqual({ delivered: false });
+    expect(await retryDueEmails(new Date(Date.now() + 5 * MIN))).toEqual({
+      attempted: 0,
+      delivered: 0,
+    });
+    expect(smtp.state.accepted).toHaveLength(0);
+    // Once the lease runs out (the claimer crashed), the sweep recovers it.
+    expect(await retryDueEmails(new Date(Date.now() + 11 * MIN))).toEqual({
+      attempted: 1,
+      delivered: 1,
+    });
+  });
+
   it("a later send with the same key delivers the failed one, never twice", async () => {
     smtp.state.failing = true;
-    await sendEmail(receipt()).catch(() => {});
+    await sendEmail(receipt());
     smtp.state.failing = false;
-    await sendEmail(receipt());
-    await sendEmail(receipt());
+    expect(await sendEmail(receipt())).toEqual({ delivered: true });
+    expect(await sendEmail(receipt())).toEqual({ delivered: false });
     expect(smtp.state.accepted).toHaveLength(1);
     expect(await outbox()).toHaveLength(1);
   });
 
-  it("never stores or resends sign-in links", async () => {
+  it("a sign-in link that cannot be delivered fails loudly and is never resent", async () => {
     smtp.state.failing = true;
-    await sendEmail({
-      to: "person@example.com",
-      template: "sign-in",
-      content: { subject: "Sign in", paragraphs: ["https://example.org/secret-token"] },
-    }).catch(() => {});
+    await expect(sendEmail(signIn)).rejects.toThrow(/not stored/);
     const [row] = await outbox();
     expect(row).toMatchObject({
       status: "FAILED",
