@@ -1,0 +1,89 @@
+# Pinnacle Awards Platform — Architecture Decision Log
+
+> Append-only log of decisions that are **expensive to reverse**. One entry per decision. Newest at the top. When a decision is superseded, add a new entry referencing the old one — don't edit history.
+>
+> Format: `### NNN — Title (date) — Status` · **Decision** · **Why** · **Rejected** · **Reverse cost**.
+
+### 011 — Finalists are the top N, frozen at announcement (2026-10) — Accepted
+
+- **Decision:** An entry's round-one score is the mean of submitted scores from judges without a conflict on it. Finalists are exactly the top N (3-5, chosen by the admin; all entries when fewer than 3) and the admin's only discretion is among entries tied at the cut (equal to 2 decimal places), with a stored reason. Means are rounded half up to 2 decimal places in integer arithmetic (Σ weighted totals, `meanHundredths`), so "equal to two decimal places" is exact. Round one cannot close while any entry has fewer than 2 counted scores. Before announcement an admin may reopen round one with an audited reason (the one backwards phase move), which clears saved selections; this is the recovery when a late conflict leaves an entry short. Round one cannot open while an entry-fee checkout can still be paid. Announcement re-checks every selection against the live ranking, and conflict changes take the cycle row `FOR SHARE` so none can commit while announcement holds it. The result is shown to nominators only from the announcement, as "Finalist" / "Not advanced" derived from `entry.is_finalist` and the cycle phase; entry statuses are not extended.
+- **Why:** The published methodology promises a mechanical cut: rank by score, take the top N. Restricting discretion to true ties, with a reason, keeps the admin from reshaping the field. Excluding scores only on conflict (not on deactivation) means offboarding judges cannot move a mean. Re-checking at announcement means a late conflict cannot slip a changed ranking past the selection. Deriving the nominator label avoids a second status machine that could disagree with the phase.
+- **Rejected:** Admin free choice of finalists; median or trimmed means (harder to explain publicly; revisit if panels grow); `FINALIST`/`NOT_ADVANCED` entry statuses (duplicates the phase); floating-point means (two panels with the same true mean could round apart); letting an admin edit scores to unblock announcement (a reopen keeps the judges as the only source of scores).
+- **Reverse cost:** low. The rules are pure functions in `src/lib/scoring.ts`.
+
+### 010 — How judges reach entries (2026-10) — Accepted
+
+- **Decision:** Judge access is two permissions computed by one function (`judgeAccess`). *Declaring* (seeing nominee name, title and company) starts when an entry is approved in a category the judge is assigned to; *reading* (narrative, outcomes, references without contact details, files) needs a "no conflict" declaration, an assignment for that round, the round open, and for round 2 a finalist. A judge's conflict is final for them; admins may reverse it only with a recorded reason. Judges must have an active profile, may not be admins, and may not have submitted entries in the cycle.
+- **Why:** Declaring before reading is the published policy, and judges can declare during triage so admins see coverage gaps before round one. Keeping reading closed until the round opens stops early reading of a still-changing pool. One function for every path (pages, files, scores in #12) means a recusal cannot be bypassed through a forgotten route.
+- **Rejected:** Declaring per category (too coarse: conflicts are with people); letting judges undo a conflict (invites pressure); showing reference contact details to judges (the program team verifies references).
+- **Reverse cost:** low. The rule lives in `judgeAccess`.
+
+### 009 — What a returned entry may change (2026-10) — Accepted
+
+- **Decision:** After a return, the nominator may edit everything except the nominee's email, which is fixed from the first payment. The category may change only when the return reason is "wrong category", and only to another enabled category of the same cycle. Resubmission is free and allowed until round one opens. At each return the app stores a SHA-256 per content field; on resubmission admins see the list of changed fields ("Changed: Category, Outcome 2").
+- **Why:** Each fee is for one nominee in one category ("each entry billed separately"). If the nominee could be swapped after a return, one fee could cover a different person. Typos in the name or title still need fixing. A category move is the remedy the "wrong category" reason calls for, and every category costs the same. Hashes let admins see what changed without the platform keeping a second copy of confidential narratives and references.
+- **Rejected:** Freezing returned entries except the flagged fields (admins cannot predict every needed fix); a full content snapshot or diff at return (duplicates confidential data); charging again for a category move.
+- **Reverse cost:** low. The rules live in `saveDraft`, `moveReturnedEntry` and `resubmitEntry`.
+
+### 008 — Payments: provider boundary, webhook-only fulfilment, entry frozen during checkout (2026-10) — Accepted
+
+- **Decision:** Payments go through a `PaymentProvider` interface with a Stripe hosted Checkout driver and a local mock driver whose events are signed and verified like Stripe's. Fulfilment happens only in the webhook handler, idempotent on the provider event id and on the entry (one PAID fee per entry and kind, enforced by a partial unique index). Checkout sessions expire after 31 minutes (Stripe's minimum of 30, plus a minute for clock skew) and the fee is fixed when the session is created. While a session is open the entry cannot be edited. Payment configuration is checked at boot in a separate function (`paymentConfigProblems`): mock is refused in real production and live keys everywhere else. The Stripe SDK is pinned to an exact version (23.0.0).
+- **Why:** Webhook-only fulfilment is the only path that cannot be faked by a client and that survives the user closing the tab. Freezing edits means the entry that gets paid for is the entry that passed the readiness check, without re-validating content the nominator can no longer change once money is taken. A boot-time check means a production server never starts with the simulator or with someone's live key on a laptop. It is separate from `parseEnv` so the base configuration contract (and its tests) stays as it was.
+- **Rejected:** Fulfilling on the success redirect (forgeable, and lost if the tab closes); re-validating at fulfilment (the money is already taken, so there would be nothing safe to do on failure); Stripe Payment Links (no per-entry amount control); embedded card fields (larger PCI scope); delayed payment methods such as ACH (async settlement complicates "submitted on payment"); in-app refunds (CCE finance uses the Stripe dashboard; LAUNCH_READINESS).
+- **Reverse cost:** low to medium. Another processor is one more driver; university procurement may require one (LAUNCH_READINESS).
+
+### 007 — Supporting files: private storage, sniffed types, download only (2026-10) — Accepted
+
+- **Decision:** Uploads go to a dedicated multipart route handler (not a server action) that checks origin and size before reading the body. Only PDF, PNG and JPEG are accepted, identified by their first bytes. Files are stored under random server-chosen keys on local disk (`STORAGE_DRIVER=local`) or any S3-compatible bucket (`s3`), never in `public/`. Every download goes through the app, is authorized per request with the same rule as entry content (`entryAccessFor`), and is always served as an attachment with `nosniff`, `no-store` and a sandbox CSP. Nothing is rendered inline and there are no presigned URLs.
+- **Why:** Server actions share one body-size limit; raising it to 10 MB for uploads would raise it for every action. Magic bytes are the only part of a file the uploader cannot simply relabel. Download-only removes the stored-XSS and PDF-in-browser risks. Streaming through the app keeps authorization and audit logging in one place; at 5 files of 10 MB per entry the bandwidth is small. Presigned URLs would outlive a judge's recusal.
+- **Rejected:** Server action with a raised body limit; trusting the file extension or browser MIME type; inline previews; public bucket or presigned URLs; Office documents (macro and parser risk; PDF covers the need).
+- **Reverse cost:** low. Storage sits behind the `FileStorage` interface; adding a type is one signature in `src/lib/file-rules.ts`.
+
+### 006 — When dates and fees can change (2026-10) — Accepted
+
+- **Decision:** During nominations, admins may change any date or fee, including extending a deadline that has passed. Opening cannot move later than an entry that was already submitted. Fees must not decrease from early to regular to late. Once round one opens, the nomination window and entry fees are frozen. Once finalists are announced, the finalist package fee is frozen. Rubric weights and category rubrics are frozen once round one opens. Every change is audited with before/after values. An entry keeps the fee stored on its payment.
+- **Why:** Extensions are routine for awards programs, and they are audited. Changing the window or fees after judging starts would let the public fees page show nominations as open while judging runs, and would make finalist-fee charges differ between finalists. A fee that drops at a later deadline would contradict the published "escalating by deadline" structure.
+- **Rejected:** Freezing dates once nominations open (too rigid for extensions); no rules at all (the reviewer showed the inconsistent states it allows).
+- **Reverse cost:** low. The rules live in one function (`assertSettingsChangeAllowed`) plus the validation module.
+- **Needs human:** CCE to confirm extensions are acceptable policy, and to decide whether extensions should also extend the early tier (today only the deadline the admin moves changes).
+
+### 005 — Passwordless sign-in with a confirmation step and a minimal auth surface (2026-10) — Accepted
+
+- **Decision:** Magic-link sign-in only (no passwords). Emailed links open a confirmation page; the single-use token is spent only by its button. Better Auth's HTTP API is allow-listed to the verify endpoint; sign-in requests and sign-out are server actions; rate limits live in Postgres. Roles are read from the database on every request.
+- **Why:** Nominators sign in a few times a year, so passwords would mostly generate resets and reuse risk. University mail runs link scanners that would otherwise burn tokens. Exposing only one auth endpoint removes sign-up/update APIs we don't use. Database-backed limits hold across instances without Redis. A per-request role read makes revocation immediate, which matters for judges with access to confidential entries.
+- **Rejected:** Passwords (support burden); Better Auth's built-in rate limiting (memory by default; a second mechanism); session cookie caching (stale roles); Syracuse SSO for staff now (needs IT onboarding: LAUNCH_READINESS).
+- **Reverse cost:** low to medium. SSO can be added as another Better Auth plugin for admins and judges.
+
+### 004 — Drizzle ORM instead of Prisma (2026-10) — Accepted (supersedes the ORM part of 003)
+
+- **Decision:** Use Drizzle ORM 0.45 with `node-postgres` for data access. Schema in TypeScript (`src/server/db/tables/*`); `drizzle-kit generate` writes plain SQL migrations to `drizzle/`; `npm run db:migrate` applies them with drizzle's migrator (no CLI or binary needed at deploy time).
+- **Why:** Prisma 7's migration engine is a native binary downloaded from `binaries.prisma.sh` at install/run time. That host is unreachable from this build environment, and university hosting with restricted egress could hit the same wall at deploy time. Drizzle is pure TypeScript with no engine binaries. Its migrations are plain SQL files that a Syracuse IT reviewer can read, and its queries read like SQL, which makes authorization filters easy to audit. Better Auth ships a Drizzle adapter.
+- **Rejected:** Prisma 7 (binary engine download; the bundled wasm engine is not usable for `migrate` in 7.10); Kysely + hand-written migrations (more boilerplate for the next maintainer); raw `pg` (no typed schema).
+- **Reverse cost:** medium. It touches the data layer only. Services own all queries, so routes and UI do not change.
+
+### 003 — Application stack (2026-10) — Accepted
+
+- **Decision:** One TypeScript codebase: Next.js 16 (App Router, server components and server actions) on Node 24 LTS (Node 22 reaches end of life 2027-04-30, during the first cycle), PostgreSQL 16 through Prisma 7 (superseded by 004: Drizzle), Better Auth (email magic link, database sessions), Stripe hosted Checkout with signed webhooks, Tailwind CSS 4, zod 4, Vitest + Playwright + axe-core. Payment, file storage and email each sit behind a small interface with a production driver and a local driver. Ships as a container (Next standalone output) that runs on any Node host with managed Postgres and S3-compatible storage.
+- **Why:**
+  - *Maintainable by the next person.* Next.js/React/TypeScript is the most widely taught and hired web stack; a Syracuse student or a contractor can pick it up. One language and one deployable for UI and server means fewer moving parts than a separate API + SPA.
+  - *Server-side authority by default.* Server components and server actions keep data access, authorization and pricing on the server; the client gets rendered HTML and minimal JS.
+  - *Postgres + Prisma* gives relational integrity (unique constraints encode program rules such as one score per judge per entry), readable schema, and forward-only migrations. Postgres is available on every cloud and on university infrastructure.
+  - *Better Auth* is stable (1.x) and keeps sessions and users in our own Postgres. next-auth v5 is still beta as of Oct 2026; hand-rolled auth is a maintenance and security liability. Magic links avoid storing passwords for users who sign in a few times a year; SSO can be added later for staff (Better Auth supports SAML/OIDC plugins).
+  - *Stripe hosted Checkout* keeps card data off our servers (PCI SAQ A scope). The provider interface lets the university substitute its approved processor.
+  - *Easy to host.* A single container plus Postgres plus an S3 bucket plus SMTP. Works on Azure App Service, AWS, Render, Fly, or Vercel.
+- **Rejected:** Django/Rails + separate frontend (two languages for a small team); Supabase/Firebase (vendor coupling, row-level-security logic split across SQL and app); Drizzle (pre-1.0); next-auth v5 (beta); building a custom card form (PCI scope); TypeScript 7 native compiler (too new for the tooling ecosystem — pinned to 5.9).
+- **Reverse cost:** high — touches every file. Mitigated by keeping business rules in plain TypeScript services (`src/server/services`) and pure modules (`src/lib`) that do not depend on Next.js.
+
+### 002 — Fully autonomous build run (2026-10) — Accepted
+
+- **Decision:** For the v1 build the agent acts as coordinator, builder and reviewer end to end. It merges each issue branch into `v1` after the gate, the `code-review` subagent and the `evaluator` subagent pass, and closes the issue with an evidence comment. No per-issue PRs. One PR `v1 → main` at the end for human review. Product questions and external-account needs go under `## Needs human` on the issue with a safe stub.
+- **Why:** The owner's explicit instruction for this build. The playbook's human clicks (promote, merge) are replaced by the agent's gate + two independent subagent reviews per issue, and the human review moves to the single final PR. `main` stays sacred.
+- **Rejected:** Per-issue PRs awaiting human merge (the owner asked not to be waited on).
+- **Reverse cost:** low — later work goes back to the default playbook loop (issue → branch → PR → human merge).
+
+### 001 — Tracker and branching model (2026-10) — Accepted
+
+- **Decision:** GitHub Issues is the tracker (labels: `accepted` = Backlog, `ready` = Todo, `lane: standard|deep`, `tier: fast|mid|strong`, `feature|bug|improvement`). Branches: `main` ← `v1` (integration) ← `<issue>-<slug>`. CI runs on every push and PR (the real workflow lands in #2; until then it is the template placeholder).
+- **Why:** Solo-builder repo; GitHub mobile is the review surface; issues close from commit/PR references.
+- **Rejected:** Linear (no stakeholders beyond the owner in the tracker for this build).
+- **Reverse cost:** low.

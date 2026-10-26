@@ -1,0 +1,1 @@
+ALTER TABLE "entry_status_event" ADD COLUMN "content_hashes" jsonb;

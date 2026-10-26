@@ -1,0 +1,58 @@
+/**
+ * All times are stored in UTC and shown in the program's time zone (Syracuse, NY).
+ * Deadlines are exclusive instants ("midnight at the end of Feb 26" is stored as
+ * 2027-02-27T05:00Z), so for display we show the last moment of the named day.
+ */
+export const PROGRAM_TIME_ZONE = "America/New_York";
+
+const dateFmt = new Intl.DateTimeFormat("en-US", {
+  timeZone: PROGRAM_TIME_ZONE,
+  weekday: "long",
+  month: "long",
+  day: "numeric",
+  year: "numeric",
+});
+const shortDateFmt = new Intl.DateTimeFormat("en-US", {
+  timeZone: PROGRAM_TIME_ZONE,
+  month: "long",
+  day: "numeric",
+  year: "numeric",
+});
+const dateTimeFmt = new Intl.DateTimeFormat("en-US", {
+  timeZone: PROGRAM_TIME_ZONE,
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+  timeZoneName: "short",
+});
+
+/** "Tuesday, January 26, 2027" */
+export const formatDate = (d: Date) => dateFmt.format(d);
+/** "January 26, 2027" */
+export const formatShortDate = (d: Date) => shortDateFmt.format(d);
+/** "Jan 26, 2027, 9:00 AM EST" */
+export const formatDateTime = (d: Date) => dateTimeFmt.format(d);
+/** "March 9 – 27, 2027" from a start instant and an exclusive end. */
+export const formatDayRange = (start: Date, exclusiveEnd: Date) =>
+  shortDateFmt.formatRange(start, new Date(exclusiveEnd.getTime() - 1));
+
+/** The calendar day a deadline closes on: the instant minus one millisecond. */
+export const deadlineDay = (exclusiveDeadline: Date) => new Date(exclusiveDeadline.getTime() - 1);
+
+const timeFmt = new Intl.DateTimeFormat("en-US", {
+  timeZone: PROGRAM_TIME_ZONE,
+  hour: "numeric",
+  minute: "2-digit",
+  timeZoneName: "short",
+});
+
+/**
+ * A deadline as people read it: "February 26, 2027, 11:59 PM EST". The time is derived
+ * from the stored instant (one minute before the exclusive deadline), never assumed.
+ */
+export function formatDeadline(exclusiveDeadline: Date): string {
+  const lastMinute = new Date(exclusiveDeadline.getTime() - 60_000);
+  return `${formatShortDate(lastMinute)}, ${timeFmt.format(lastMinute)}`;
+}

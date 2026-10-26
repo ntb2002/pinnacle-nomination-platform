@@ -1,0 +1,68 @@
+ci-local: 85a9b2a on 2-app-foundation, node v24.22.1
+
+==> lint
+
+==> format:check
+Checking formatting...
+All matched files use Prettier code style!
+
+==> typecheck
+Generating route types...
+✓ Types generated successfully
+
+==> unit + integration tests
+
+ RUN  v5.0.5 /home/user/pinnacle-nomination-platform
+
+Database reset and migrated.
+
+ Test Files  5 passed (5)
+      Tests  12 passed (12)
+   Start at  20:07:16
+   Duration  3.81s (import 54%, tests 35%, transform 8%, worker 2%)
+
+    Isolate  5 workers spawned · ~137ms startup each (spawn + environment, per file)
+             at least ~548ms faster with isolate: false — reuses workers across files instead of one per file
+
+
+==> build
+▲ Next.js 16.4.3 (Turbopack)
+- Environments: .env
+✓ Running next.config.ts took 56ms
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 960ms
+  Running TypeScript ...
+  Finished TypeScript in 3.2s ...
+  Collecting page data using 3 workers ...
+  Generating static pages using 3 workers (0/1) ...
+✓ Generating static pages using 3 workers (1/1) in 96ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ƒ /
+├ ƒ /_not-found
+└ ƒ /api/health
+
+
+ƒ Proxy (Middleware)
+
+ƒ  (Dynamic)  server-rendered on demand
+
+Standalone output prepared.
+
+==> e2e
+Database reset and migrated.
+
+Running 6 tests using 1 worker
+
+  ✓  1 [chromium] › tests/e2e/boot.spec.ts:4:1 › the server exits at boot when configuration is invalid (475ms)
+  ✓  2 [chromium] › tests/e2e/home.spec.ts:5:3 › home and base layout › renders the home page with no accessibility violations (1.5s)
+  ✓  3 [chromium] › tests/e2e/home.spec.ts:15:3 › home and base layout › skip link moves focus to main content (479ms)
+  ✓  4 [chromium] › tests/e2e/home.spec.ts:24:3 › home and base layout › sends a nonce-based CSP and security headers (61ms)
+  ✓  5 [chromium] › tests/e2e/home.spec.ts:35:3 › home and base layout › unknown routes get a branded 404 with no CSP violations (1.8s)
+  ✓  6 [chromium] › tests/e2e/home.spec.ts:50:3 › home and base layout › health endpoint reports the database (30ms)
+
+  6 passed (8.3s)
+
+ci-local: all steps passed

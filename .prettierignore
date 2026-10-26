@@ -1,0 +1,11 @@
+node_modules
+.next
+drizzle/meta
+playwright-report
+test-results
+package-lock.json
+.agents
+.claude
+.cursor
+plans
+*.md
