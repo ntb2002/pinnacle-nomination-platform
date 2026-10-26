@@ -15,5 +15,8 @@ export async function register() {
       console.error(err instanceof Error ? err.message : err);
       process.exit(1);
     }
+    // Retries emails the mail server refused (no-op unless EMAIL_TRANSPORT=smtp).
+    const { startEmailRetryLoop } = await import("@/server/email/retry");
+    startEmailRetryLoop();
   }
 }
