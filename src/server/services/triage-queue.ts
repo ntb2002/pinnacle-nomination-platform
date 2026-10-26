@@ -10,8 +10,10 @@ import {
   attachment,
   awardCycle,
   category,
+  conflictDeclaration,
   entry,
   entryStatusEvent,
+  judgeProfile,
   payment,
   user,
 } from "@/server/db/schema";
@@ -110,6 +112,19 @@ export async function getAdminEntry(
     .where(eq(entry.id, entryId));
   if (!row) throw new NotFoundError("entry");
   const actorUser = alias(user, "actor_user");
+  const declarations = await db
+    .select({
+      judgeId: conflictDeclaration.judgeId,
+      judgeName: judgeProfile.displayName,
+      hasConflict: conflictDeclaration.hasConflict,
+      reason: conflictDeclaration.reason,
+      adminNote: conflictDeclaration.adminNote,
+      declaredAt: conflictDeclaration.declaredAt,
+    })
+    .from(conflictDeclaration)
+    .leftJoin(judgeProfile, eq(judgeProfile.userId, conflictDeclaration.judgeId))
+    .where(eq(conflictDeclaration.entryId, entryId))
+    .orderBy(asc(judgeProfile.displayName));
   const [content, files, payments, history] = await Promise.all([
     loadContent(db, row.entry),
     db
@@ -170,6 +185,7 @@ export async function getAdminEntry(
     files,
     payments,
     history,
+    declarations,
     triageOpen: row.phase === "NOMINATION",
   };
 }

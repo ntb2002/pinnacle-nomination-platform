@@ -180,6 +180,30 @@ export default async function AdminEntryPage({
           </ul>
         )}
       </section>
+      <section aria-labelledby="judges-heading" className="mb-10">
+        <h2 id="judges-heading" className={h2}>
+          Judges&apos; conflict declarations
+        </h2>
+        {e.declarations.length === 0 ? (
+          <p className="mt-4">No judge has declared on this entry yet.</p>
+        ) : (
+          <ul className="mt-4 flex flex-col gap-2">
+            {e.declarations.map((d) => (
+              <li key={d.judgeId}>
+                <Link href={`/admin/judges/${d.judgeId}`} className="font-semibold underline">
+                  {d.judgeName ?? "Judge"}
+                </Link>
+                : {d.hasConflict ? "conflict (recused)" : "no conflict"},{" "}
+                {formatShortDate(d.declaredAt)}
+                {d.reason && <span className="block text-sm text-slate">Reason: {d.reason}</span>}
+                {d.adminNote && (
+                  <span className="block text-sm text-slate">Admin note: {d.adminNote}</span>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
       <section aria-labelledby="history-heading">
         <h2 id="history-heading" className={h2}>
           Status history

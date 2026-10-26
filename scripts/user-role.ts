@@ -4,7 +4,7 @@
 import "dotenv/config";
 import { randomUUID } from "node:crypto";
 import { userInfo } from "node:os";
-import { eq } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { emailSchema } from "@/lib/validation/common";
@@ -31,6 +31,26 @@ async function main() {
         .from(schema.user)
         .where(eq(schema.user.email, email.data));
       const id = existing?.id ?? randomUUID();
+      // Conflict policy (as in the app): no judging a cycle you submitted nominations to.
+      if (existing && role === "JUDGE") {
+        const [submitted] = await tx
+          .select({ id: schema.entry.id })
+          .from(schema.entry)
+          .innerJoin(schema.awardCycle, eq(schema.awardCycle.id, schema.entry.cycleId))
+          .where(
+            and(
+              eq(schema.entry.nominatorId, id),
+              ne(schema.entry.status, "DRAFT"),
+              eq(schema.awardCycle.isActive, true),
+            ),
+          )
+          .limit(1);
+        if (submitted) {
+          throw new Error(
+            "This person has submitted nominations in the current cycle, so they cannot judge it.",
+          );
+        }
+      }
       if (existing) await tx.update(schema.user).set({ role }).where(eq(schema.user.id, id));
       else
         await tx

@@ -9,6 +9,7 @@ import { db } from "@/server/db";
 import { session, user } from "@/server/db/schema";
 import { sendEmail } from "@/server/email";
 import { roleGrantedEmail } from "@/server/email/templates";
+import { hasSubmittedEntries, JUDGE_HAS_ENTRIES_MESSAGE } from "./judges-admin";
 import { ConflictError, NotFoundError, ValidationError } from "@/server/errors";
 
 const ROLE_LABEL: Record<Role, string> = {
@@ -34,6 +35,10 @@ export async function grantRole(actor: Actor, rawEmail: string, role: Role, ip?:
       .from(user)
       .where(eq(user.email, email));
     let id = existing?.id;
+    // Conflict policy: judges may not submit nominations in the cycle they judge.
+    if (existing && role === "JUDGE" && (await hasSubmittedEntries(tx, existing.id))) {
+      throw new ConflictError(JUDGE_HAS_ENTRIES_MESSAGE);
+    }
     if (existing) {
       if (existing.role === role) return { id: existing.id, changed: false, from: existing.role };
       await tx.update(user).set({ role }).where(eq(user.id, existing.id));
