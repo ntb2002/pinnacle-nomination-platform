@@ -36,6 +36,13 @@
       "when": 1792973159774,
       "tag": "0004_status_event_hashes",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792980476280,
+      "tag": "0005_finalist_selection",
+      "breakpoints": true
     }
   ]
 }

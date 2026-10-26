@@ -4,6 +4,13 @@
 >
 > Format: `### NNN — Title (date) — Status` · **Decision** · **Why** · **Rejected** · **Reverse cost**.
 
+### 011 — Finalists are the top N, frozen at announcement (2026-10) — Accepted
+
+- **Decision:** An entry's round-one score is the mean of submitted scores from judges without a conflict on it. Finalists are exactly the top N (3-5, chosen by the admin; all entries when fewer than 3) and the admin's only discretion is among entries tied at the cut (equal to 2 decimal places), with a stored reason. Announcement requires at least 2 counted scores per entry and re-checks every selection against the live ranking. The result is shown to nominators only from the announcement, as "Finalist" / "Not advanced" derived from `entry.is_finalist` and the cycle phase; entry statuses are not extended.
+- **Why:** The published methodology promises a mechanical cut: rank by score, take the top N. Restricting discretion to true ties, with a reason, keeps the admin from reshaping the field. Excluding scores only on conflict (not on deactivation) means offboarding judges cannot move a mean. Re-checking at announcement means a late conflict cannot slip a changed ranking past the selection. Deriving the nominator label avoids a second status machine that could disagree with the phase.
+- **Rejected:** Admin free choice of finalists; median or trimmed means (harder to explain publicly; revisit if panels grow); `FINALIST`/`NOT_ADVANCED` entry statuses (duplicates the phase).
+- **Reverse cost:** low. The rules are pure functions in `src/lib/scoring.ts`.
+
 ### 010 — How judges reach entries (2026-10) — Accepted
 
 - **Decision:** Judge access is two permissions computed by one function (`judgeAccess`). *Declaring* (seeing nominee name, title and company) starts when an entry is approved in a category the judge is assigned to; *reading* (narrative, outcomes, references without contact details, files) needs a "no conflict" declaration, an assignment for that round, the round open, and for round 2 a finalist. A judge's conflict is final for them; admins may reverse it only with a recorded reason. Judges must have an active profile, may not be admins, and may not have submitted entries in the cycle.

@@ -112,6 +112,8 @@ export async function listMyEntries(actor: Actor) {
       updatedAt: entry.updatedAt,
       submittedAt: entry.submittedAt,
       triageOpen: sql<boolean>`${awardCycle.phase} = 'NOMINATION'`,
+      cyclePhase: awardCycle.phase,
+      isFinalist: entry.isFinalist,
       // The program team's message from the latest return, shown while it is returned.
       returnMessage: sql<string | null>`(
         select ${entryStatusEvent.note} from ${entryStatusEvent}
@@ -159,6 +161,7 @@ export async function getMyEntry(actor: Actor, entryId: string) {
     categoryEnabled: row.categoryEnabled,
     /** False once round one opens: returned entries are then frozen. */
     triageOpen: row.cyclePhase === "NOMINATION",
+    cyclePhase: row.cyclePhase,
     outcomes,
     references,
   };

@@ -36,3 +36,30 @@ export const ADMIN_STATUS_LABEL: Record<EntryStatus, string> = {
   RETURNED: "Returned",
   APPROVED: "Approved",
 };
+
+/**
+ * The status a nominator sees, including judging progress for approved entries. The
+ * round-one result shows only once finalists are announced (never before).
+ */
+export function nominatorStatus(
+  status: EntryStatus,
+  phase: string,
+  isFinalist: boolean,
+): { label: string; next: string } {
+  if (status !== "APPROVED" || phase === "NOMINATION") return NOMINATOR_STATUS[status];
+  if (phase === "ROUND1_OPEN" || phase === "ROUND1_CLOSED") {
+    return {
+      label: "In judging",
+      next: "Judges are scoring round one. Results are announced to every nominator at the same time.",
+    };
+  }
+  return isFinalist
+    ? {
+        label: "Finalist",
+        next: "Your nominee is a finalist. Round two selects one winner per category.",
+      }
+    : {
+        label: "Not advanced",
+        next: "This entry did not advance to the finalist round. Thank you for taking part.",
+      };
+}

@@ -6,6 +6,8 @@ import { requireRole } from "@/server/auth/session";
 import { NotFoundError } from "@/server/errors";
 import { clientIp } from "@/server/request";
 import { getJudgeEntry } from "@/server/services/judging";
+import { getMyScore } from "@/server/services/scoring";
+import { ScoreForm } from "./score-form";
 import { AttachmentList } from "../../../entries/[id]/attachment-list";
 
 export const metadata: Metadata = { title: "Entry" };
@@ -26,6 +28,15 @@ export default async function JudgeEntryPage({
     if (err instanceof NotFoundError) notFound();
     throw err;
   });
+  const mine = await getMyScore(actor, id, round);
+  const sc = mine.score;
+  const initial: Record<string, string> = {
+    impact: sc?.impact?.toString() ?? "",
+    innovation: sc?.innovation?.toString() ?? "",
+    influence: sc?.influence?.toString() ?? "",
+    referenceValidation: sc?.referenceValidation?.toString() ?? "",
+    comment: sc?.comment ?? "",
+  };
   return (
     <div className="container-page max-w-3xl py-12">
       <p className="mb-4">
@@ -90,6 +101,23 @@ export default async function JudgeEntryPage({
           ))}
         </ul>
       </section>
+      <div className="mb-10">
+        {mine.open ? (
+          <ScoreForm
+            entryId={e.id}
+            round={round}
+            weights={mine.weights}
+            initial={initial}
+            submitted={!!sc?.submittedAt}
+          />
+        ) : (
+          <p className="rounded border border-line bg-surface p-4">
+            {sc?.submittedAt
+              ? `Round ${round} is closed. Your submitted score is final.`
+              : `Scoring for round ${round} is not open.`}
+          </p>
+        )}
+      </div>
       <section aria-labelledby="files">
         <h2 id="files" className={h2}>
           Supporting files

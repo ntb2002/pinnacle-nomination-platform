@@ -1,7 +1,7 @@
 import "server-only";
 import { and, asc, eq, isNull } from "drizzle-orm";
 import { isUuid } from "@/lib/ids";
-import type { Round } from "@/lib/phases";
+import { reached, type Round } from "@/lib/phases";
 import { adminConflictSchema, declarationSchema } from "@/lib/validation/judges";
 import { audit } from "@/server/audit";
 import { assertRole, type Actor } from "@/server/auth/actor";
@@ -82,7 +82,13 @@ export async function declareConflict(
         targetId: entryId,
         // The judge's own words: an admin may later clear the conflict and the judge
         // re-declare, overwriting the row, so the audit log keeps every reason.
-        metadata: { hasConflict, reason },
+        metadata: {
+          hasConflict,
+          reason,
+          // Flag for admins: after round one closes a conflict can change rankings that
+          // finalist selection relies on (announcement re-checks them).
+          ...(reached(access.phase, "ROUND1_CLOSED") ? { afterRoundClosed: true } : {}),
+        },
         ip,
       },
       tx,

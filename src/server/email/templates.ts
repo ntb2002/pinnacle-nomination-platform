@@ -120,3 +120,37 @@ export function judgeInviteEmail(r: { name: string; signInUrl: string }): EmailC
     action: { label: "Sign in to judge", url: r.signInUrl },
   };
 }
+
+/** To a finalist's nominator: the result, and the finalist package fee for round two. */
+export function finalistEmail(r: {
+  categoryName: string;
+  nomineeName: string;
+  feeCents: number;
+  entryUrl: string;
+}): EmailContent {
+  return {
+    subject: `Finalist: ${r.nomineeName}, ${r.categoryName}`,
+    paragraphs: [
+      `Congratulations. ${r.nomineeName} is a finalist for ${r.categoryName} in the Pinnacle Awards.`,
+      `Round two judging selects one winner per category. To take part, pay the finalist package fee of ${formatCents(r.feeCents)} from the entry page.`,
+      "Please keep the result confidential until the program announces finalists publicly.",
+    ],
+    action: { label: "Pay the finalist package fee", url: r.entryUrl },
+  };
+}
+
+/** To a nominator whose entry did not advance to round two. */
+export function notAdvancedEmail(r: {
+  categoryName: string;
+  nomineeName: string;
+  entryUrl: string;
+}): EmailContent {
+  return {
+    subject: `Pinnacle Awards round one result: ${r.categoryName}`,
+    paragraphs: [
+      `Thank you for nominating ${r.nomineeName} for ${r.categoryName}. The judges scored every entry, and this entry did not advance to the finalist round.`,
+      "The methodology and the finalist rate for each category are published on the awards site.",
+    ],
+    action: { label: "View your entry", url: r.entryUrl },
+  };
+}

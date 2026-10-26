@@ -4,6 +4,7 @@ import {
   check,
   foreignKey,
   index,
+  jsonb,
   pgTable,
   smallint,
   text,
@@ -141,5 +142,35 @@ export const categoryResult = pgTable(
       "category_result_tiebreak_reason",
       sql`${t.decision} <> 'TIEBREAK' OR (${t.tiebreakReason} IS NOT NULL AND length(trim(${t.tiebreakReason})) > 0)`,
     ),
+  ],
+);
+
+/**
+ * An admin's finalist selection for one category (#12), made after round one closes and
+ * applied when finalists are announced. `ranking` is the round-one ranking the choice
+ * was made from (entry id, mean, judge count), kept so the decision is reproducible.
+ */
+export const finalistSelection = pgTable(
+  "finalist_selection",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    cycleId: uuid()
+      .notNull()
+      .references(() => awardCycle.id, { onDelete: "restrict" }),
+    categoryId: uuid()
+      .notNull()
+      .references(() => category.id, { onDelete: "restrict" }),
+    entryIds: uuid().array().notNull(),
+    /** Required when the admin chose among entries tied at the cut-off. */
+    tiebreakReason: text(),
+    ranking: jsonb().$type<{ entryId: string; mean: number | null; count: number }[]>().notNull(),
+    selectedById: text()
+      .notNull()
+      .references(() => user.id),
+    selectedAt: tz().notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex().on(t.cycleId, t.categoryId),
+    check("finalist_selection_size", sql`cardinality(${t.entryIds}) BETWEEN 1 AND 5`),
   ],
 );

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { formatShortDate } from "@/lib/dates";
-import { NOMINATOR_STATUS } from "@/lib/entry-status";
+import { nominatorStatus } from "@/lib/entry-status";
 import { requireRole } from "@/server/auth/session";
 import { getNominationWindow, listMyEntries } from "@/server/services/entries";
 
@@ -11,7 +11,7 @@ export const metadata: Metadata = { title: "Your entries" };
 type Row = Awaited<ReturnType<typeof listMyEntries>>[number];
 
 function NextStep({ e }: { e: Row }) {
-  const s = NOMINATOR_STATUS[e.status];
+  const s = nominatorStatus(e.status, e.cyclePhase, e.isFinalist);
   if (e.status === "RETURNED" && !e.triageOpen) {
     return (
       <span className="text-slate">
@@ -43,7 +43,7 @@ function Nominee({ e }: { e: Row }) {
 function Status({ e }: { e: Row }) {
   return (
     <>
-      {NOMINATOR_STATUS[e.status].label}
+      {nominatorStatus(e.status, e.cyclePhase, e.isFinalist).label}
       {e.status === "RETURNED" && e.returnMessage && (
         <span className="mt-1 block text-sm">
           <span className="font-semibold">Message from the program team: </span>
