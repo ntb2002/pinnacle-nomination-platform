@@ -195,7 +195,12 @@ export default async function AdminEntryPage({
                 </Link>
                 : {d.hasConflict ? "conflict (recused)" : "no conflict"},{" "}
                 {formatShortDate(d.declaredAt)}
-                {d.reason && <span className="block text-sm text-slate">Reason: {d.reason}</span>}
+                {d.recordedById && " (set by an admin)"}
+                {d.reason && (
+                  <span className="block text-sm text-slate">
+                    {d.hasConflict ? "Judge's reason" : "Judge's earlier reason"}: {d.reason}
+                  </span>
+                )}
                 {d.adminNote && (
                   <span className="block text-sm text-slate">Admin note: {d.adminNote}</span>
                 )}

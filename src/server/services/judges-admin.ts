@@ -170,7 +170,12 @@ export async function inviteJudge(actor: Actor, raw: Record<string, unknown>, ip
       })
       .onConflictDoUpdate({
         target: judgeProfile.userId,
-        set: { displayName: v.displayName, title: v.title, organization: v.organization },
+        // Blank optional fields on a re-invite keep what the profile already says.
+        set: {
+          displayName: v.displayName,
+          ...(v.title ? { title: v.title } : {}),
+          ...(v.organization ? { organization: v.organization } : {}),
+        },
       });
     await audit(
       {

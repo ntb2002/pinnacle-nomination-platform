@@ -119,6 +119,7 @@ export async function getAdminEntry(
       hasConflict: conflictDeclaration.hasConflict,
       reason: conflictDeclaration.reason,
       adminNote: conflictDeclaration.adminNote,
+      recordedById: conflictDeclaration.recordedById,
       declaredAt: conflictDeclaration.declaredAt,
     })
     .from(conflictDeclaration)

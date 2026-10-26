@@ -23,11 +23,11 @@ export const judgeProfileSchema = z.object({
   organization: text("organization", 160),
   bio: text("bio", 1500),
   isPublic: z.boolean(),
-  sortOrder: z.coerce
-    .number<string>({ error: "Enter a whole number" })
-    .int("Enter a whole number")
-    .min(0, "Use 0 to 999")
-    .max(999, "Use 0 to 999"),
+  sortOrder: z
+    .string()
+    .trim()
+    .regex(/^\d{1,3}$/, "Enter a whole number from 0 to 999")
+    .pipe(z.coerce.number<string>()),
 });
 
 /** A judge's declaration for one entry. A conflict needs a reason. */

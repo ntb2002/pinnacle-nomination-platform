@@ -29,7 +29,7 @@ export function DeclareForm({
   const p = `${entryId}-`;
   if (current === false && state.status !== "error") {
     return (
-      <details className="mt-2">
+      <details className="mt-2" open={state.status !== "idle" || undefined}>
         <summary className="cursor-pointer text-sm font-semibold underline">
           I have a conflict after all<span className="sr-only"> with {nominee}</span>
         </summary>

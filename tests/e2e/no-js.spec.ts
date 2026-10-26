@@ -43,4 +43,18 @@ test.describe("forms without JavaScript", () => {
     );
     await page.context().close();
   });
+
+  test("an admin recusal error is visible", async ({ browser }) => {
+    const { rows } = await e2eDb().query(
+      `SELECT id FROM "user" WHERE email = 'judge3@example.org'`,
+    );
+    const page = await noJsPage(browser, "admin@example.org");
+    await page.goto(`/admin/judges/${rows[0].id}`);
+    await page.locator("summary", { hasText: "Record a recusal" }).first().click();
+    await page.getByRole("button", { name: "Record the recusal" }).first().click();
+    await expect(page.getByText("Give a reason of at least 10 characters").first()).toBeVisible({
+      timeout: 5000,
+    });
+    await page.context().close();
+  });
 });

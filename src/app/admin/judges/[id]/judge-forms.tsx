@@ -179,7 +179,7 @@ export function ConflictForm({
   const [state, action] = useActionState(conflictAction, idleState);
   const id = `${entryId}-reason`;
   return (
-    <details className="mt-2">
+    <details className="mt-2" open={state.status !== "idle" || undefined}>
       <summary className="cursor-pointer font-semibold underline">
         {hasConflict ? "Clear this conflict" : "Record a recusal"}
         <span className="sr-only"> for {label}</span>

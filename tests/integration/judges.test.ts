@@ -396,6 +396,32 @@ describe("review regressions", () => {
     ).rejects.toBeInstanceOf(ConflictError);
   });
 
+  it("refuses an empty order, and a re-invite with blank fields keeps the profile", async () => {
+    const { admin, judge: j } = await setup();
+    await expect(
+      updateJudgeProfile(admin, j.id, {
+        displayName: "Jordan Panel",
+        title: "",
+        organization: "",
+        bio: "",
+        isPublic: false,
+        sortOrder: "",
+      }),
+    ).rejects.toBeInstanceOf(ValidationError);
+    await inviteJudge(admin, {
+      email: j.email,
+      displayName: "Jordan Panel",
+      title: "",
+      organization: "",
+    });
+    expect(
+      (await db.select().from(judgeProfile).where(eq(judgeProfile.userId, j.id)))[0],
+    ).toMatchObject({
+      title: "Partner",
+      organization: "Example Ventures",
+    });
+  });
+
   it("audits the judge's reason, and recording on a missing entry is NotFound", async () => {
     const { admin, judge: j, a } = await setup();
     await declareConflict(j, a.id, conflict);

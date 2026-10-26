@@ -31,6 +31,27 @@ async function main() {
         .from(schema.user)
         .where(eq(schema.user.email, email.data));
       const id = existing?.id ?? randomUUID();
+      // ...and a judge who has declared on this cycle's entries cannot become a nominator.
+      if (existing?.role === "JUDGE" && role === "NOMINATOR") {
+        const [declared] = await tx
+          .select({ id: schema.conflictDeclaration.id })
+          .from(schema.conflictDeclaration)
+          .innerJoin(schema.entry, eq(schema.entry.id, schema.conflictDeclaration.entryId))
+          .innerJoin(
+            schema.awardCycle,
+            and(
+              eq(schema.awardCycle.id, schema.entry.cycleId),
+              eq(schema.awardCycle.isActive, true),
+            ),
+          )
+          .where(eq(schema.conflictDeclaration.judgeId, id))
+          .limit(1);
+        if (declared) {
+          throw new Error(
+            "This judge has declared on entries in the current cycle, so they cannot become a nominator in it.",
+          );
+        }
+      }
       // Conflict policy (as in the app): no judging a cycle you submitted nominations to.
       if (existing && role === "JUDGE") {
         const [submitted] = await tx
@@ -49,6 +70,13 @@ async function main() {
           .select({ id: schema.payment.id })
           .from(schema.payment)
           .innerJoin(schema.entry, eq(schema.entry.id, schema.payment.entryId))
+          .innerJoin(
+            schema.awardCycle,
+            and(
+              eq(schema.awardCycle.id, schema.entry.cycleId),
+              eq(schema.awardCycle.isActive, true),
+            ),
+          )
           .where(
             and(
               eq(schema.entry.nominatorId, id),
