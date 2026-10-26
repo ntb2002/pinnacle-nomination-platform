@@ -1,13 +1,14 @@
 import "server-only";
-import { and, count, eq, gt, inArray } from "drizzle-orm";
-import { checkSelection } from "@/lib/scoring";
+import { and, count, eq, inArray } from "drizzle-orm";
+import { reopenSchema } from "@/lib/validation/finalists";
 import { audit } from "@/server/audit";
 import { assertRole, type Actor } from "@/server/auth/actor";
 import { db, type DbExecutor } from "@/server/db";
 import { awardCycle, category, entry, finalistSelection, payment } from "@/server/db/schema";
 import { ConflictError, NotFoundError, ValidationError } from "@/server/errors";
-import { CONFIRMATION_GRACE_MS } from "./checkout";
-import { computeRanking } from "./rankings";
+import { fieldErrorsOf } from "@/server/validation";
+import { openEntryFeeCheckout } from "./checkout";
+import { computeRanking, isSelectionStale } from "./rankings";
 
 /** Locks the active cycle FOR UPDATE: every phase change and selection takes it first. */
 export async function lockCycle(tx: DbExecutor) {
@@ -35,14 +36,7 @@ async function openCheckouts(tx: DbExecutor, cycleId: string, now: Date) {
     .select({ n: count() })
     .from(payment)
     .innerJoin(entry, eq(entry.id, payment.entryId))
-    .where(
-      and(
-        eq(entry.cycleId, cycleId),
-        eq(payment.kind, "ENTRY_FEE"),
-        eq(payment.status, "PENDING"),
-        gt(payment.expiresAt, new Date(now.getTime() - CONFIRMATION_GRACE_MS)),
-      ),
-    );
+    .where(and(eq(entry.cycleId, cycleId), openEntryFeeCheckout(now)));
   return row?.n ?? 0;
 }
 
@@ -85,15 +79,7 @@ export async function getRoundOneOverview(actor: Actor, now = new Date()) {
       entries: r.ranked.length,
       blockers: r.blockers.length,
       selection,
-      // A selection the scores no longer support (e.g. a late conflict) must be redone.
-      selectionStale:
-        !!selection &&
-        !checkSelection(
-          r.ranked,
-          selection.entryIds.length,
-          selection.entryIds,
-          selection.tiebreakReason ?? "",
-        ).ok,
+      selectionStale: isSelectionStale(r.ranked, selection, cycle.phase),
     });
   }
   return {
@@ -137,7 +123,10 @@ export async function openRoundOne(
         ],
       });
     }
-    await tx.update(awardCycle).set({ phase: "ROUND1_OPEN" }).where(eq(awardCycle.id, cycle.id));
+    await tx
+      .update(awardCycle)
+      .set({ phase: "ROUND1_OPEN", round1OpenedAt: now })
+      .where(eq(awardCycle.id, cycle.id));
     await audit(
       {
         actor,
@@ -188,11 +177,9 @@ export async function closeRoundOne(actor: Actor, ip?: string) {
  */
 export async function reopenRoundOne(actor: Actor, raw: { reason: string }, ip?: string) {
   assertRole(actor, "ADMIN");
-  const reason = raw.reason.trim();
-  if (reason.length < 10 || reason.length > 500)
-    throw new ValidationError("Give a reason.", {
-      reason: ["Give a reason of 10 to 500 characters"],
-    });
+  const parsed = reopenSchema.safeParse(raw);
+  if (!parsed.success) throw new ValidationError("Give a reason.", fieldErrorsOf(parsed.error));
+  const { reason } = parsed.data;
   await db.transaction(async (tx) => {
     const cycle = await lockCycle(tx);
     if (cycle.phase !== "ROUND1_CLOSED")

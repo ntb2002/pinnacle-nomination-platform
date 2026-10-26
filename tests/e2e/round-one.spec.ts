@@ -85,18 +85,25 @@ test("two judges score, the admin closes round one, picks finalists and announce
   );
   // Earlier specs leave conflict declarations and open checkouts behind. Start this
   // journey from a clean slate (every entry has two eligible judges, and no checkout
-  // blocks opening round one), then put them back.
-  const { rows: savedDeclarations } = await db().query(
-    `DELETE FROM conflict_declaration WHERE entry_id IN (SELECT id FROM entry WHERE cycle_id = $1) RETURNING *`,
-    [cycle.id],
-  );
-  const { rows: openCheckouts } = await db().query(
-    `SELECT id, expires_at FROM payment WHERE status = 'PENDING' AND expires_at > now() - interval '10 minutes'`,
-  );
-  await db().query(`UPDATE payment SET expires_at = now() - interval '1 hour' WHERE id = ANY($1)`, [
-    openCheckouts.map((p) => p.id),
-  ]);
+  // blocks opening round one); `finally` puts them back.
+  let savedDeclarations: Record<string, unknown>[] = [];
+  let openCheckouts: { id: string; expires_at: Date }[] = [];
   try {
+    savedDeclarations = (
+      await db().query(
+        `DELETE FROM conflict_declaration WHERE entry_id IN (SELECT id FROM entry WHERE cycle_id = $1) RETURNING *`,
+        [cycle.id],
+      )
+    ).rows;
+    openCheckouts = (
+      await db().query(
+        `SELECT id, expires_at FROM payment WHERE status = 'PENDING' AND expires_at > now() - interval '10 minutes'`,
+      )
+    ).rows;
+    await db().query(
+      `UPDATE payment SET expires_at = now() - interval '1 hour' WHERE id = ANY($1)`,
+      [openCheckouts.map((p) => p.id)],
+    );
     const t = Date.now();
     await db().query(
       `UPDATE award_cycle SET nominations_open_at = $2, early_deadline = $3, regular_deadline = $4, final_deadline = $5 WHERE id = $1`,

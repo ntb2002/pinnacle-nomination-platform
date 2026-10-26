@@ -30,14 +30,15 @@ export const CHECKOUT_TTL_MS = 31 * 60 * 1000;
  */
 export const CONFIRMATION_GRACE_MS = 5 * 60 * 1000;
 
-/** Unpaid sessions that may still be completed or are still being confirmed. */
-const openCheckout = (entryId: string, now: Date) =>
+/** Unpaid entry-fee sessions that may still be completed or are still being confirmed. */
+export const openEntryFeeCheckout = (now: Date) =>
   and(
-    eq(payment.entryId, entryId),
     eq(payment.kind, "ENTRY_FEE"),
     eq(payment.status, "PENDING"),
     gt(payment.expiresAt, new Date(now.getTime() - CONFIRMATION_GRACE_MS)),
   );
+const openCheckout = (entryId: string, now: Date) =>
+  and(eq(payment.entryId, entryId), openEntryFeeCheckout(now));
 
 export const CHECKOUT_OPEN_MESSAGE =
   "A checkout is open for this entry. Finish paying, or cancel the checkout to make changes.";

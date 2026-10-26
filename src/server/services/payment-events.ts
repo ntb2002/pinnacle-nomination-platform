@@ -236,7 +236,9 @@ async function fulfil(tx: Transaction, p: Payment, event: Paid) {
         ...(e && !e.categoryEnabled ? { categoryWithdrawn: true } : {}),
         ...(e && e.nominatorRole !== "NOMINATOR" ? { nominatorRole: e.nominatorRole } : {}),
         // Round one opened before this landed: the entry missed eligibility review.
-        ...(e && e.phase !== "NOMINATION" ? { afterTriageClosed: true } : {}),
+        ...(p.kind === "ENTRY_FEE" && e?.status === "DRAFT" && e.phase !== "NOMINATION"
+          ? { afterTriageClosed: true }
+          : {}),
       },
     },
     tx,

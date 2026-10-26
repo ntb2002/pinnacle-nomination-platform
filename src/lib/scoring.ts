@@ -46,6 +46,7 @@ export const to2dp = (x: number) => Math.round(x * 100) / 100;
  */
 export function meanHundredths(totals: number[]): number {
   const n = totals.length;
+  if (n === 0) throw new RangeError("meanHundredths needs at least one total");
   const sum = totals.reduce((a, b) => a + b, 0);
   return Math.floor((20 * sum + n) / (2 * n));
 }

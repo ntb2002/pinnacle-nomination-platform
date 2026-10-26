@@ -29,8 +29,13 @@ export async function selectFinalists(
   assertRole(actor, "ADMIN");
   if (!isUuid(categoryId)) throw new NotFoundError("category");
   const parsed = finalistSelectionSchema.safeParse(input);
-  if (!parsed.success)
-    throw new ValidationError("Check the highlighted fields.", fieldErrorsOf(parsed.error));
+  if (!parsed.success) {
+    // Tampered ids report on the finalists fieldset, not "entryIds.0".
+    const errors: Record<string, string[]> = {};
+    for (const [k, v] of Object.entries(fieldErrorsOf(parsed.error)))
+      (errors[k.split(".")[0]!] ??= []).push(...v);
+    throw new ValidationError("Check the highlighted fields.", errors);
+  }
   const raw = parsed.data;
   await db.transaction(async (tx) => {
     const cycle = await lockCycle(tx);
@@ -129,7 +134,7 @@ export async function announceFinalists(actor: Actor, ip?: string) {
         .where(and(approved, inArray(entry.id, chosen)));
     await tx
       .update(awardCycle)
-      .set({ phase: "FINALISTS_ANNOUNCED" })
+      .set({ phase: "FINALISTS_ANNOUNCED", finalistsAnnouncedAt: new Date() })
       .where(eq(awardCycle.id, cycle.id));
     await audit(
       {

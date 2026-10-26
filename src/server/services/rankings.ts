@@ -2,7 +2,7 @@ import "server-only";
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import { isUuid } from "@/lib/ids";
 import type { Round } from "@/lib/phases";
-import { checkSelection, entryScore, rank, type Weights } from "@/lib/scoring";
+import { checkSelection, entryScore, rank, type Ranked, type Weights } from "@/lib/scoring";
 import { assertRole, type Actor } from "@/server/auth/actor";
 import { db, type DbExecutor } from "@/server/db";
 import {
@@ -128,6 +128,20 @@ export async function computeRanking(tx: DbExecutor, categoryId: string, round: 
   };
 }
 
+/**
+ * A saved selection the current scores no longer support (e.g. a late conflict) must be
+ * made again. Only meaningful before announcement; afterwards the finalists are fixed.
+ */
+export function isSelectionStale(
+  ranked: Ranked[],
+  selection: { entryIds: string[]; tiebreakReason: string | null } | null | undefined,
+  phase: string,
+) {
+  if (!selection || phase !== "ROUND1_CLOSED") return false;
+  const n = selection.entryIds.length;
+  return !checkSelection(ranked, n, selection.entryIds, selection.tiebreakReason ?? "").ok;
+}
+
 /** Admin: one category's round-one ranking, its saved selection and the phase. */
 export async function getCategoryRanking(actor: Actor, categoryId: string) {
   assertRole(actor, "ADMIN");
@@ -141,19 +155,11 @@ export async function getCategoryRanking(actor: Actor, categoryId: string) {
     .select()
     .from(finalistSelection)
     .where(eq(finalistSelection.categoryId, categoryId));
-  // A saved selection the current scores no longer support must be made again.
-  const selectionStale =
-    !!selection &&
-    !checkSelection(
-      r.ranked,
-      selection.entryIds.length,
-      selection.entryIds,
-      selection.tiebreakReason ?? "",
-    ).ok;
+  const phase = cycle?.phase ?? "NOMINATION";
   return {
     ...r,
-    phase: cycle?.phase ?? "NOMINATION",
+    phase,
     selection: selection ?? null,
-    selectionStale,
+    selectionStale: isSelectionStale(r.ranked, selection, phase),
   };
 }

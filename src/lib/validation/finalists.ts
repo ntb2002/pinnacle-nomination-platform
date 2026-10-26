@@ -6,3 +6,12 @@ export const finalistSelectionSchema = z.object({
   entryIds: z.array(z.uuid()).max(50),
   reason: z.string().trim().max(1000, "Keep the reason under 1,000 characters"),
 });
+
+/** Reopening round one (before announcement) needs a reason for the audit log. */
+export const reopenSchema = z.object({
+  reason: z
+    .string()
+    .trim()
+    .min(10, "Give a reason of at least 10 characters")
+    .max(500, "Keep the reason under 500 characters"),
+});
