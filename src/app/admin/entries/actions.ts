@@ -11,11 +11,8 @@ import { approveEntry, returnEntry } from "@/server/services/triage";
 const formValues = (form: FormData) =>
   Object.fromEntries([...form.entries()].map(([k, v]) => [k, String(v)]));
 
-export async function approveEntryAction(
-  entryId: string,
-  _prev: ActionState,
-  form: FormData,
-): Promise<ActionState> {
+export async function approveEntryAction(_prev: ActionState, form: FormData): Promise<ActionState> {
+  const entryId = String(form.get("entryId") ?? "");
   const actor = await requireRole("ADMIN");
   try {
     await approveEntry(actor, entryId, formValues(form), await clientIp());
@@ -26,11 +23,8 @@ export async function approveEntryAction(
   redirect(`/admin/entries/${entryId}?done=approved`);
 }
 
-export async function returnEntryAction(
-  entryId: string,
-  _prev: ActionState,
-  form: FormData,
-): Promise<ActionState> {
+export async function returnEntryAction(_prev: ActionState, form: FormData): Promise<ActionState> {
+  const entryId = String(form.get("entryId") ?? "");
   const actor = await requireRole("ADMIN");
   try {
     await returnEntry(actor, entryId, formValues(form), await clientIp());

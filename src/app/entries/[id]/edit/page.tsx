@@ -32,6 +32,7 @@ export default async function EditEntryPage({
   if (!(EDITABLE_STATUSES as readonly string[]).includes(entry.status)) {
     redirect(`/entries/${id}?locked=1`);
   }
+  if (entry.status === "RETURNED" && !entry.triageOpen) redirect(`/entries/${id}?locked=closed`);
   // While a checkout is open the entry is frozen; the review page explains and offers cancel.
   if ((await getMyEntryPayment(actor, id)).open) redirect(`/entries/${id}`);
   const [files, query, returned] = await Promise.all([

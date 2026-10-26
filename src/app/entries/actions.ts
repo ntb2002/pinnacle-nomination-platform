@@ -35,25 +35,28 @@ export async function startEntryAction(_prev: ActionState, form: FormData): Prom
  * values are always echoed back, because React resets the form after an action and the
  * page's initial props are from before the save.
  */
-export async function saveEntryAction(
-  entryId: string,
-  _prev: ActionState,
-  form: FormData,
-): Promise<ActionState> {
+export async function saveEntryAction(_prev: ActionState, form: FormData): Promise<ActionState> {
+  const entryId = String(form.get("entryId") ?? "");
   const actor = await requireRole("NOMINATOR");
   const draft = entryFormToDraft(form.entries());
   const values = draftToFormValues(draft);
+  let status: string;
   try {
-    await saveDraft(actor, entryId, draft);
+    status = await saveDraft(actor, entryId, draft);
   } catch (err) {
     return { ...toActionState(err), values };
   }
   revalidatePath(`/entries/${entryId}`, "layout");
   if (form.get("intent") === "review") redirect(`/entries/${entryId}`);
-  return { status: "success", message: "Draft saved.", values };
+  return {
+    status: "success",
+    message: status === "RETURNED" ? "Changes saved." : "Draft saved.",
+    values,
+  };
 }
 
-export async function deleteDraftAction(entryId: string, _prev: ActionState): Promise<ActionState> {
+export async function deleteDraftAction(_prev: ActionState, form: FormData): Promise<ActionState> {
+  const entryId = String(form.get("entryId") ?? "");
   const actor = await requireRole("NOMINATOR");
   try {
     await deleteDraft(actor, entryId);
@@ -87,9 +90,10 @@ export async function removeAttachmentAction(entryId: string, attachmentId: stri
 
 /** Starts hosted checkout for a complete draft and sends the nominator to it. */
 export async function startCheckoutAction(
-  entryId: string,
   _prev: ActionState,
+  form: FormData,
 ): Promise<ActionState> {
+  const entryId = String(form.get("entryId") ?? "");
   const actor = await requireRole("NOMINATOR");
   let url: string;
   try {
@@ -102,9 +106,10 @@ export async function startCheckoutAction(
 
 /** Ends the open checkout so the draft can be edited again. */
 export async function cancelCheckoutAction(
-  entryId: string,
   _prev: ActionState,
+  form: FormData,
 ): Promise<ActionState> {
+  const entryId = String(form.get("entryId") ?? "");
   const actor = await requireRole("NOMINATOR");
   try {
     await cancelCheckout(actor, entryId);
@@ -118,9 +123,10 @@ export async function cancelCheckoutAction(
 
 /** Resubmits a returned entry (no fee) and shows the result on the entry page. */
 export async function resubmitEntryAction(
-  entryId: string,
   _prev: ActionState,
+  form: FormData,
 ): Promise<ActionState> {
+  const entryId = String(form.get("entryId") ?? "");
   const actor = await requireRole("NOMINATOR");
   try {
     await resubmitEntry(actor, entryId);
@@ -134,11 +140,8 @@ export async function resubmitEntryAction(
 }
 
 /** Moves an entry returned as "wrong category" to another category. */
-export async function moveCategoryAction(
-  entryId: string,
-  _prev: ActionState,
-  form: FormData,
-): Promise<ActionState> {
+export async function moveCategoryAction(_prev: ActionState, form: FormData): Promise<ActionState> {
+  const entryId = String(form.get("entryId") ?? "");
   const actor = await requireRole("NOMINATOR");
   const categoryId = String(form.get("categoryId") ?? "");
   try {

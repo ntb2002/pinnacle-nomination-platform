@@ -16,7 +16,7 @@ import { attachment, entry } from "@/server/db/schema";
 import { ConflictError, NotFoundError, ValidationError } from "@/server/errors";
 import { storage } from "@/server/storage";
 import { assertNoOpenCheckout } from "./checkout";
-import { EDITABLE_STATUSES } from "./entries";
+import { assertReturnedStillOpen, EDITABLE_STATUSES } from "./entries";
 import { entryAccessFor } from "./entry-access";
 
 /** A refused upload, with a code the upload route can put in its redirect. */
@@ -73,7 +73,7 @@ export async function uploadAttachment(
 /** The entry is the actor's, editable, and below the file limit. `lock` serializes uploads. */
 async function checkUploadAllowed(tx: DbExecutor, actor: Actor, entryId: string, lock = false) {
   const owned = tx
-    .select({ id: entry.id })
+    .select({ id: entry.id, status: entry.status, cycleId: entry.cycleId })
     .from(entry)
     .where(
       and(
@@ -84,6 +84,9 @@ async function checkUploadAllowed(tx: DbExecutor, actor: Actor, entryId: string,
     );
   const [row] = lock ? await owned.for("update") : await owned;
   if (!row) throw new UploadRejected("closed");
+  await assertReturnedStillOpen(tx, row).catch((err: unknown) => {
+    throw err instanceof ConflictError ? new UploadRejected("closed") : err;
+  });
   if (lock) {
     await assertNoOpenCheckout(tx, entryId).catch((err: unknown) => {
       throw err instanceof ConflictError ? new UploadRejected("checkout") : err;
@@ -132,7 +135,12 @@ export async function deleteAttachment(actor: Actor, attachmentId: string) {
   if (!isUuid(attachmentId)) throw new NotFoundError("file");
   const removed = await db.transaction(async (tx) => {
     const [row] = await tx
-      .select({ key: attachment.storageKey, entryId: attachment.entryId })
+      .select({
+        key: attachment.storageKey,
+        entryId: attachment.entryId,
+        status: entry.status,
+        cycleId: entry.cycleId,
+      })
       .from(attachment)
       .innerJoin(entry, eq(entry.id, attachment.entryId))
       .where(
@@ -145,6 +153,7 @@ export async function deleteAttachment(actor: Actor, attachmentId: string) {
       .for("update");
     if (!row) throw new NotFoundError("file");
     await assertNoOpenCheckout(tx, row.entryId);
+    await assertReturnedStillOpen(tx, row);
     await tx.delete(attachment).where(eq(attachment.id, attachmentId));
     return row;
   });

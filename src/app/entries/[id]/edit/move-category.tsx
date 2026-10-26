@@ -17,12 +17,13 @@ export function MoveCategory({
   current: string;
   options: { id: string; name: string }[];
 }) {
-  const [state, action] = useActionState(moveCategoryAction.bind(null, entryId), idleState);
+  const [state, action] = useActionState(moveCategoryAction, idleState);
   return (
     <form
       action={action}
       className="mb-10 flex flex-col gap-4 rounded border border-line bg-surface p-6"
     >
+      <input type="hidden" name="entryId" value={entryId} />
       <h2 className="font-display text-2xl font-semibold">Move to another category</h2>
       <FormMessage state={state} labels={{ categoryId: "Category" }} />
       <p>This entry is in {current}. The fee you paid carries over.</p>

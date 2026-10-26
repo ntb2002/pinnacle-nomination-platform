@@ -28,11 +28,8 @@ export async function updateSettingsAction(
   }
 }
 
-export async function updateRubricAction(
-  profileId: string,
-  _prev: ActionState,
-  form: FormData,
-): Promise<ActionState> {
+export async function updateRubricAction(_prev: ActionState, form: FormData): Promise<ActionState> {
+  const profileId = String(form.get("profileId") ?? "");
   const actor = await requireRole("ADMIN");
   try {
     await updateRubricWeights(actor, profileId, formValues(form), await clientIp());
@@ -44,10 +41,10 @@ export async function updateRubricAction(
 }
 
 export async function updateCategoryAction(
-  categoryId: string,
   _prev: ActionState,
   form: FormData,
 ): Promise<ActionState> {
+  const categoryId = String(form.get("categoryId") ?? "");
   const actor = await requireRole("ADMIN");
   const values = {
     description: String(form.get("description") ?? ""),

@@ -99,6 +99,14 @@ export default async function AdminEntriesPage({ searchParams }: PageProps<"/adm
         {queue.total === 1 ? "1 entry" : `${queue.total} entries`}
         {pages > 1 && `, page ${filters.page} of ${pages}`}.
       </p>
+      {queue.rows.length === 0 && filters.page > 1 && (
+        <p className="mb-4">
+          There are no entries on this page.{" "}
+          <Link href={pageHref(filters, 1)} className="font-semibold underline">
+            Go to the first page
+          </Link>
+        </p>
+      )}
       {queue.rows.length > 0 && (
         <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Entries table">
           <table className="w-full min-w-[40rem] border-collapse text-left">

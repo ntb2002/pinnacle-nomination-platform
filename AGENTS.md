@@ -97,6 +97,7 @@ npm run db:generate           # after editing src/server/db/tables/*: writes a n
 - **Don't** expose winners before publish anywhere: pages, JSON, emails, entry statuses.
 - **Don't** use `process.env` outside `src/lib/env.ts`; don't commit `.env`.
 - **Don't** edit an applied migration; change the schema and run `npm run db:generate`.
+- **Don't** bind arguments into a server action passed to `useActionState` (`action.bind(null, id)`): with JavaScript off, a submission that returns state never gets a response and pins a CPU core (Next 16.4 / React). Put ids in hidden inputs and read them in the action. ESLint enforces this.
 - **Don't** use `pkill -f <pattern>` in agent shells: it matches the shell's own command line. Use `fuser -k <port>/tcp`.
 
 ## What we're explicitly NOT building (or deferring)

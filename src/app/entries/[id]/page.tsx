@@ -46,7 +46,9 @@ export default async function EntryPage({ params, searchParams }: PageProps<"/en
     entry.status === "RETURNED" ? latestReturn(actor, id) : null,
   ]);
   const status = NOMINATOR_STATUS[entry.status];
-  const locked = !editable && query.locked === "1";
+  // A returned entry is frozen once round one opens (it can no longer be resubmitted).
+  const frozen = entry.status === "RETURNED" && !entry.triageOpen;
+  const locked = (!editable && query.locked === "1") || (frozen && query.locked === "closed");
   const notice =
     query.resubmitted === "1" && entry.status === "SUBMITTED"
       ? "Entry resubmitted. The program team will review it again."
@@ -85,7 +87,11 @@ export default async function EntryPage({ params, searchParams }: PageProps<"/en
           <FlashNotice
             id="locked-message"
             error
-            text="This entry has been submitted, so it and its files can no longer be changed."
+            text={
+              frozen
+                ? "Judging has started, so this returned entry can no longer be changed or resubmitted."
+                : "This entry has been submitted, so it and its files can no longer be changed."
+            }
           />
         </div>
       )}
@@ -95,7 +101,13 @@ export default async function EntryPage({ params, searchParams }: PageProps<"/en
         </div>
       )}
       {returned && <ReturnNotice reason={returned.reason} message={returned.message} />}
-      {editable && (
+      {frozen && !locked && (
+        <p className="mb-8 rounded border-l-4 border-danger bg-danger-bg px-4 py-3 text-danger">
+          Judging has started, so this returned entry can no longer be changed or resubmitted. It
+          will not be judged this cycle.
+        </p>
+      )}
+      {editable && !frozen && (
         <SubmitPanel
           entry={entry}
           problems={problems}

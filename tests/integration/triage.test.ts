@@ -258,6 +258,14 @@ describe("review regressions", () => {
     await expect(moveReturnedEntry(nominator, e.id, third.id)).rejects.toBeInstanceOf(
       ConflictError,
     );
+    // The returned entry is frozen too: no edits once it can no longer be resubmitted.
+    await expect(
+      saveDraft(nominator, e.id, {
+        nomineeTitle: "Changed after close",
+        outcomes: [],
+        references: [],
+      }),
+    ).rejects.toBeInstanceOf(ConflictError);
   });
 
   it("lists added or removed files in the change summary", async () => {
