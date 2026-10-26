@@ -12,11 +12,11 @@ const legendClass = "mb-2 font-display text-2xl font-semibold";
 export function NomineeSection({
   v,
   e,
-  selfNomination,
+  emailLock,
 }: {
   v: Values;
   e: Errors;
-  selfNomination: boolean;
+  emailLock: "self" | "submitted" | null;
 }) {
   const f = (
     name: string,
@@ -40,11 +40,14 @@ export function NomineeSection({
       {f("nomineeCompany", "Company or organization", { maxLength: 160 })}
       {f("nomineeEmail", "Email address", {
         type: "email",
-        hint: selfNomination
-          ? "This is a self-nomination, so the nominee's email is your sign-in email."
-          : "Used only by program staff, to contact the nominee if they become a finalist.",
+        hint:
+          emailLock === "submitted"
+            ? "This entry has been paid for this nominee, so their email cannot change. Contact the program team if it is wrong."
+            : emailLock === "self"
+              ? "This is a self-nomination, so the nominee's email is your sign-in email."
+              : "Used only by program staff, to contact the nominee if they become a finalist.",
         maxLength: 254,
-        readOnly: selfNomination,
+        readOnly: emailLock !== null,
       })}
       {f("nomineeLinkedinUrl", "LinkedIn profile (optional)", {
         type: "url",

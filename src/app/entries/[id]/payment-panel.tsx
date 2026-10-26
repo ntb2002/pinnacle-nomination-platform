@@ -4,13 +4,14 @@ import { useActionState } from "react";
 import { FormMessage } from "@/components/form/form-message";
 import { SubmitButton } from "@/components/form/submit-button";
 import { idleState } from "@/lib/action-state";
-import { cancelCheckoutAction, startCheckoutAction } from "../actions";
+import { cancelCheckoutAction, resubmitEntryAction, startCheckoutAction } from "../actions";
 
 /** "Pay and submit" for a ready draft. The amount shown is the server's; none is sent. */
 export function PayButton({ entryId, label }: { entryId: string; label: string }) {
-  const [state, action] = useActionState(startCheckoutAction.bind(null, entryId), idleState);
+  const [state, action] = useActionState(startCheckoutAction, idleState);
   return (
     <form action={action} className="mt-6 flex flex-col gap-3">
+      <input type="hidden" name="entryId" value={entryId} />
       <FormMessage state={state} />
       <div>
         <SubmitButton pendingLabel="Opening checkout…">{label}</SubmitButton>
@@ -30,8 +31,8 @@ export function OpenCheckout({
   /** Past its expiry, inside the grace period while a late payment may still arrive. */
   ended: boolean;
 }) {
-  const [payState, pay] = useActionState(startCheckoutAction.bind(null, entryId), idleState);
-  const [cancelState, cancel] = useActionState(cancelCheckoutAction.bind(null, entryId), idleState);
+  const [payState, pay] = useActionState(startCheckoutAction, idleState);
+  const [cancelState, cancel] = useActionState(cancelCheckoutAction, idleState);
   return (
     <div className="mt-4 flex flex-col gap-4">
       {ended ? (
@@ -49,14 +50,30 @@ export function OpenCheckout({
       <FormMessage state={cancelState} />
       <div className="flex flex-wrap items-center gap-6">
         <form action={pay}>
+          <input type="hidden" name="entryId" value={entryId} />
           <SubmitButton pendingLabel="Opening checkout…">Continue to payment</SubmitButton>
         </form>
         <form action={cancel}>
+          <input type="hidden" name="entryId" value={entryId} />
           <button type="submit" className="font-semibold underline">
             Cancel the checkout to make changes
           </button>
         </form>
       </div>
     </div>
+  );
+}
+
+/** "Resubmit" for a complete returned entry: no fee, back to the program team. */
+export function ResubmitButton({ entryId }: { entryId: string }) {
+  const [state, action] = useActionState(resubmitEntryAction, idleState);
+  return (
+    <form action={action} className="mt-6 flex flex-col gap-3">
+      <input type="hidden" name="entryId" value={entryId} />
+      <FormMessage state={state} />
+      <div>
+        <SubmitButton pendingLabel="Resubmitting…">Resubmit the entry</SubmitButton>
+      </div>
+    </form>
   );
 }

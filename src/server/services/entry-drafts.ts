@@ -9,7 +9,7 @@ import { ConflictError, NotFoundError, ValidationError } from "@/server/errors";
 import { fieldErrorsOf } from "@/server/validation";
 import { removeBytes } from "./attachments";
 import { assertNoOpenCheckout } from "./checkout";
-import { EDITABLE_STATUSES } from "./entries";
+import { assertReturnedStillOpen, EDITABLE_STATUSES } from "./entries";
 
 const blankToNull = (v: string | undefined) => (v && v.trim() !== "" ? v.trim() : null);
 
@@ -19,7 +19,8 @@ const blankToNull = (v: string | undefined) => (v && v.trim() !== "" ? v.trim() 
  * references are replaced as a set. Only the entry's own nominator, and only while
  * the entry is editable.
  */
-export async function saveDraft(actor: Actor, entryId: string, raw: unknown) {
+/** Returns the entry's status ("DRAFT" or "RETURNED"). */
+export async function saveDraft(actor: Actor, entryId: string, raw: unknown): Promise<string> {
   assertRole(actor, "NOMINATOR");
   if (!isUuid(entryId)) throw new NotFoundError("editable entry");
   const parsed = draftSchema.safeParse(raw);
@@ -27,10 +28,17 @@ export async function saveDraft(actor: Actor, entryId: string, raw: unknown) {
     throw new ValidationError("Check the highlighted fields.", fieldErrorsOf(parsed.error));
   }
   const d = parsed.data;
-  await db
+  return db
     .transaction(async (tx) => {
       const [current] = await tx
-        .select({ id: entry.id, relationship: entry.relationship })
+        .select({
+          id: entry.id,
+          relationship: entry.relationship,
+          submittedAt: entry.submittedAt,
+          nomineeEmail: entry.nomineeEmail,
+          status: entry.status,
+          cycleId: entry.cycleId,
+        })
         .from(entry)
         .where(
           and(
@@ -42,6 +50,7 @@ export async function saveDraft(actor: Actor, entryId: string, raw: unknown) {
         .for("update");
       if (!current) throw new NotFoundError("editable entry");
       await assertNoOpenCheckout(tx, entryId);
+      await assertReturnedStillOpen(tx, current);
 
       await tx
         .update(entry)
@@ -49,11 +58,14 @@ export async function saveDraft(actor: Actor, entryId: string, raw: unknown) {
           nomineeName: blankToNull(d.nomineeName),
           nomineeTitle: blankToNull(d.nomineeTitle),
           nomineeCompany: blankToNull(d.nomineeCompany),
-          // A self-nomination's nominee is the signed-in nominator.
+          // A self-nomination's nominee is the signed-in nominator. Once an entry has
+          // been paid for and submitted, its nominee is fixed: the fee covers that person.
           nomineeEmail:
             current.relationship === "SELF"
               ? actor.email
-              : (blankToNull(d.nomineeEmail)?.toLowerCase() ?? null),
+              : current.submittedAt
+                ? current.nomineeEmail
+                : (blankToNull(d.nomineeEmail)?.toLowerCase() ?? null),
           nomineeLinkedinUrl: blankToNull(d.nomineeLinkedinUrl),
           narrative: d.narrative && d.narrative.trim() !== "" ? d.narrative : null,
         })
@@ -61,6 +73,7 @@ export async function saveDraft(actor: Actor, entryId: string, raw: unknown) {
 
       await syncOutcomes(tx, entryId, d.outcomes);
       await syncReferences(tx, entryId, d.references);
+      return current.status;
     })
     .catch((err: unknown) => {
       const cause = (err as { cause?: { code?: string; constraint?: string } }).cause;

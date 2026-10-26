@@ -22,7 +22,7 @@ export function RubricForm({
   weights: Weights;
   locked: boolean;
 }) {
-  const [state, action] = useActionState(updateRubricAction.bind(null, profileId), idleState);
+  const [state, action] = useActionState(updateRubricAction, idleState);
   const [values, setValues] = useState<Weights>(weights);
   const total = Object.values(values).reduce((a, b) => a + (Number.isFinite(b) ? b : 0), 0);
   const prefix = `rubric-${profileId}-`;
@@ -37,6 +37,7 @@ export function RubricForm({
       className="flex flex-col gap-6 rounded border border-line bg-surface p-6"
       noValidate
     >
+      <input type="hidden" name="profileId" value={profileId} />
       <h2 className="font-display text-2xl font-semibold">{name}</h2>
       <FormMessage state={state} labels={labels} idPrefix={prefix} />
       <fieldset disabled={locked} className="grid gap-5 sm:grid-cols-2">

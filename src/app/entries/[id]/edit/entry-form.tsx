@@ -16,16 +16,13 @@ import { NarrativeSection, NomineeSection, OutcomesSection, ReferencesSection } 
 export function EntryForm({
   entryId,
   initial,
-  selfNomination,
+  emailLock,
 }: {
   entryId: string;
   initial: Record<string, string>;
-  selfNomination: boolean;
+  emailLock: "self" | "submitted" | null;
 }) {
-  const [serverState, action, pending] = useActionState(
-    saveEntryAction.bind(null, entryId),
-    idleState,
-  );
+  const [serverState, action, pending] = useActionState(saveEntryAction, idleState);
   const [clientState, setClientState] = useState<ActionState | null>(null);
   const state = clientState ?? serverState;
   const v = state.values ?? initial;
@@ -59,10 +56,11 @@ export function EntryForm({
       className="flex flex-col gap-8"
       noValidate
     >
+      <input type="hidden" name="entryId" value={entryId} />
       <FormMessage state={state} labelFor={entryFieldLabel} />
       {/* Locked while saving: anything typed now would be replaced by the saved values. */}
       <fieldset disabled={pending} aria-busy={pending} className="flex flex-col gap-8">
-        <NomineeSection v={v} e={e} selfNomination={selfNomination} />
+        <NomineeSection v={v} e={e} emailLock={emailLock} />
         <NarrativeSection v={v} e={e} />
         <OutcomesSection v={v} e={e} />
         <ReferencesSection v={v} e={e} />

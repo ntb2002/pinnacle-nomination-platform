@@ -19,7 +19,7 @@ export interface CategoryFormProps {
 }
 
 export function CategoryForm(p: CategoryFormProps) {
-  const [state, action] = useActionState(updateCategoryAction.bind(null, p.id), idleState);
+  const [state, action] = useActionState(updateCategoryAction, idleState);
   const prefix = `cat-${p.id}-`;
   // React resets the form after each action: show what the admin typed after an error.
   const v = {
@@ -34,6 +34,7 @@ export function CategoryForm(p: CategoryFormProps) {
       className="flex flex-col gap-5 rounded border border-line bg-surface p-6"
       noValidate
     >
+      <input type="hidden" name="categoryId" value={p.id} />
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="font-display text-2xl font-semibold">{p.name}</h2>
         <span className="text-sm text-slate">

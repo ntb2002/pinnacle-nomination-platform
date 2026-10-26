@@ -1,15 +1,42 @@
 import "server-only";
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { isUuid } from "@/lib/ids";
 import { entryFeeFor } from "@/lib/pricing";
 import { startEntrySchema } from "@/lib/validation/entry";
 import { assertRole, type Actor } from "@/server/auth/actor";
-import { db } from "@/server/db";
-import { awardCycle, category, entry, entryOutcome, entryReference } from "@/server/db/schema";
+import { db, type DbExecutor } from "@/server/db";
+import {
+  awardCycle,
+  category,
+  entry,
+  entryOutcome,
+  entryReference,
+  entryStatusEvent,
+} from "@/server/db/schema";
 import { ConflictError, NotFoundError, ValidationError } from "@/server/errors";
 import { fieldErrorsOf } from "@/server/validation";
 
 export const EDITABLE_STATUSES = ["DRAFT", "RETURNED"] as const;
+
+export const RETURNED_CLOSED_MESSAGE =
+  "Judging has started, so returned entries can no longer be changed or resubmitted.";
+
+/**
+ * A returned entry can only change while triage is open (the cycle in NOMINATION):
+ * after round one opens it can no longer be resubmitted, so edits would be pointless
+ * and could confuse a later review. Call inside the transaction that locks the entry.
+ */
+export async function assertReturnedStillOpen(
+  tx: DbExecutor,
+  e: { status: string; cycleId: string },
+) {
+  if (e.status !== "RETURNED") return;
+  const [cycle] = await tx
+    .select({ phase: awardCycle.phase })
+    .from(awardCycle)
+    .where(eq(awardCycle.id, e.cycleId));
+  if (cycle?.phase !== "NOMINATION") throw new ConflictError(RETURNED_CLOSED_MESSAGE);
+}
 
 async function activeCycle() {
   const [cycle] = await db.select().from(awardCycle).where(eq(awardCycle.isActive, true));
@@ -84,9 +111,16 @@ export async function listMyEntries(actor: Actor) {
       categoryName: category.name,
       updatedAt: entry.updatedAt,
       submittedAt: entry.submittedAt,
+      triageOpen: sql<boolean>`${awardCycle.phase} = 'NOMINATION'`,
+      // The program team's message from the latest return, shown while it is returned.
+      returnMessage: sql<string | null>`(
+        select ${entryStatusEvent.note} from ${entryStatusEvent}
+        where ${entryStatusEvent.entryId} = ${entry.id} and ${entryStatusEvent.toStatus} = 'RETURNED'
+        order by ${entryStatusEvent.createdAt} desc limit 1)`,
     })
     .from(entry)
     .innerJoin(category, eq(category.id, entry.categoryId))
+    .innerJoin(awardCycle, eq(awardCycle.id, entry.cycleId))
     .where(eq(entry.nominatorId, actor.id))
     .orderBy(desc(entry.updatedAt));
 }
@@ -96,9 +130,15 @@ export async function getMyEntry(actor: Actor, entryId: string) {
   assertRole(actor, "NOMINATOR");
   if (!isUuid(entryId)) throw new NotFoundError("entry");
   const [row] = await db
-    .select({ entry, categoryName: category.name, categoryEnabled: category.enabled })
+    .select({
+      entry,
+      categoryName: category.name,
+      categoryEnabled: category.enabled,
+      cyclePhase: awardCycle.phase,
+    })
     .from(entry)
     .innerJoin(category, eq(category.id, entry.categoryId))
+    .innerJoin(awardCycle, eq(awardCycle.id, entry.cycleId))
     .where(and(eq(entry.id, entryId), eq(entry.nominatorId, actor.id)));
   if (!row) throw new NotFoundError("entry");
   const [outcomes, references] = await Promise.all([
@@ -117,6 +157,8 @@ export async function getMyEntry(actor: Actor, entryId: string) {
     ...row.entry,
     categoryName: row.categoryName,
     categoryEnabled: row.categoryEnabled,
+    /** False once round one opens: returned entries are then frozen. */
+    triageOpen: row.cyclePhase === "NOMINATION",
     outcomes,
     references,
   };

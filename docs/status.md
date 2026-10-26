@@ -4,12 +4,15 @@
 
 ## Now
 
-- **Done:** #1, #2, #3, #4, #5, #6, #7, #8, #9
+- **Done:** #1, #2, #3, #4, #5, #6, #7, #8, #9, #10
 - **In progress:** —
-- **Next:** #10 Admin triage
+- **Next:** #11 Judge management and conflict-of-interest recusal
 - **Blockers:** none
 
 ## Needs human (collected from issues)
+
+- **Stripe test-key check (#9):** the [MANUAL] gate: README → *Testing payments with Stripe test keys* (blocked from the build sandbox).
+- **Program team inbox (#10):** set `ADMIN_NOTIFY_EMAIL` to the shared CCE mailbox for resubmission notices (unset: every admin account is emailed).
 
 - **Install the CI workflow (#2):** `cp docs/ci/ci.yml .github/workflows/ci.yml` and push. The agent's deny list blocks it from writing `.github/workflows/` (the permission prompt was denied, so I did not work around it). Until then each issue's [CI] evidence is a full `scripts/ci-local.sh` run, with the log committed under `plans/artifacts/`.
 
@@ -24,9 +27,9 @@
 
 ## Open technical threads
 
-- #9 evaluator note: with JavaScript off, a server-action form whose bound entry id is tampered with (Next encrypts bound arguments) got no response for 45 s instead of an error; nothing was created. Next.js behaviour on undecryptable action arguments; revisit in #16 hardening.
+- Fixed in #10 (found by its evaluator): with JavaScript off, any `useActionState` form whose action had bound arguments (`.bind(null, id)`) never answered a submission that returned state, and pinned a CPU core (React retries a stack overflow during SSR forever; Next 16.4.3). Every such action now reads its ids from hidden inputs; ESLint forbids the pattern; `tests/e2e/no-js.spec.ts` guards it. Plain bound actions that only redirect (file removal, mock checkout) are unaffected. Worth reporting upstream; LAUNCH_READINESS should still note a request timeout at the proxy as defence in depth.
 - Payments, for LAUNCH_READINESS: the real-Stripe path ([MANUAL] gate of #9) could not run in the build sandbox (api.stripe.com is blocked); steps are in README → *Testing payments with Stripe test keys*. A paid duplicate or a mismatched amount is only audited (`payment.duplicate_needs_refund`, `payment.amount_mismatch`); someone must watch for these and refund in the Stripe dashboard until #16's audit viewer can filter them. Refund and dispute webhooks are not handled (refunds are manual). `startCheckout` holds the entry lock during Stripe calls (8 s timeout, 1 retry, up to three calls: about 50 s worst case); acceptable at this scale, revisit if checkout start times out under load. Rejected webhooks are audited up to 50 per IP per 15 minutes; still rate-limit `/api/webhooks/stripe` at the load balancer. The e2e server trusts no proxy (`TRUSTED_PROXY_HOPS=0`), so all e2e sign-ins share the unknown-IP bucket (200 per 15 minutes); the suite used 19 at #9, so watch it as suites grow.
-- #10: decide whether a returned entry may change the nominee (today any field can change before resubmission); show admins a change summary on resubmission; map a category change hitting the duplicate index to a field error.
+- #12: the round-one opener must lock the active cycle `FOR UPDATE` before touching entries (triage locks cycle `FOR SHARE`, then the entry). Opening round one ends triage. Warn the admin about entries still SUBMITTED or RETURNED (they will not be judged), and say so to nominators of returned entries.
 - Rate limiting and audit IPs use the `TRUSTED_PROXY_HOPS`-th `X-Forwarded-For` entry from the right; production must sit behind a proxy that appends it (LAUNCH_READINESS). The per-email sign-in limit (5 per sliding 15 minutes) means someone who knows an address can keep that person from requesting new links for as long as they keep sending about 5 requests every 15 minutes. Accepted trade-off against email bombing; LAUNCH_READINESS lists mitigations (admin SSO, a CAPTCHA after failures).
 - Shorter sessions for admins/judges are scheduled for #16 (all roles get 7 days today).
 - Supporting files are not malware-scanned (#8). LAUNCH_READINESS: add a scanning step (e.g. ClamAV or the bucket provider's scanner) before judges download. Files are only ever served as downloads with `nosniff`.
@@ -40,6 +43,7 @@
 
 ### 2026-10-25 — v1 build started
 
+- #10 — Admin triage: queue (status/category filters, submission-date sort, pages), detail with reference contacts revealed on request (audited), approve/return (reason + message) with cycle-then-entry locks, stale-page `version` guard, emails, status history; returned entries editable (nominee email fixed after payment, category move only for wrong-category returns, frozen once round one opens) and resubmitted free with a keyed-hash change summary (incl. files) to the program team; nominator timeline without admin identities. Also fixed a severe pre-existing bug: no-JS form errors on `[id]` pages hung and pinned a CPU (bound `useActionState` actions in Next 16.4) — ids now travel as hidden inputs, ESLint forbids binding, no-JS e2e. Review APPROVE WITH FIXES (round-one race, files missing from summary) → fixed; evaluator FAIL (summary, post-close edits, no-JS hang) → fixed → re-evaluation PASS.
 - #9 — Entry fee payment: `PaymentProvider` with Stripe hosted Checkout (cards, 31-minute sessions) and a signed mock simulator; server-side pricing at checkout start under locks with readiness re-checked; entry frozen while a checkout is open (+5-minute confirmation grace); webhook-only fulfilment, idempotent on event id and entry, amount-checked, entry-then-payment lock order; receipts; audited fulfilments and (capped) rejections; boot-time payment config (mock refused in production, live keys refused elsewhere, test keys refused in production unless demo); admin payments page with "Charged, needs review". Review APPROVE WITH FIXES (late-webhook double charge, lock order, unapplied charges, test keys in production, cancel feedback) → fixed; evaluator FAIL (criterion 4 messages) → fixed → re-evaluation PASS. [MANUAL] real-Stripe run awaits a human (README).
 - #8 — Supporting files: multipart upload route (origin + size checked before the body, outside the proxy, fetch with JSON when JS runs so unsaved edits survive), magic-byte types, random keys on local disk or S3 (SSE), 5 x 10 MB, one access rule shared with entry content (`entryAccessFor`), attachment-only downloads with nosniff/no-store/sandbox CSP, audited admin/judge downloads, best-effort byte removal. Metadata now always renders in `<head>` (`htmlLimitedBots`). Review APPROVE WITH FIXES (storage write inside the transaction, lost unsaved edits, removal errors, bidi names) → fixed; evaluator FAIL (bidi names) → fixed → re-evaluation PASS.
 - #7 — Nomination start/edit/review/dashboard with draft and submission schemas, ownership by query, duplicate nominee rule as a field error, self-nomination email locked, stable outcome/reference rows, delete unpaid draft. Review APPROVE WITH FIXES (stale form after save, raw messages, 500 on bad ids) → fixed; evaluator FAIL → fixed → re-evaluation found group-link scroll and typing-during-save → fixed.

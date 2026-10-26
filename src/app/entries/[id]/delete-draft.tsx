@@ -7,13 +7,14 @@ import { deleteDraftAction } from "../actions";
 
 /** Two-step delete (reveal, then confirm) for an unsubmitted draft. Works without JavaScript. */
 export function DeleteDraft({ entryId }: { entryId: string }) {
-  const [state, action] = useActionState(deleteDraftAction.bind(null, entryId), idleState);
+  const [state, action] = useActionState(deleteDraftAction, idleState);
   return (
     <details className="mt-6">
       <summary className="cursor-pointer font-semibold text-danger underline">
         Delete this draft
       </summary>
       <form action={action} className="mt-3 flex flex-col gap-3">
+        <input type="hidden" name="entryId" value={entryId} />
         <FormMessage state={state} />
         <p>This removes the draft and everything in it. It cannot be undone.</p>
         <div>

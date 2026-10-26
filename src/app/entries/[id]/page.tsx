@@ -11,9 +11,12 @@ import { requireRole } from "@/server/auth/session";
 import { NotFoundError } from "@/server/errors";
 import { listAttachments } from "@/server/services/attachments";
 import { getMyEntryPayment } from "@/server/services/checkout";
+import { getMyTimeline, latestReturn } from "@/server/services/returned-entries";
 import { EDITABLE_STATUSES, getMyEntry, getNominationWindow } from "@/server/services/entries";
 import { AttachmentList } from "./attachment-list";
+import { ReturnNotice } from "./return-notice";
 import { SubmitPanel } from "./submit-panel";
+import { Timeline } from "./timeline";
 import { EntrySummary } from "./entry-summary";
 
 export const metadata: Metadata = { title: "Your entry" };
@@ -38,26 +41,34 @@ export default async function EntryPage({ params, searchParams }: PageProps<"/en
     getMyEntryPayment(actor, id),
     searchParams,
   ]);
+  const [timeline, returned] = await Promise.all([
+    getMyTimeline(actor, id),
+    entry.status === "RETURNED" ? latestReturn(actor, id) : null,
+  ]);
   const status = NOMINATOR_STATUS[entry.status];
-  const locked = !editable && query.locked === "1";
+  // A returned entry is frozen once round one opens (it can no longer be resubmitted).
+  const frozen = entry.status === "RETURNED" && !entry.triageOpen;
+  const locked = (!editable && query.locked === "1") || (frozen && query.locked === "closed");
   const notice =
-    query.checkout === "cancelled" && entry.status === "DRAFT"
-      ? "You left checkout without paying. Nothing was charged, and your entry is still a draft."
-      : query.checkout === "ended" && entry.status === "DRAFT"
-        ? "Checkout cancelled. You can edit the entry again."
-        : query.checkout === "stale"
-          ? entry.status === "DRAFT"
-            ? pay.open
-              ? "That checkout page was out of date, so nothing was charged. Use \u201cContinue to payment\u201d below to pay."
-              : "That checkout had already ended, so nothing was charged. Start a new checkout to pay."
-            : "This entry is already paid for. Nothing more was charged."
-          : query.checkout === "done"
-            ? entry.status !== "DRAFT"
-              ? `Payment received. Your entry is submitted, and a receipt is on its way to ${actor.email}.`
-              : pay.open
-                ? "We are confirming your payment. This usually takes a few seconds; refresh the page to see the result."
-                : null
-            : null;
+    query.resubmitted === "1" && entry.status === "SUBMITTED"
+      ? "Entry resubmitted. The program team will review it again."
+      : query.checkout === "cancelled" && entry.status === "DRAFT"
+        ? "You left checkout without paying. Nothing was charged, and your entry is still a draft."
+        : query.checkout === "ended" && entry.status === "DRAFT"
+          ? "Checkout cancelled. You can edit the entry again."
+          : query.checkout === "stale"
+            ? entry.status === "DRAFT"
+              ? pay.open
+                ? "That checkout page was out of date, so nothing was charged. Use \u201cContinue to payment\u201d below to pay."
+                : "That checkout had already ended, so nothing was charged. Start a new checkout to pay."
+              : "This entry is already paid for. Nothing more was charged."
+            : query.checkout === "done"
+              ? entry.status !== "DRAFT"
+                ? `Payment received. Your entry is submitted, and a receipt is on its way to ${actor.email}.`
+                : pay.open
+                  ? "We are confirming your payment. This usually takes a few seconds; refresh the page to see the result."
+                  : null
+              : null;
 
   return (
     <div className="container-page max-w-3xl py-12">
@@ -68,7 +79,7 @@ export default async function EntryPage({ params, searchParams }: PageProps<"/en
       </p>
       <PageHeader
         title={entry.categoryName}
-        intro={`${RELATIONSHIP_LABEL[entry.relationship]}. Status: ${status.label}. ${status.next}`}
+        intro={`${RELATIONSHIP_LABEL[entry.relationship]}. Status: ${status.label}. ${frozen ? "Judging has started, so it can no longer be resubmitted." : status.next}`}
       />
 
       {locked && (
@@ -76,7 +87,11 @@ export default async function EntryPage({ params, searchParams }: PageProps<"/en
           <FlashNotice
             id="locked-message"
             error
-            text="This entry has been submitted, so it and its files can no longer be changed."
+            text={
+              frozen
+                ? "Judging has started, so this returned entry can no longer be changed or resubmitted."
+                : "This entry has been submitted, so it and its files can no longer be changed."
+            }
           />
         </div>
       )}
@@ -85,7 +100,16 @@ export default async function EntryPage({ params, searchParams }: PageProps<"/en
           <FlashNotice id="checkout-message" error={false} text={notice} />
         </div>
       )}
-      {editable && (
+      {returned && (
+        <ReturnNotice reason={returned.reason} message={returned.message} frozen={frozen} />
+      )}
+      {frozen && !locked && (
+        <p className="mb-8 rounded border-l-4 border-danger bg-danger-bg px-4 py-3 text-danger">
+          Judging has started, so this returned entry can no longer be changed or resubmitted. It
+          will not be judged this cycle.
+        </p>
+      )}
+      {editable && !frozen && (
         <SubmitPanel
           entry={entry}
           problems={problems}
@@ -115,6 +139,7 @@ export default async function EntryPage({ params, searchParams }: PageProps<"/en
         </h2>
         <AttachmentList files={files} />
       </section>
+      <Timeline steps={timeline} />
     </div>
   );
 }

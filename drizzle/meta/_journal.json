@@ -29,6 +29,13 @@
       "when": 1792969894312,
       "tag": "0003_payment_expiry",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792973159774,
+      "tag": "0004_status_event_hashes",
+      "breakpoints": true
     }
   ]
 }
