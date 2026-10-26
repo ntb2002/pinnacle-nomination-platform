@@ -24,6 +24,7 @@
     "db:seed": "tsx scripts/seed.ts",
     "user:role": "tsx scripts/user-role.ts",
     "demo:advance": "tsx --conditions=react-server scripts/demo-advance.ts",
+    "demo:walkthrough": "node scripts/demo-walkthrough.mjs",
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
