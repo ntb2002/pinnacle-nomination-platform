@@ -86,18 +86,17 @@ export async function startCheckout(actor: Actor, entryId: string, now = new Dat
     if (!fee?.open)
       throw new ConflictError("Nominations are not open, so this entry cannot be paid for.");
 
-    const [outcomes, references] = await Promise.all([
-      tx
-        .select()
-        .from(entryOutcome)
-        .where(eq(entryOutcome.entryId, entryId))
-        .orderBy(asc(entryOutcome.position)),
-      tx
-        .select()
-        .from(entryReference)
-        .where(eq(entryReference.entryId, entryId))
-        .orderBy(asc(entryReference.position)),
-    ]);
+    // One query at a time on the transaction's single connection.
+    const outcomes = await tx
+      .select()
+      .from(entryOutcome)
+      .where(eq(entryOutcome.entryId, entryId))
+      .orderBy(asc(entryOutcome.position));
+    const references = await tx
+      .select()
+      .from(entryReference)
+      .where(eq(entryReference.entryId, entryId))
+      .orderBy(asc(entryReference.position));
     const problems = readinessProblems(toSubmissionInput({ ...e, outcomes, references }));
     if (Object.keys(problems).length > 0) {
       throw new ValidationError("Complete the entry before paying.", problems);

@@ -97,7 +97,7 @@ export default async function AdminEntriesPage({ searchParams }: PageProps<"/adm
       </form>
       <p className="mb-4" role="status">
         {queue.total === 1 ? "1 entry" : `${queue.total} entries`}
-        {pages > 1 && `, page ${filters.page} of ${pages}`}.
+        {pages > 1 && filters.page <= pages && `, page ${filters.page} of ${pages}`}.
       </p>
       {queue.rows.length === 0 && filters.page > 1 && (
         <p className="mb-4">
@@ -145,7 +145,7 @@ export default async function AdminEntriesPage({ searchParams }: PageProps<"/adm
           </table>
         </div>
       )}
-      {pages > 1 && (
+      {pages > 1 && filters.page <= pages && (
         <nav aria-label="Pages" className="mt-6 flex gap-6">
           {filters.page > 1 && (
             <Link href={pageHref(filters, filters.page - 1)} className="font-semibold underline">

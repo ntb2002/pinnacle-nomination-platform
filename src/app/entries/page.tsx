@@ -12,6 +12,13 @@ type Row = Awaited<ReturnType<typeof listMyEntries>>[number];
 
 function NextStep({ e }: { e: Row }) {
   const s = NOMINATOR_STATUS[e.status];
+  if (e.status === "RETURNED" && !e.triageOpen) {
+    return (
+      <span className="text-slate">
+        Judging has started; this entry can no longer be resubmitted.
+      </span>
+    );
+  }
   if (e.status === "DRAFT" || e.status === "RETURNED") {
     return (
       <Link href={`/entries/${e.id}/edit`} className="font-semibold underline">

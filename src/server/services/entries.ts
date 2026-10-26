@@ -111,6 +111,7 @@ export async function listMyEntries(actor: Actor) {
       categoryName: category.name,
       updatedAt: entry.updatedAt,
       submittedAt: entry.submittedAt,
+      triageOpen: sql<boolean>`${awardCycle.phase} = 'NOMINATION'`,
       // The program team's message from the latest return, shown while it is returned.
       returnMessage: sql<string | null>`(
         select ${entryStatusEvent.note} from ${entryStatusEvent}
@@ -119,6 +120,7 @@ export async function listMyEntries(actor: Actor) {
     })
     .from(entry)
     .innerJoin(category, eq(category.id, entry.categoryId))
+    .innerJoin(awardCycle, eq(awardCycle.id, entry.cycleId))
     .where(eq(entry.nominatorId, actor.id))
     .orderBy(desc(entry.updatedAt));
 }

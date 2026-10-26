@@ -79,7 +79,7 @@ export default async function EntryPage({ params, searchParams }: PageProps<"/en
       </p>
       <PageHeader
         title={entry.categoryName}
-        intro={`${RELATIONSHIP_LABEL[entry.relationship]}. Status: ${status.label}. ${status.next}`}
+        intro={`${RELATIONSHIP_LABEL[entry.relationship]}. Status: ${status.label}. ${frozen ? "Judging has started, so it can no longer be resubmitted." : status.next}`}
       />
 
       {locked && (
@@ -100,7 +100,9 @@ export default async function EntryPage({ params, searchParams }: PageProps<"/en
           <FlashNotice id="checkout-message" error={false} text={notice} />
         </div>
       )}
-      {returned && <ReturnNotice reason={returned.reason} message={returned.message} />}
+      {returned && (
+        <ReturnNotice reason={returned.reason} message={returned.message} frozen={frozen} />
+      )}
       {frozen && !locked && (
         <p className="mb-8 rounded border-l-4 border-danger bg-danger-bg px-4 py-3 text-danger">
           Judging has started, so this returned entry can no longer be changed or resubmitted. It

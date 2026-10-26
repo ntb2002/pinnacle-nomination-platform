@@ -4,9 +4,12 @@ import { RETURN_REASON_LABEL, type ReturnReason } from "@/lib/entry-status";
 export function ReturnNotice({
   reason,
   message,
+  frozen = false,
 }: {
   reason: ReturnReason | null;
   message: string | null;
+  /** Judging has started: the entry can no longer be changed. */
+  frozen?: boolean;
 }) {
   return (
     <section
@@ -18,11 +21,13 @@ export function ReturnNotice({
         {reason ? `: ${RETURN_REASON_LABEL[reason].toLowerCase()}` : ""}
       </h2>
       {message && <p className="mt-2 max-w-[68ch] whitespace-pre-line">{message}</p>}
-      <p className="mt-2 text-sm">
-        Make the changes, then resubmit from the entry page. There is no new fee.
-        {reason === "WRONG_CATEGORY" &&
-          " You can move the entry to another category on the edit page."}
-      </p>
+      {!frozen && (
+        <p className="mt-2 text-sm">
+          Make the changes, then resubmit from the entry page. There is no new fee.
+          {reason === "WRONG_CATEGORY" &&
+            " You can move the entry to another category on the edit page."}
+        </p>
+      )}
     </section>
   );
 }

@@ -74,19 +74,21 @@ async function assertCurrent(tx: DbExecutor, entryId: string, version: string | 
 }
 
 export async function loadContent(tx: DbExecutor, e: typeof entry.$inferSelect) {
-  const [outcomes, references, files] = await Promise.all([
-    tx
-      .select()
-      .from(entryOutcome)
-      .where(eq(entryOutcome.entryId, e.id))
-      .orderBy(asc(entryOutcome.position)),
-    tx
-      .select()
-      .from(entryReference)
-      .where(eq(entryReference.entryId, e.id))
-      .orderBy(asc(entryReference.position)),
-    tx.select({ sha256: attachment.sha256 }).from(attachment).where(eq(attachment.entryId, e.id)),
-  ]);
+  // One query at a time: tx is a single connection (parallel queries on it are deprecated).
+  const outcomes = await tx
+    .select()
+    .from(entryOutcome)
+    .where(eq(entryOutcome.entryId, e.id))
+    .orderBy(asc(entryOutcome.position));
+  const references = await tx
+    .select()
+    .from(entryReference)
+    .where(eq(entryReference.entryId, e.id))
+    .orderBy(asc(entryReference.position));
+  const files = await tx
+    .select({ sha256: attachment.sha256 })
+    .from(attachment)
+    .where(eq(attachment.entryId, e.id));
   return { ...e, outcomes, references, fileHashes: files.map((f) => f.sha256) };
 }
 
