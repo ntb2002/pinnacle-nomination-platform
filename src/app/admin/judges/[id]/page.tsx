@@ -98,7 +98,9 @@ export default async function AdminJudgePage({
                       {d.recordedById && " (set by an admin)"}
                     </p>
                     {d.reason && (
-                      <p className="text-sm text-slate">Judge&apos;s reason: {d.reason}</p>
+                      <p className="text-sm text-slate">
+                        {d.hasConflict ? "Judge's reason" : "Judge's earlier reason"}: {d.reason}
+                      </p>
                     )}
                     {d.adminNote && <p className="text-sm text-slate">Admin note: {d.adminNote}</p>}
                     <ConflictForm

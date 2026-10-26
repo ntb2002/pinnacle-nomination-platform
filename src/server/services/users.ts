@@ -9,7 +9,7 @@ import { db } from "@/server/db";
 import { session, user } from "@/server/db/schema";
 import { sendEmail } from "@/server/email";
 import { roleGrantedEmail } from "@/server/email/templates";
-import { hasSubmittedEntries, JUDGE_HAS_ENTRIES_MESSAGE } from "./judges-admin";
+import { hasJudgedActiveCycle, nominationConflict } from "./judges-admin";
 import { ConflictError, NotFoundError, ValidationError } from "@/server/errors";
 
 const ROLE_LABEL: Record<Role, string> = {
@@ -36,8 +36,19 @@ export async function grantRole(actor: Actor, rawEmail: string, role: Role, ip?:
       .where(eq(user.email, email));
     let id = existing?.id;
     // Conflict policy: judges may not submit nominations in the cycle they judge.
-    if (existing && role === "JUDGE" && (await hasSubmittedEntries(tx, existing.id))) {
-      throw new ConflictError(JUDGE_HAS_ENTRIES_MESSAGE);
+    if (existing && role === "JUDGE") {
+      const blocked = await nominationConflict(tx, existing.id);
+      if (blocked) throw new ConflictError(blocked);
+    }
+    // ...and a judge who has started judging this cycle cannot become a nominator in it.
+    if (
+      existing?.role === "JUDGE" &&
+      role === "NOMINATOR" &&
+      (await hasJudgedActiveCycle(tx, existing.id))
+    ) {
+      throw new ConflictError(
+        "This judge has declared on entries in the current cycle, so they cannot become a nominator in it.",
+      );
     }
     if (existing) {
       if (existing.role === role) return { id: existing.id, changed: false, from: existing.role };

@@ -7,7 +7,7 @@ import { assertRole, type Actor } from "@/server/auth/actor";
 import { db } from "@/server/db";
 import { awardCycle, category, judgeAssignment, judgeProfile } from "@/server/db/schema";
 import { ConflictError, NotFoundError, ValidationError } from "@/server/errors";
-import { hasSubmittedEntries, JUDGE_HAS_ENTRIES_MESSAGE, loadJudge } from "./judges-admin";
+import { loadJudge, nominationConflict } from "./judges-admin";
 
 /**
  * Admin: sets which categories a judge covers in one round of the active cycle.
@@ -34,8 +34,10 @@ export async function setAssignments(
     if (!assignmentsOpen(cycle.phase, round))
       throw new ConflictError(`Round ${round} has closed, so its assignments are fixed.`);
     await loadJudge(tx, judgeId);
-    if (wanted.length > 0 && (await hasSubmittedEntries(tx, judgeId)))
-      throw new ConflictError(JUDGE_HAS_ENTRIES_MESSAGE);
+    if (wanted.length > 0) {
+      const blocked = await nominationConflict(tx, judgeId);
+      if (blocked) throw new ConflictError(blocked);
+    }
     const valid = wanted.length
       ? await tx
           .select({ id: category.id })

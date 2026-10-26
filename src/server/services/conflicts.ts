@@ -24,7 +24,14 @@ export const CONFLICT_IS_FINAL =
 
 /** Serializes declarations for one judge/entry pair (insert-or-update races). */
 async function lockPair(tx: DbExecutor, judgeId: string, entryId: string) {
-  await tx.select({ id: entry.id }).from(entry).where(eq(entry.id, entryId)).for("update");
+  // NO KEY UPDATE: serializes declarations without blocking inserts that reference the
+  // entry (scores, files), which only take KEY SHARE.
+  const [e] = await tx
+    .select({ id: entry.id })
+    .from(entry)
+    .where(eq(entry.id, entryId))
+    .for("no key update");
+  if (!e) throw new NotFoundError("entry");
   const [row] = await tx
     .select()
     .from(conflictDeclaration)
@@ -73,7 +80,9 @@ export async function declareConflict(
         action: existing ? "conflict.changed_to_conflict" : "conflict.declared",
         targetType: "entry",
         targetId: entryId,
-        metadata: { hasConflict },
+        // The judge's own words: an admin may later clear the conflict and the judge
+        // re-declare, overwriting the row, so the audit log keeps every reason.
+        metadata: { hasConflict, reason },
         ip,
       },
       tx,
@@ -239,9 +248,15 @@ export async function coverageWarnings(actor: Actor) {
     db
       .select({ judgeId: conflictDeclaration.judgeId, entryId: conflictDeclaration.entryId })
       .from(conflictDeclaration)
+      .innerJoin(entry, and(eq(entry.id, conflictDeclaration.entryId), eq(entry.cycleId, cycle.id)))
       .where(eq(conflictDeclaration.hasConflict, true)),
   ]);
   const recused = new Set(conflicts.map((c) => `${c.judgeId}:${c.entryId}`));
+  const byCategoryRound = new Map<string, string[]>();
+  for (const a of assignments) {
+    const k = `${a.categoryId}:${a.round}`;
+    byCategoryRound.set(k, [...(byCategoryRound.get(k) ?? []), a.judgeId]);
+  }
   const out: {
     entryId: string;
     nomineeName: string | null;
@@ -252,11 +267,8 @@ export async function coverageWarnings(actor: Actor) {
   for (const round of [1, 2] as const) {
     for (const e of entries) {
       if (round === 2 && !e.isFinalist) continue;
-      const eligible = assignments.filter(
-        (a) =>
-          a.round === round &&
-          a.categoryId === e.categoryId &&
-          !recused.has(`${a.judgeId}:${e.id}`),
+      const eligible = (byCategoryRound.get(`${e.categoryId}:${round}`) ?? []).filter(
+        (judgeId) => !recused.has(`${judgeId}:${e.id}`),
       ).length;
       if (eligible < MIN_ELIGIBLE_JUDGES) {
         out.push({

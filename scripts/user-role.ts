@@ -4,7 +4,7 @@
 import "dotenv/config";
 import { randomUUID } from "node:crypto";
 import { userInfo } from "node:os";
-import { and, eq, ne } from "drizzle-orm";
+import { and, eq, gt, ne } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { emailSchema } from "@/lib/validation/common";
@@ -45,6 +45,20 @@ async function main() {
             ),
           )
           .limit(1);
+        const [paying] = await tx
+          .select({ id: schema.payment.id })
+          .from(schema.payment)
+          .innerJoin(schema.entry, eq(schema.entry.id, schema.payment.entryId))
+          .where(
+            and(
+              eq(schema.entry.nominatorId, id),
+              eq(schema.payment.status, "PENDING"),
+              gt(schema.payment.expiresAt, new Date(Date.now() - 5 * 60 * 1000)),
+            ),
+          )
+          .limit(1);
+        if (paying)
+          throw new Error("This person is paying for a nomination right now. Try again later.");
         if (submitted) {
           throw new Error(
             "This person has submitted nominations in the current cycle, so they cannot judge it.",

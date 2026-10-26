@@ -10,6 +10,7 @@ import {
   emailOutbox,
   entry,
   judgeProfile,
+  payment,
   user,
 } from "@/server/db/schema";
 import { ConflictError, ForbiddenError, NotFoundError, ValidationError } from "@/server/errors";
@@ -159,6 +160,9 @@ describe("conflict of interest", () => {
     expect(json).not.toContain("+1 315 555 0142");
     expect(json).not.toContain(a.nomineeEmail!);
     expect(view).not.toHaveProperty("nominatorId");
+    expect(json).not.toContain(
+      (await db.select().from(user).where(eq(user.id, a.nominatorId)))[0]!.email,
+    );
     expect(view.references[0]).toEqual({
       position: 1,
       name: "Morgan Ellis",
@@ -285,5 +289,107 @@ describe("coverage", () => {
       [a.id, b.id].sort(),
     );
     await expect(coverageWarnings(j)).rejects.toBeInstanceOf(ForbiddenError);
+  });
+});
+
+describe("review regressions", () => {
+  it("refuses a judge from another category, even with a profile, no conflict and the round open", async () => {
+    const { admin, a, nominator, cycle } = await setup();
+    await openRound1(cycle.id);
+    const otherCat = await createCategory(cycle.id);
+    const outsider = await judge(admin, "outsider@example.org");
+    await setAssignments(admin, outsider.id, 1, [otherCat.id]);
+    await db
+      .insert(conflictDeclaration)
+      .values({ judgeId: outsider.id, entryId: a.id, hasConflict: false });
+    const [file] = await db
+      .insert(attachment)
+      .values({
+        entryId: a.id,
+        storageKey: crypto.randomUUID(),
+        originalName: "x.pdf",
+        contentType: "application/pdf",
+        sizeBytes: 1,
+        sha256: "e".repeat(64),
+        uploadedById: nominator.id,
+      })
+      .returning();
+    await expect(openAttachment(outsider, file!.id)).rejects.toBeInstanceOf(NotFoundError);
+    await expect(getJudgeEntry(outsider, a.id, 1)).rejects.toBeInstanceOf(NotFoundError);
+  });
+
+  it("refuses to make someone a judge while their checkout is open", async () => {
+    const { admin, category: cat } = await setup();
+    const payer = await createActor("NOMINATOR");
+    const draft = await createCompleteEntry({
+      cycleId: cat.cycleId,
+      categoryId: cat.id,
+      nominatorId: payer.id,
+    });
+    await db
+      .insert(payment)
+      .values({
+        entryId: draft.id,
+        kind: "ENTRY_FEE",
+        tier: "EARLY",
+        amountCents: 50_000,
+        provider: "mock",
+        providerSessionId: "mock_cs_open",
+        createdById: payer.id,
+        expiresAt: new Date(Date.now() + 20 * 60_000),
+      });
+    const err = await inviteJudge(admin, {
+      email: payer.email,
+      displayName: "Payer Person",
+      title: "",
+      organization: "",
+    }).catch((x: unknown) => x);
+    expect(err).toBeInstanceOf(ConflictError);
+    expect((err as ConflictError).publicMessage).toMatch(/paying for a nomination/);
+    await expect(grantRole(admin, payer.email, "JUDGE")).rejects.toBeInstanceOf(ConflictError);
+  });
+
+  it("gives no access to a past cycle's entries", async () => {
+    const { judge: j, a, cycle } = await setup();
+    await openRound1(cycle.id);
+    await declareConflict(j, a.id, noConflict);
+    await getJudgeEntry(j, a.id, 1);
+    await db.update(awardCycle).set({ isActive: false }).where(eq(awardCycle.id, cycle.id));
+    await expect(getJudgeEntry(j, a.id, 1)).rejects.toBeInstanceOf(NotFoundError);
+  });
+
+  it("keeps a judge who has declared from becoming a nominator this cycle; re-invites never reactivate", async () => {
+    const { admin, judge: j, a } = await setup();
+    await declareConflict(j, a.id, noConflict);
+    await expect(grantRole(admin, j.email, "NOMINATOR")).rejects.toBeInstanceOf(ConflictError);
+    await setJudgeActive(admin, j.id, false);
+    await inviteJudge(admin, {
+      email: j.email,
+      displayName: "Jordan Panel",
+      title: "Partner",
+      organization: "Example Ventures",
+    });
+    expect(
+      (await db.select().from(judgeProfile).where(eq(judgeProfile.userId, j.id)))[0]!.active,
+    ).toBe(false);
+    const disabled = await createUser("NOMINATOR", { disabledAt: new Date() });
+    await expect(
+      inviteJudge(admin, {
+        email: disabled.email,
+        displayName: "Disabled Person",
+        title: "",
+        organization: "",
+      }),
+    ).rejects.toBeInstanceOf(ConflictError);
+  });
+
+  it("audits the judge's reason, and recording on a missing entry is NotFound", async () => {
+    const { admin, judge: j, a } = await setup();
+    await declareConflict(j, a.id, conflict);
+    const [row] = await db.select().from(auditLog).where(eq(auditLog.action, "conflict.declared"));
+    expect(row!.metadata).toMatchObject({ hasConflict: true, reason: conflict.reason });
+    await expect(
+      recordConflict(admin, j.id, crypto.randomUUID(), { reason: "Known relationship here" }),
+    ).rejects.toBeInstanceOf(NotFoundError);
   });
 });

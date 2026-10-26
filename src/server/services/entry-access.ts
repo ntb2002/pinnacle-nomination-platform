@@ -10,6 +10,7 @@ import {
   entry,
   judgeAssignment,
   judgeProfile,
+  user,
 } from "@/server/db/schema";
 
 /** How an actor may see an entry's confidential content, or null for no access. */
@@ -26,7 +27,8 @@ export interface JudgeAccess {
 
 /**
  * The judge rule (#11), the single source for every judge path (pages, files, scores):
- * - the judge's profile is active, and the entry is APPROVED;
+ * - the user is still a JUDGE with an active profile, and the entry is APPROVED in the
+ *   active cycle;
  * - declaring: assigned to the entry's category for round 1, or for round 2 when the
  *   entry is a finalist;
  * - reading in a round: assigned for that round, the round has opened, round 2 only for
@@ -47,12 +49,16 @@ export async function judgeAccess(
       phase: awardCycle.phase,
     })
     .from(entry)
-    .innerJoin(awardCycle, eq(awardCycle.id, entry.cycleId))
+    // Only the active cycle: assignments and declarations are kept for the record,
+    // so a past cycle's judges must not keep reading its entries.
+    .innerJoin(awardCycle, and(eq(awardCycle.id, entry.cycleId), eq(awardCycle.isActive, true)))
     .where(eq(entry.id, entryId));
   if (!row || row.status !== "APPROVED") return null;
   const [profile] = await tx
     .select({ active: judgeProfile.active })
     .from(judgeProfile)
+    // Profiles and assignments survive a role change: still a judge?
+    .innerJoin(user, and(eq(user.id, judgeProfile.userId), eq(user.role, "JUDGE")))
     .where(eq(judgeProfile.userId, judgeId));
   if (!profile?.active) return null;
   const assigned = await tx

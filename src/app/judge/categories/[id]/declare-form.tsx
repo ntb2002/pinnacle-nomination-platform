@@ -61,12 +61,19 @@ export function DeclareForm({
         idPrefix={p}
         labels={{ conflict: "Your answer", reason: "Reason" }}
       />
-      <fieldset id={`${p}conflict`} tabIndex={-1} className="flex flex-col gap-2">
+      <fieldset
+        id={`${p}conflict`}
+        tabIndex={-1}
+        aria-describedby={state.fieldErrors?.conflict ? `${p}conflict-error` : undefined}
+        className="flex flex-col gap-2"
+      >
         <legend className="font-semibold">
           Do you have a conflict of interest with {nominee}?
         </legend>
         {state.fieldErrors?.conflict && (
-          <p className="text-sm font-semibold text-danger">{state.fieldErrors.conflict[0]}</p>
+          <p id={`${p}conflict-error`} className="text-sm font-semibold text-danger">
+            {state.fieldErrors.conflict[0]}
+          </p>
         )}
         <label className="flex items-center gap-3">
           <input

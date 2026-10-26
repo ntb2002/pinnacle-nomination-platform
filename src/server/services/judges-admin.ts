@@ -1,6 +1,6 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
-import { and, asc, eq, inArray, ne } from "drizzle-orm";
+import { and, asc, eq, gt, inArray, ne } from "drizzle-orm";
 import { env } from "@/lib/env";
 import { isUuid } from "@/lib/ids";
 import { inviteJudgeSchema, judgeProfileSchema } from "@/lib/validation/judges";
@@ -10,31 +10,63 @@ import { db, type DbExecutor } from "@/server/db";
 import {
   awardCycle,
   category,
+  conflictDeclaration,
   entry,
   judgeAssignment,
   judgeProfile,
+  payment,
   user,
 } from "@/server/db/schema";
 import { sendEmail } from "@/server/email";
 import { judgeInviteEmail } from "@/server/email/templates";
 import { ConflictError, NotFoundError, ValidationError } from "@/server/errors";
 import { fieldErrorsOf } from "@/server/validation";
+import { CONFIRMATION_GRACE_MS } from "./checkout";
 
 export const JUDGE_HAS_ENTRIES_MESSAGE =
   "This person has submitted nominations in the current cycle, so they cannot judge it.";
+export const JUDGE_PAYING_MESSAGE =
+  "This person is paying for a nomination right now, so they cannot be made a judge. Try again later.";
 
 /**
- * Conflict policy: judges may not submit nominations in the cycle they judge. True when
- * the user has any non-draft entry in the active cycle.
+ * Conflict policy: judges may not submit nominations in the cycle they judge. Returns
+ * why `userId` cannot judge the active cycle, or null: any non-draft entry, or a draft
+ * whose checkout is open or still confirming (it would become submitted on payment).
  */
-export async function hasSubmittedEntries(tx: DbExecutor, userId: string) {
-  const [row] = await tx
+export async function nominationConflict(tx: DbExecutor, userId: string): Promise<string | null> {
+  const [submitted] = await tx
     .select({ id: entry.id })
     .from(entry)
     .innerJoin(awardCycle, eq(awardCycle.id, entry.cycleId))
     .where(
       and(eq(entry.nominatorId, userId), ne(entry.status, "DRAFT"), eq(awardCycle.isActive, true)),
     )
+    .limit(1);
+  if (submitted) return JUDGE_HAS_ENTRIES_MESSAGE;
+  const [paying] = await tx
+    .select({ id: payment.id })
+    .from(payment)
+    .innerJoin(entry, eq(entry.id, payment.entryId))
+    .innerJoin(awardCycle, and(eq(awardCycle.id, entry.cycleId), eq(awardCycle.isActive, true)))
+    .where(
+      and(
+        eq(entry.nominatorId, userId),
+        eq(payment.status, "PENDING"),
+        gt(payment.expiresAt, new Date(Date.now() - CONFIRMATION_GRACE_MS)),
+      ),
+    )
+    .limit(1);
+  return paying ? JUDGE_PAYING_MESSAGE : null;
+}
+
+/** True when the judge has declared on any entry of the active cycle (they have seen the pool). */
+export async function hasJudgedActiveCycle(tx: DbExecutor, judgeId: string) {
+  const [row] = await tx
+    .select({ id: conflictDeclaration.id })
+    .from(conflictDeclaration)
+    .innerJoin(entry, eq(entry.id, conflictDeclaration.entryId))
+    .innerJoin(awardCycle, and(eq(awardCycle.id, entry.cycleId), eq(awardCycle.isActive, true)))
+    .where(eq(conflictDeclaration.judgeId, judgeId))
     .limit(1);
   return !!row;
 }
@@ -100,21 +132,33 @@ export async function inviteJudge(actor: Actor, raw: Record<string, unknown>, ip
     throw new ValidationError("Check the highlighted fields.", fieldErrorsOf(parsed.error));
   const v = parsed.data;
   const judgeId = await db.transaction(async (tx) => {
-    const [existing] = await tx
-      .select({ id: user.id, role: user.role })
+    // Insert-or-find, so two invites for a new address cannot race on the unique email.
+    const created = await tx
+      .insert(user)
+      .values({
+        id: randomUUID(),
+        email: v.email,
+        name: v.displayName,
+        role: "JUDGE",
+        emailVerified: false,
+      })
+      .onConflictDoNothing({ target: user.email })
+      .returning({ id: user.id });
+    const [u] = await tx
+      .select({ id: user.id, role: user.role, disabledAt: user.disabledAt })
       .from(user)
       .where(eq(user.email, v.email))
       .for("update");
-    if (existing?.role === "ADMIN")
-      throw new ConflictError("Administrators cannot also be judges.");
-    const id = existing?.id ?? randomUUID();
-    if (existing && (await hasSubmittedEntries(tx, id)))
-      throw new ConflictError(JUDGE_HAS_ENTRIES_MESSAGE);
-    if (existing) await tx.update(user).set({ role: "JUDGE" }).where(eq(user.id, id));
-    else
-      await tx
-        .insert(user)
-        .values({ id, email: v.email, name: v.displayName, role: "JUDGE", emailVerified: false });
+    const id = u!.id;
+    if (u!.role === "ADMIN") throw new ConflictError("Administrators cannot also be judges.");
+    if (u!.disabledAt)
+      throw new ConflictError("This account's sign-in is disabled. Re-enable it first.");
+    const blocked = await nominationConflict(tx, id);
+    if (blocked) throw new ConflictError(blocked);
+    const previousRole = u!.role;
+    if (previousRole !== "JUDGE")
+      await tx.update(user).set({ role: "JUDGE" }).where(eq(user.id, id));
+    // A re-invite refreshes the profile text but never silently reactivates a judge.
     await tx
       .insert(judgeProfile)
       .values({
@@ -126,12 +170,7 @@ export async function inviteJudge(actor: Actor, raw: Record<string, unknown>, ip
       })
       .onConflictDoUpdate({
         target: judgeProfile.userId,
-        set: {
-          displayName: v.displayName,
-          title: v.title,
-          organization: v.organization,
-          active: true,
-        },
+        set: { displayName: v.displayName, title: v.title, organization: v.organization },
       });
     await audit(
       {
@@ -139,7 +178,7 @@ export async function inviteJudge(actor: Actor, raw: Record<string, unknown>, ip
         action: "judge.invited",
         targetType: "user",
         targetId: id,
-        metadata: { from: existing?.role ?? null, created: !existing },
+        metadata: { from: created.length ? null : previousRole, created: created.length > 0 },
         ip,
       },
       tx,
