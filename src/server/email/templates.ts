@@ -53,3 +53,52 @@ export function receiptEmail(r: {
       "Keep this email as your receipt. Card details are handled by our payment processor and are never stored by the Pinnacle Awards.",
   };
 }
+
+/** To the nominator: the entry passed the eligibility review. */
+export function entryApprovedEmail(r: {
+  categoryName: string;
+  nomineeName: string;
+  entryUrl: string;
+}): EmailContent {
+  return {
+    subject: `Accepted for judging: ${r.nomineeName}, ${r.categoryName}`,
+    paragraphs: [
+      `Your entry for ${r.nomineeName} in ${r.categoryName} passed the program team's eligibility review and will be judged.`,
+      "Judging runs in two rounds. We will email you when finalists are announced.",
+    ],
+    action: { label: "View your entry", url: r.entryUrl },
+  };
+}
+
+/** To the nominator: the entry needs changes before judging, with the team's message. */
+export function entryReturnedEmail(r: {
+  categoryName: string;
+  nomineeName: string;
+  reasonLabel: string;
+  message: string;
+  entryUrl: string;
+}): EmailContent {
+  return {
+    subject: `Changes needed: ${r.nomineeName}, ${r.categoryName}`,
+    paragraphs: [
+      `The program team reviewed your entry for ${r.nomineeName} in ${r.categoryName} and returned it for changes (${r.reasonLabel.toLowerCase()}).`,
+      `Their message: ${r.message}`,
+      "Update the entry and resubmit it. There is no new fee. Entries must be resubmitted before judging opens.",
+    ],
+    action: { label: "Update your entry", url: r.entryUrl },
+  };
+}
+
+/** To the program team: a returned entry came back. */
+export function entryResubmittedEmail(r: {
+  categoryName: string;
+  nomineeName: string;
+  changes: string;
+  adminUrl: string;
+}): EmailContent {
+  return {
+    subject: `Resubmitted for review: ${r.nomineeName}, ${r.categoryName}`,
+    paragraphs: [`A returned entry was resubmitted and is waiting for review.`, r.changes],
+    action: { label: "Review the entry", url: r.adminUrl },
+  };
+}

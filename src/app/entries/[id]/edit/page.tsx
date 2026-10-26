@@ -8,9 +8,12 @@ import { requireRole } from "@/server/auth/session";
 import { NotFoundError } from "@/server/errors";
 import { listAttachments } from "@/server/services/attachments";
 import { getMyEntryPayment } from "@/server/services/checkout";
+import { latestReturn, moveTargets } from "@/server/services/returned-entries";
 import { EDITABLE_STATUSES, getMyEntry } from "@/server/services/entries";
 import { EntryForm } from "./entry-form";
+import { ReturnNotice } from "../return-notice";
 import { FilesSection } from "./files-section";
+import { MoveCategory } from "./move-category";
 
 export const metadata: Metadata = { title: "Edit entry" };
 
@@ -31,7 +34,11 @@ export default async function EditEntryPage({
   }
   // While a checkout is open the entry is frozen; the review page explains and offers cancel.
   if ((await getMyEntryPayment(actor, id)).open) redirect(`/entries/${id}`);
-  const [files, query] = await Promise.all([listAttachments(actor, id), searchParams]);
+  const [files, query, returned] = await Promise.all([
+    listAttachments(actor, id),
+    searchParams,
+    entry.status === "RETURNED" ? latestReturn(id) : null,
+  ]);
 
   const initial: Record<string, string> = {
     nomineeName: entry.nomineeName ?? "",
@@ -60,8 +67,20 @@ export default async function EditEntryPage({
       </p>
       <PageHeader
         title={entry.categoryName}
-        intro={`${RELATIONSHIP_LABEL[entry.relationship]}. Save at any time; nothing is submitted until you review and pay.`}
+        intro={
+          entry.status === "RETURNED"
+            ? `${RELATIONSHIP_LABEL[entry.relationship]}. Save your changes, then resubmit from the entry page.`
+            : `${RELATIONSHIP_LABEL[entry.relationship]}. Save at any time; nothing is submitted until you review and pay.`
+        }
       />
+      {returned && <ReturnNotice reason={returned.reason} message={returned.message} />}
+      {returned?.reason === "WRONG_CATEGORY" && (
+        <MoveCategory
+          entryId={entry.id}
+          current={entry.categoryName}
+          options={await moveTargets(entry.id)}
+        />
+      )}
       {!entry.categoryEnabled && (
         <p
           role="note"
@@ -74,7 +93,7 @@ export default async function EditEntryPage({
       <EntryForm
         entryId={entry.id}
         initial={initial}
-        selfNomination={entry.relationship === "SELF"}
+        emailLock={entry.relationship === "SELF" ? "self" : entry.submittedAt ? "submitted" : null}
       />
       <FilesSection entryId={entry.id} files={files} query={query} />
     </div>

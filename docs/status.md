@@ -5,11 +5,14 @@
 ## Now
 
 - **Done:** #1, #2, #3, #4, #5, #6, #7, #8, #9
-- **In progress:** —
-- **Next:** #10 Admin triage
+- **In progress:** #10 Admin triage (built and tested; reviews next)
+- **Next:** #11 Judge management and conflict-of-interest recusal
 - **Blockers:** none
 
 ## Needs human (collected from issues)
+
+- **Stripe test-key check (#9):** the [MANUAL] gate: README → *Testing payments with Stripe test keys* (blocked from the build sandbox).
+- **Program team inbox (#10):** set `ADMIN_NOTIFY_EMAIL` to the shared CCE mailbox for resubmission notices (unset: every admin account is emailed).
 
 - **Install the CI workflow (#2):** `cp docs/ci/ci.yml .github/workflows/ci.yml` and push. The agent's deny list blocks it from writing `.github/workflows/` (the permission prompt was denied, so I did not work around it). Until then each issue's [CI] evidence is a full `scripts/ci-local.sh` run, with the log committed under `plans/artifacts/`.
 
@@ -26,7 +29,7 @@
 
 - #9 evaluator note: with JavaScript off, a server-action form whose bound entry id is tampered with (Next encrypts bound arguments) got no response for 45 s instead of an error; nothing was created. Next.js behaviour on undecryptable action arguments; revisit in #16 hardening.
 - Payments, for LAUNCH_READINESS: the real-Stripe path ([MANUAL] gate of #9) could not run in the build sandbox (api.stripe.com is blocked); steps are in README → *Testing payments with Stripe test keys*. A paid duplicate or a mismatched amount is only audited (`payment.duplicate_needs_refund`, `payment.amount_mismatch`); someone must watch for these and refund in the Stripe dashboard until #16's audit viewer can filter them. Refund and dispute webhooks are not handled (refunds are manual). `startCheckout` holds the entry lock during Stripe calls (8 s timeout, 1 retry, up to three calls: about 50 s worst case); acceptable at this scale, revisit if checkout start times out under load. Rejected webhooks are audited up to 50 per IP per 15 minutes; still rate-limit `/api/webhooks/stripe` at the load balancer. The e2e server trusts no proxy (`TRUSTED_PROXY_HOPS=0`), so all e2e sign-ins share the unknown-IP bucket (200 per 15 minutes); the suite used 19 at #9, so watch it as suites grow.
-- #10: decide whether a returned entry may change the nominee (today any field can change before resubmission); show admins a change summary on resubmission; map a category change hitting the duplicate index to a field error.
+- #12: opening round one ends triage. Warn the admin about entries still SUBMITTED or RETURNED (they will not be judged), and say so to nominators of returned entries.
 - Rate limiting and audit IPs use the `TRUSTED_PROXY_HOPS`-th `X-Forwarded-For` entry from the right; production must sit behind a proxy that appends it (LAUNCH_READINESS). The per-email sign-in limit (5 per sliding 15 minutes) means someone who knows an address can keep that person from requesting new links for as long as they keep sending about 5 requests every 15 minutes. Accepted trade-off against email bombing; LAUNCH_READINESS lists mitigations (admin SSO, a CAPTCHA after failures).
 - Shorter sessions for admins/judges are scheduled for #16 (all roles get 7 days today).
 - Supporting files are not malware-scanned (#8). LAUNCH_READINESS: add a scanning step (e.g. ClamAV or the bucket provider's scanner) before judges download. Files are only ever served as downloads with `nosniff`.

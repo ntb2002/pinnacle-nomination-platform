@@ -19,3 +19,20 @@ export const RELATIONSHIP_LABEL = {
   PEER: "Nominated by a peer",
   STAFF: "Nominated by CCE staff",
 } as const;
+
+export type ReturnReason = "INCOMPLETE" | "WRONG_CATEGORY" | "OTHER";
+
+/** Why an entry was returned, in the words the nominator and admins see. */
+export const RETURN_REASON_LABEL: Record<ReturnReason, string> = {
+  INCOMPLETE: "Incomplete",
+  WRONG_CATEGORY: "Wrong category",
+  OTHER: "Other",
+};
+
+/** Status as the program team sees it. */
+export const ADMIN_STATUS_LABEL: Record<EntryStatus, string> = {
+  DRAFT: "Draft",
+  SUBMITTED: "Needs review",
+  RETURNED: "Returned",
+  APPROVED: "Approved",
+};

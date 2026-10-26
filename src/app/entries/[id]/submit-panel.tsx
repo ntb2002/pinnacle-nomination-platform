@@ -4,7 +4,7 @@ import { entryFieldLabel } from "@/lib/entry-form";
 import { formatCents } from "@/lib/money";
 import type { EntryFee } from "@/lib/pricing";
 import { DeleteDraft } from "./delete-draft";
-import { OpenCheckout, PayButton } from "./payment-panel";
+import { OpenCheckout, PayButton, ResubmitButton } from "./payment-panel";
 
 /**
  * The review page's "what next" box for an editable entry: the problems to fix, or the
@@ -60,6 +60,7 @@ export function SubmitPanel({
                 ? `The ${fee.tier.toLowerCase()} fee of ${formatCents(fee.amountCents)} applies if you start checkout by ${formatDeadline(fee.tierEndsAt)}. The fee is set when checkout starts.`
                 : "Nominations are closed, so this entry can no longer be submitted."}
           </p>
+          {!draft && <ResubmitButton entryId={entry.id} />}
           {draft && fee?.open && (
             <PayButton
               entryId={entry.id}

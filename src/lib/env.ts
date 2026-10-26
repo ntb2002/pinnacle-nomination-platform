@@ -61,6 +61,11 @@ const envSchema = z
       .string()
       .regex(/^whsec_[A-Za-z0-9]+$/, "must be a webhook signing secret (whsec_…)")
       .optional(),
+    /**
+     * Program team inbox for "entry resubmitted" notices (e.g. a shared CCE mailbox).
+     * Unset: every active admin account is emailed.
+     */
+    ADMIN_NOTIFY_EMAIL: z.email().optional(),
     /** "true" shows a banner saying people and entries are fictional (demo deployments). */
     DEMO_MODE: z.enum(["true", "false"]).default("false"),
     /** Must stay unset: Better Auth would silently trust extra origins from it. */

@@ -4,6 +4,13 @@
 >
 > Format: `### NNN — Title (date) — Status` · **Decision** · **Why** · **Rejected** · **Reverse cost**.
 
+### 009 — What a returned entry may change (2026-10) — Accepted
+
+- **Decision:** After a return, the nominator may edit everything except the nominee's email, which is fixed from the first payment. The category may change only when the return reason is "wrong category", and only to another enabled category of the same cycle. Resubmission is free and allowed until round one opens. At each return the app stores a SHA-256 per content field; on resubmission admins see the list of changed fields ("Changed: Category, Outcome 2").
+- **Why:** Each fee is for one nominee in one category ("each entry billed separately"). If the nominee could be swapped after a return, one fee could cover a different person. Typos in the name or title still need fixing. A category move is the remedy the "wrong category" reason calls for, and every category costs the same. Hashes let admins see what changed without the platform keeping a second copy of confidential narratives and references.
+- **Rejected:** Freezing returned entries except the flagged fields (admins cannot predict every needed fix); a full content snapshot or diff at return (duplicates confidential data); charging again for a category move.
+- **Reverse cost:** low. The rules live in `saveDraft`, `moveReturnedEntry` and `resubmitEntry`.
+
 ### 008 — Payments: provider boundary, webhook-only fulfilment, entry frozen during checkout (2026-10) — Accepted
 
 - **Decision:** Payments go through a `PaymentProvider` interface with a Stripe hosted Checkout driver and a local mock driver whose events are signed and verified like Stripe's. Fulfilment happens only in the webhook handler, idempotent on the provider event id and on the entry (one PAID fee per entry and kind, enforced by a partial unique index). Checkout sessions expire after 31 minutes (Stripe's minimum of 30, plus a minute for clock skew) and the fee is fixed when the session is created. While a session is open the entry cannot be edited. Payment configuration is checked at boot in a separate function (`paymentConfigProblems`): mock is refused in real production and live keys everywhere else. The Stripe SDK is pinned to an exact version (23.0.0).

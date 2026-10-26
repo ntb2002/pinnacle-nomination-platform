@@ -37,6 +37,12 @@ function Status({ e }: { e: Row }) {
   return (
     <>
       {NOMINATOR_STATUS[e.status].label}
+      {e.status === "RETURNED" && e.returnMessage && (
+        <span className="mt-1 block text-sm">
+          <span className="font-semibold">Message from the program team: </span>
+          {e.returnMessage}
+        </span>
+      )}
       {e.submittedAt && (
         <span className="block text-sm text-slate">Submitted {formatShortDate(e.submittedAt)}</span>
       )}

@@ -30,7 +30,12 @@ export async function saveDraft(actor: Actor, entryId: string, raw: unknown) {
   await db
     .transaction(async (tx) => {
       const [current] = await tx
-        .select({ id: entry.id, relationship: entry.relationship })
+        .select({
+          id: entry.id,
+          relationship: entry.relationship,
+          submittedAt: entry.submittedAt,
+          nomineeEmail: entry.nomineeEmail,
+        })
         .from(entry)
         .where(
           and(
@@ -49,11 +54,14 @@ export async function saveDraft(actor: Actor, entryId: string, raw: unknown) {
           nomineeName: blankToNull(d.nomineeName),
           nomineeTitle: blankToNull(d.nomineeTitle),
           nomineeCompany: blankToNull(d.nomineeCompany),
-          // A self-nomination's nominee is the signed-in nominator.
+          // A self-nomination's nominee is the signed-in nominator. Once an entry has
+          // been paid for and submitted, its nominee is fixed: the fee covers that person.
           nomineeEmail:
             current.relationship === "SELF"
               ? actor.email
-              : (blankToNull(d.nomineeEmail)?.toLowerCase() ?? null),
+              : current.submittedAt
+                ? current.nomineeEmail
+                : (blankToNull(d.nomineeEmail)?.toLowerCase() ?? null),
           nomineeLinkedinUrl: blankToNull(d.nomineeLinkedinUrl),
           narrative: d.narrative && d.narrative.trim() !== "" ? d.narrative : null,
         })

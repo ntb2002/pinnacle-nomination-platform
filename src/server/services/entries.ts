@@ -1,11 +1,18 @@
 import "server-only";
-import { and, asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { isUuid } from "@/lib/ids";
 import { entryFeeFor } from "@/lib/pricing";
 import { startEntrySchema } from "@/lib/validation/entry";
 import { assertRole, type Actor } from "@/server/auth/actor";
 import { db } from "@/server/db";
-import { awardCycle, category, entry, entryOutcome, entryReference } from "@/server/db/schema";
+import {
+  awardCycle,
+  category,
+  entry,
+  entryOutcome,
+  entryReference,
+  entryStatusEvent,
+} from "@/server/db/schema";
 import { ConflictError, NotFoundError, ValidationError } from "@/server/errors";
 import { fieldErrorsOf } from "@/server/validation";
 
@@ -84,6 +91,11 @@ export async function listMyEntries(actor: Actor) {
       categoryName: category.name,
       updatedAt: entry.updatedAt,
       submittedAt: entry.submittedAt,
+      // The program team's message from the latest return, shown while it is returned.
+      returnMessage: sql<string | null>`(
+        select ${entryStatusEvent.note} from ${entryStatusEvent}
+        where ${entryStatusEvent.entryId} = ${entry.id} and ${entryStatusEvent.toStatus} = 'RETURNED'
+        order by ${entryStatusEvent.createdAt} desc limit 1)`,
     })
     .from(entry)
     .innerJoin(category, eq(category.id, entry.categoryId))

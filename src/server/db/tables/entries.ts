@@ -5,6 +5,7 @@ import {
   check,
   foreignKey,
   index,
+  jsonb,
   pgTable,
   smallint,
   text,
@@ -149,6 +150,11 @@ export const entryStatusEvent = pgTable(
     returnReason: returnReason(),
     /** Message to the nominator (returns) or internal note. */
     note: text(),
+    /**
+     * On a return: a SHA-256 per content field (never the content itself), so the
+     * resubmission can tell admins which fields changed (#10).
+     */
+    contentHashes: jsonb().$type<Record<string, string>>(),
     createdAt: tz().notNull().defaultNow(),
   },
   (t) => [index().on(t.entryId, t.createdAt)],

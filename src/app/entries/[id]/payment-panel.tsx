@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import { FormMessage } from "@/components/form/form-message";
 import { SubmitButton } from "@/components/form/submit-button";
 import { idleState } from "@/lib/action-state";
-import { cancelCheckoutAction, startCheckoutAction } from "../actions";
+import { cancelCheckoutAction, resubmitEntryAction, startCheckoutAction } from "../actions";
 
 /** "Pay and submit" for a ready draft. The amount shown is the server's; none is sent. */
 export function PayButton({ entryId, label }: { entryId: string; label: string }) {
@@ -58,5 +58,18 @@ export function OpenCheckout({
         </form>
       </div>
     </div>
+  );
+}
+
+/** "Resubmit" for a complete returned entry: no fee, back to the program team. */
+export function ResubmitButton({ entryId }: { entryId: string }) {
+  const [state, action] = useActionState(resubmitEntryAction.bind(null, entryId), idleState);
+  return (
+    <form action={action} className="mt-6 flex flex-col gap-3">
+      <FormMessage state={state} />
+      <div>
+        <SubmitButton pendingLabel="Resubmitting…">Resubmit the entry</SubmitButton>
+      </div>
+    </form>
   );
 }

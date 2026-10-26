@@ -10,6 +10,8 @@ import { requireRole } from "@/server/auth/session";
 import { ConflictError, NotFoundError } from "@/server/errors";
 import { deleteAttachment } from "@/server/services/attachments";
 import { cancelCheckout, startCheckout } from "@/server/services/checkout";
+import { moveReturnedEntry } from "@/server/services/returned-entries";
+import { resubmitEntry } from "@/server/services/triage";
 import { deleteDraft, saveDraft } from "@/server/services/entry-drafts";
 import { startEntry } from "@/server/services/entries";
 
@@ -112,4 +114,36 @@ export async function cancelCheckoutAction(
   revalidatePath(`/entries/${entryId}`, "layout");
   // The panel this form lives in disappears, so the result is a page-level notice.
   redirect(`/entries/${entryId}?checkout=ended`);
+}
+
+/** Resubmits a returned entry (no fee) and shows the result on the entry page. */
+export async function resubmitEntryAction(
+  entryId: string,
+  _prev: ActionState,
+): Promise<ActionState> {
+  const actor = await requireRole("NOMINATOR");
+  try {
+    await resubmitEntry(actor, entryId);
+  } catch (err) {
+    return toActionState(err);
+  }
+  revalidatePath(`/entries/${entryId}`, "layout");
+  redirect(`/entries/${entryId}?resubmitted=1`);
+}
+
+/** Moves an entry returned as "wrong category" to another category. */
+export async function moveCategoryAction(
+  entryId: string,
+  _prev: ActionState,
+  form: FormData,
+): Promise<ActionState> {
+  const actor = await requireRole("NOMINATOR");
+  const categoryId = String(form.get("categoryId") ?? "");
+  try {
+    await moveReturnedEntry(actor, entryId, categoryId);
+  } catch (err) {
+    return { ...toActionState(err), values: { categoryId } };
+  }
+  revalidatePath(`/entries/${entryId}`, "layout");
+  return { status: "success", message: "Category changed. Resubmit the entry when you are ready." };
 }
