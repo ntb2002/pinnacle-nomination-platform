@@ -34,6 +34,9 @@ export const formatDate = (d: Date) => dateFmt.format(d);
 export const formatShortDate = (d: Date) => shortDateFmt.format(d);
 /** "Jan 26, 2027, 9:00 AM EST" */
 export const formatDateTime = (d: Date) => dateTimeFmt.format(d);
+/** "March 9 – 27, 2027" from a start instant and an exclusive end. */
+export const formatDayRange = (start: Date, exclusiveEnd: Date) =>
+  shortDateFmt.formatRange(start, new Date(exclusiveEnd.getTime() - 1));
 
 /** The calendar day a deadline closes on: the instant minus one millisecond. */
 export const deadlineDay = (exclusiveDeadline: Date) => new Date(exclusiveDeadline.getTime() - 1);

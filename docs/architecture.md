@@ -95,7 +95,7 @@ Pages `/`, `/categories`, `/fees`, `/methodology`, `/judges`, `/conflict-of-inte
 - **Roles** live on `user.role` and are read from the database on every request (`getActor`, no cookie cache), so role changes and `disabled_at` take effect immediately. Disabling a user deletes their sessions, and a `session.create.before` hook stops a previously issued link from creating a new one. Roles change only through `grantRole` (admin service, audited) or `npm run user:role` (CLI, audited). Better Auth's `role` field is `input: false`.
 - **Checks:** `proxy.ts` redirects requests without a session cookie away from `/admin`, `/judge`, `/entries` (UX only). Every protected page, action and route calls `requireUser()` / `requireRole()` (`src/server/auth/session.ts`; wrong role → `forbidden()` → 403 page). Every service calls `assertRole()` (`src/server/auth/actor.ts`) again.
 - **Audit:** `audit()` (`src/server/audit.ts`) appends to `audit_log` (sign-in, sign-out, role changes, and every later admin/judge action), optionally inside the action's transaction.
-- **Email:** `sendEmail()` (`src/server/email/index.ts`) with `EMAIL_TRANSPORT=outbox` (rows are the mail; `/dev/mailbox`) or `smtp` (rows are delivery records without bodies). Real production refuses the outbox. `dedupe_key` makes retries send once.
+- **Email:** `sendEmail()` (`src/server/email/index.ts`) with `EMAIL_TRANSPORT=outbox` (rows are the mail; `/dev/mailbox`) or `smtp` (rows are delivery records). Real production refuses the outbox. `dedupe_key` makes retries send once. **Recoverable delivery (SMTP):** the body is stored only until the mail is delivered (cleared on SENT) and never for sign-in links (`NOT_STORED`), which are sent from memory and throw if undeliverable. Every send happens under a claim: inserting the row, or `claimRow` (an atomic UPDATE that takes a FAILED row or a PENDING one whose lease, `next_attempt_at`, has run out), sets a 10-minute lease, so the sweep, an admin resend and a repeated `sendEmail` with the same `dedupe_key` never send one mail twice (delivery is still at-least-once if a process dies after SMTP accepts the mail). `sendEmail` tries twice, then leaves the row FAILED and returns `{ delivered: false }`; the retry sweep (`retryDueEmails`, `src/server/email/retry.ts`, every minute after the previous sweep from `instrumentation.ts`) retries after 15, 60 and 240 minutes up to `MAX_ATTEMPTS` = 5, claiming one row at a time. Bulk sends (finalist results) only queue the rest after the first failure. `/admin/emails` lists failed emails and ones the sweep has not picked up (error class only, never SMTP text) and lets an admin resend any of them (audited `email.resent` with the outcome). SMTP timeouts are 10 s to connect and 30 s per socket. Undelivered bodies stay until delivered or purged by hand (LAUNCH_READINESS).
 
 ## Data model
 
@@ -126,7 +126,7 @@ erDiagram
 | Table | Holds | Who may read |
 |---|---|---|
 | `user`, `session`, `account`, `verification` | Better Auth identity; `user.role` = NOMINATOR / JUDGE / ADMIN | self, admins |
-| `award_cycle` | one awards year: deadlines, fees (cents), phase, publication timestamps; one row `is_active` | public (dates, fees) |
+| `award_cycle` | one awards year: deadlines, fees (cents), optional published round-one judging window (`judging_opens_at`/`judging_closes_at`, both or neither, after the final deadline), phase, publication timestamps; one row `is_active` | public (dates, fees) |
 | `rubric_profile` | four integer weights per category type, CHECK sum = 100 | public |
 | `category` | 7 core + 2 optional per cycle, enable flag, rubric profile | public (enabled only) |
 | `judge_profile` | public name/title/org/bio; shown on `/judges` only when `is_public` | public (if public) |
@@ -168,7 +168,7 @@ DRAFT ──pay (verified webhook)──▶ SUBMITTED ──admin approve──�
 
 **Payment status** (`payment.status`): a row is created PENDING when a checkout session is created (amount and `expires_at` fixed then). The verified webhook moves it to PAID (sets `paid_at`, payment intent id) or EXPIRED/FAILED. Starting a new checkout or cancelling one moves PENDING → EXPIRED once the provider confirms the session can no longer be paid. A paid event for a row that is no longer PENDING is still honoured (money was taken) and flagged in the audit row. A charge that is not applied (duplicate, wrong amount) stays unpaid but keeps its payment intent id, and admins see it as "Charged, needs review". PAID → REFUNDED is reserved for refund handling (manual for now). At most one PAID row per (entry, kind).
 
-**Email status** (`email_outbox.status`): PENDING → SENT (or FAILED with `error`). The outbox transport marks rows SENT on insert; SMTP updates after delivery.
+**Email status** (`email_outbox.status`): PENDING → SENT, or PENDING → FAILED (with `error`, `attempts`, `next_attempt_at`) → SENT on a retry or an admin resend. The outbox transport marks rows SENT on insert; SMTP updates after each attempt.
 
 Round outcomes are not statuses: `entry.is_finalist` is the admin's selection, visible outside admin only once the cycle reaches FINALISTS_ANNOUNCED. Winners live in `category_result` and are visible outside admin only at RESULTS_PUBLISHED.
 

@@ -4,23 +4,25 @@
 
 ## Now
 
-- **Done:** #1, #2, #3, #4, #5, #6, #7, #8, #9, #10, #11
-- **In progress:** #12 Round one scoring and finalists (built and tested; reviews next)
-- **Next:** #13 Finalist package fee
-- **Blockers:** none
+- **Done:** #1-#12, plus the launch-demo hardening pass (below).
+- **In progress:** none. The bounded demo session stopped after #12, by the owner's instruction. The hardening branch `launch-demo-hardening` is merged into `v1`, and a draft PR `v1 → main` summarizes the state.
+- **Next:** #13 Finalist package fee. Remaining work and estimates are in `LAUNCH_READINESS.md` (#16-#18 gate opening day; #13-#15 come later in the cycle).
+- **Blockers:** CI must be installed by a human (LAUNCH_READINESS → *Human actions*). The real-Stripe check needs test keys and network access to Stripe.
+- **Demo:** `DEMO.md` (`npm run demo:walkthrough` replays it and saves its screenshots).
 
 ## Needs human (collected from issues)
 
 - **Stripe test-key check (#9):** the [MANUAL] gate: README → *Testing payments with Stripe test keys* (blocked from the build sandbox).
 - **Program team inbox (#10):** set `ADMIN_NOTIFY_EMAIL` to the shared CCE mailbox for resubmission notices (unset: every admin account is emailed).
 
-- **Install the CI workflow (#2):** `cp docs/ci/ci.yml .github/workflows/ci.yml` and push. The agent's deny list blocks it from writing `.github/workflows/` (the permission prompt was denied, so I did not work around it). Until then each issue's [CI] evidence is a full `scripts/ci-local.sh` run, with the log committed under `plans/artifacts/`.
+- **Install the CI workflow (#2):** paste `docs/ci/ci.yml` into `.github/workflows/ci.yml` on `v1`. GitHub UI steps are in LAUNCH_READINESS → *Human actions*; the terminal equivalent is `cp docs/ci/ci.yml .github/workflows/ci.yml` and push. The agent's deny list blocks it from writing `.github/workflows/` (the permission prompt was denied, so I did not work around it). Until then each issue's [CI] evidence is a full `scripts/ci-local.sh` run, with the log committed under `plans/artifacts/`.
 
 - Enable the pre-commit hook once per clone: `git config core.hooksPath .githooks`. The agent's deny list blocks it from doing this itself (by design); until then the agent runs `.githooks/pre-commit` by hand before each commit, and CI will run the same checks once #2 replaces the placeholder workflow.
 
 - **HSTS scope (#2):** production sends `Strict-Transport-Security: max-age=63072000` without `includeSubDomains`/`preload`. Adding those commits the whole parent domain; Syracuse IT decides (LAUNCH_READINESS).
 
-- **Program dates and finalist fee (#3):** nominations open 2027-01-26 (given). The early/regular/final deadlines (Feb 26 / Mar 26 / Apr 23, 2027) and the $1,500 finalist package fee are placeholders in `src/lib/program-defaults.ts`. Admins can change all of them in the app (#6). CCE to confirm.
+- **Program dates and fees:** the defaults follow the CCE timeline. Nominations run Jan 26 - Mar 6, 2027 and round one judging Mar 9 - 27; the early and regular deadlines (Feb 9 / Feb 23) and all four fees are placeholders. Everything is admin-editable (**Admin → Dates and fees**). Every value awaiting CCE is listed in `docs/open-questions.md`.
+- **Round one (#12):** what to tell nominators whose entries were still in review when round one opened; whether judges are notified when round one is reopened. The finalist email points to the finalist fee, which #13 must deliver before a real announcement.
 - **Copy and legal review (#3, #5):** all public copy is marked `TODO(copy)`: category descriptions, home thesis (the "first academically credentialed" claim needs substantiating), methodology, fees and refund wording (no contact address yet), and the COI policy (the 3-year lookback and the finalist-package requirement for round two need counsel sign-off). The payment copy names Stripe, which assumes it is approved as the university's processor.
 
 - **"CCE staff" relationship (#7):** any nominator can choose "I am CCE staff nominating someone"; nothing verifies it. Options: restrict STAFF to admin accounts, or keep it self-declared and visible to triage. Currently self-declared.
@@ -39,6 +41,17 @@
 - Deploy-time migrations need `tsx` + `drizzle/` alongside the standalone server; packaging decided in #18.
 
 ## Log
+
+### 2026-10-26 — Bounded launch-demo session (owner's instruction: stop after #12)
+
+- #12 — Round one: scoring (weighted rubric, drafts, revisions until close, every save audited), rankings (mean of submitted, unrecused scores; exact 2dp ties via integer arithmetic; shared ranks), finalist selection (exactly top N, discretion only among ties with a stored reason), announcement (re-checks every selection; nominators see Finalist / Not advanced only after it). Close is refused while an entry has fewer than 2 scores, with an audited reopen before announcement; opening is refused while a checkout can still be paid. Review APPROVE WITH FIXES (float tie rounding, a stuck round, a late payment, the lock order, draft withdrawal) → fixed → re-review APPROVE WITH FIXES → fixed; evaluator PASS on all 7 criteria.
+- COI during announcement: `tests/integration/round-one-locks.test.ts` reproduced a conflict committing mid-announcement. Fixed with cycle-first `FOR SHARE` locks in conflicts and scoring.
+- CI install blocked by the agent deny list (by design); GitHub UI steps in LAUNCH_READINESS.
+- Nodemailer 8.0.11 → 10.2.1: high-severity advisories gone. Tested by real SMTP delivery to a local fake server.
+- Recoverable email: bodies kept until delivered (never sign-in links), two tries, then a sweep with backoff, claim-based so nothing sends twice, and **Admin → Emails** with an audited resend. Review BLOCK (sign-in links sent blank; double-send races) → fixed → re-review APPROVE WITH FIXES → fixed.
+- Program config: CCE timeline defaults; admin-editable judging window (migration 0007) on the public key dates; `docs/open-questions.md`.
+- Stripe: no test keys in the environment and `api.stripe.com` unreachable. What to set is in LAUNCH_READINESS.
+- Demo: `DEMO.md`, `npm run demo:advance` (helpers for local demo databases that call the real services) and `npm run demo:walkthrough` (screenshots in `plans/artifacts/demo-*.png`).
 
 ### 2026-10-25 — v1 build started
 

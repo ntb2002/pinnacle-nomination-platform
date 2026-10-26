@@ -53,10 +53,19 @@ export const emailOutbox = pgTable(
     dedupeKey: text().unique(),
     status: emailStatus().notNull().default("PENDING"),
     error: text(),
+    /** SMTP delivery attempts so far (#16 reliability: retried with backoff, then by an admin). */
+    attempts: integer().notNull().default(0),
+    lastAttemptAt: tz(),
+    /** When the retry sweep may try this row next; null once sent or out of attempts. */
+    nextAttemptAt: tz(),
     createdAt: tz().notNull().defaultNow(),
     sentAt: tz(),
   },
-  (t) => [index().on(t.toAddress, t.createdAt), index().on(t.status, t.createdAt)],
+  (t) => [
+    index().on(t.toAddress, t.createdAt),
+    index().on(t.status, t.createdAt),
+    index().on(t.nextAttemptAt),
+  ],
 );
 
 /** Fixed-window counters for rate limiting, shared across app instances (#4). */

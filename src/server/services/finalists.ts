@@ -164,22 +164,30 @@ export async function announceFinalists(actor: Actor, ip?: string) {
     };
   });
   const { APP_URL } = env();
+  let mailServerUp = true;
   for (const e of results.entries) {
     const base = {
       categoryName: e.categoryName,
       nomineeName: e.nomineeName ?? "your nominee",
       entryUrl: `${APP_URL}/entries/${e.id}`,
     };
-    await sendEmail({
-      to: e.email,
-      template: e.isFinalist ? "finalist" : "not_advanced",
-      dedupeKey: `round1-result:${e.id}`,
-      content: e.isFinalist
-        ? finalistEmail({ ...base, feeCents: results.feeCents })
-        : notAdvancedEmail(base),
-    }).catch((err: unknown) => {
+    // After one failed delivery the rest are only queued: the retry sweep sends them
+    // within minutes, and the announcement does not wait on a failing mail server.
+    const sent = await sendEmail(
+      {
+        to: e.email,
+        template: e.isFinalist ? "finalist" : "not_advanced",
+        dedupeKey: `round1-result:${e.id}`,
+        content: e.isFinalist
+          ? finalistEmail({ ...base, feeCents: results.feeCents })
+          : notAdvancedEmail(base),
+      },
+      { deliverNow: mailServerUp },
+    ).catch((err: unknown) => {
       const x = err as { name?: string; code?: string };
       console.error("Result email failed:", x?.name ?? typeof err, x?.code ?? "");
+      return { delivered: false, failed: true };
     });
+    if (sent.failed) mailServerUp = false;
   }
 }

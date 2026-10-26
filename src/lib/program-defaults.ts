@@ -4,8 +4,9 @@
  * values in the app (#6); this file only sets the starting point for a new cycle.
  *
  * TODO(copy): category descriptions are placeholders for CCE staff to replace.
- * TODO(dates): early/regular/final deadlines after the Jan 26, 2027 opening are
- * placeholders pending CCE confirmation (docs/status.md → Needs human).
+ * TODO(dates): the CCE timeline is nominations Jan 26 - Mar 6, 2027 and judging
+ * Mar 9 - 27, 2027; the early and regular deadlines between are placeholders. Every
+ * value awaiting CCE confirmation is listed in docs/open-questions.md.
  */
 
 export type RubricProfileKey = "executive" | "initiative";
@@ -120,7 +121,7 @@ export const CATEGORIES: CategoryDefinition[] = [
   },
 ];
 
-/** Default fees in cents. TODO(fees): finalist package fee is a placeholder pending CCE. */
+/** Default fees in cents. TODO(fees): all four await CCE confirmation (docs/open-questions.md). */
 export const DEFAULT_FEES = {
   earlyFeeCents: 50_000,
   regularFeeCents: 65_000,
@@ -129,15 +130,18 @@ export const DEFAULT_FEES = {
 };
 
 /**
- * 2027 cycle dates as UTC instants. Each deadline is exclusive: an entry is in a tier
- * while now < deadline. Opening is 9:00 a.m. Eastern; deadlines are midnight Eastern
- * at the end of the named day.
+ * 2027 cycle dates as UTC instants (CCE timeline). Each deadline is exclusive: an entry
+ * is in a tier while now < deadline. Opening is 9:00 a.m. Eastern; deadlines are
+ * midnight Eastern at the end of the named day. Judging opens at the start of its
+ * Eastern day and closes at the end of its last day. US daylight time starts Mar 14.
  */
 export const CYCLE_2027 = {
   year: 2027,
   name: "2027 Pinnacle Awards",
   nominationsOpenAt: new Date("2027-01-26T14:00:00Z"), // Tue Jan 26, 9:00 a.m. EST
-  earlyDeadline: new Date("2027-02-27T05:00:00Z"), // end of Fri Feb 26 EST
-  regularDeadline: new Date("2027-03-27T04:00:00Z"), // end of Fri Mar 26 EDT
-  finalDeadline: new Date("2027-04-24T04:00:00Z"), // end of Fri Apr 23 EDT
+  earlyDeadline: new Date("2027-02-10T05:00:00Z"), // end of Tue Feb 9 EST (placeholder)
+  regularDeadline: new Date("2027-02-24T05:00:00Z"), // end of Tue Feb 23 EST (placeholder)
+  finalDeadline: new Date("2027-03-07T05:00:00Z"), // end of Sat Mar 6 EST: nominations close
+  judgingOpensAt: new Date("2027-03-09T05:00:00Z"), // start of Tue Mar 9 EST
+  judgingClosesAt: new Date("2027-03-28T04:00:00Z"), // end of Sat Mar 27 EDT
 };

@@ -23,6 +23,8 @@
     "db:reset": "tsx scripts/db-reset.ts",
     "db:seed": "tsx scripts/seed.ts",
     "user:role": "tsx scripts/user-role.ts",
+    "demo:advance": "tsx --conditions=react-server scripts/demo-advance.ts",
+    "demo:walkthrough": "node scripts/demo-walkthrough.mjs",
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
@@ -32,7 +34,7 @@
     "better-auth": "1.7.13",
     "drizzle-orm": "0.45.4",
     "next": "16.4.3",
-    "nodemailer": "8.0.11",
+    "nodemailer": "10.2.1",
     "pg": "8.23.1",
     "react": "19.3.1",
     "react-dom": "19.3.1",
@@ -45,7 +47,6 @@
     "@playwright/test": "1.63.0",
     "@tailwindcss/postcss": "4.3.3",
     "@types/node": "24.19.2",
-    "@types/nodemailer": "8.0.2",
     "@types/pg": "8.23.1",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",

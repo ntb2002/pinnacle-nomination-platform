@@ -1,0 +1,3 @@
+ALTER TABLE "award_cycle" ADD COLUMN "judging_opens_at" timestamp with time zone;--> statement-breakpoint
+ALTER TABLE "award_cycle" ADD COLUMN "judging_closes_at" timestamp with time zone;--> statement-breakpoint
+ALTER TABLE "award_cycle" ADD CONSTRAINT "award_cycle_judging_order" CHECK (("award_cycle"."judging_opens_at" IS NULL AND "award_cycle"."judging_closes_at" IS NULL) OR ("award_cycle"."judging_opens_at" >= "award_cycle"."final_deadline" AND "award_cycle"."judging_closes_at" > "award_cycle"."judging_opens_at"));

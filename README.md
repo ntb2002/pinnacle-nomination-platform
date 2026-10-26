@@ -2,7 +2,7 @@
 
 Nomination, payment and judging platform for the Pinnacle Awards (Syracuse University Center for the Creator Economy).
 
-Work in progress on the `v1` branch. Start with `VISION.md` and `AGENTS.md`; build status is in `docs/status.md`.
+Work in progress on the `v1` branch. Start with `VISION.md` and `AGENTS.md`; build status is in `docs/status.md`. To see it working, follow `DEMO.md`; launch gaps are in `LAUNCH_READINESS.md`.
 
 ## Testing payments with Stripe test keys
 

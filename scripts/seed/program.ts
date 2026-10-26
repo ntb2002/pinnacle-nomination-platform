@@ -31,6 +31,8 @@ function cycleDates({ openNow, now }: ProgramOptions) {
     earlyDeadline: at(endOfDayDeadline(easternDay(now, 14))),
     regularDeadline: at(endOfDayDeadline(easternDay(now, 35))),
     finalDeadline: at(endOfDayDeadline(easternDay(now, 63))),
+    judgingOpensAt: at(zonedToUtc(easternDay(now, 66))),
+    judgingClosesAt: at(endOfDayDeadline(easternDay(now, 84))),
   };
 }
 
@@ -49,6 +51,8 @@ export async function seedProgram(db: Database, opts: ProgramOptions): Promise<s
           earlyDeadline: dates.earlyDeadline,
           regularDeadline: dates.regularDeadline,
           finalDeadline: dates.finalDeadline,
+          judgingOpensAt: dates.judgingOpensAt,
+          judgingClosesAt: dates.judgingClosesAt,
         },
       })
     : insert.onConflictDoNothing({ target: awardCycle.year }));

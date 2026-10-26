@@ -10,6 +10,7 @@ const ITEMS = [
   { href: "/admin/categories", label: "Categories" },
   { href: "/admin/rubrics", label: "Rubrics" },
   { href: "/admin/payments", label: "Payments" },
+  { href: "/admin/emails", label: "Emails" },
 ];
 
 /** Secondary navigation for the admin area. Marks the current section. */

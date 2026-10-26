@@ -24,6 +24,8 @@ export const getActiveCycle = cache(async () => {
       regularFeeCents: awardCycle.regularFeeCents,
       lateFeeCents: awardCycle.lateFeeCents,
       finalistFeeCents: awardCycle.finalistFeeCents,
+      judgingOpensAt: awardCycle.judgingOpensAt,
+      judgingClosesAt: awardCycle.judgingClosesAt,
       finalistsAnnouncedAt: awardCycle.finalistsAnnouncedAt,
       resultsPublishedAt: awardCycle.resultsPublishedAt,
     })

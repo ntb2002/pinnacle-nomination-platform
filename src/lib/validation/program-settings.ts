@@ -26,6 +26,18 @@ const datesSchema = z.object({
   finalDate: dateField("final deadline"),
 });
 
+/** The judging window is optional (blank until confirmed): both dates or neither. */
+const judgingSchema = z.object({
+  judgingOpensDate: z
+    .string()
+    .optional()
+    .transform((v) => v?.trim() ?? ""),
+  judgingClosesDate: z
+    .string()
+    .optional()
+    .transform((v) => v?.trim() ?? ""),
+});
+
 const feesSchema = z.object({
   earlyFee: dollars("early fee"),
   regularFee: dollars("regular fee"),
@@ -50,7 +62,7 @@ export function parseCycleSettings(
   for (const r of [dates, fees]) {
     if (!r.success) for (const i of r.error.issues) add(String(i.path[0] ?? "_form"), i.message);
   }
-  let window: Omit<CycleSettings, keyof FeeCents> | undefined;
+  let window: Omit<CycleSettings, keyof FeeCents | keyof JudgingWindow> | undefined;
   if (dates.success) {
     const v = dates.data;
     const nominationsOpenAt = zonedToUtc(v.opensDate, v.opensTime);
@@ -74,6 +86,12 @@ export function parseCycleSettings(
       window = { nominationsOpenAt, earlyDeadline, regularDeadline, finalDeadline };
     }
   }
+  const judgingInput = judgingSchema.safeParse(raw);
+  if (!judgingInput.success)
+    for (const i of judgingInput.error.issues) add(String(i.path[0] ?? "_form"), "Enter a date");
+  const judging = judgingInput.success
+    ? parseJudgingWindow(judgingInput.data, window?.finalDeadline, add)
+    : null;
   // Fees escalate by deadline: a later tier never costs less than an earlier one.
   if (fees.success) {
     const f = fees.data;
@@ -82,19 +100,49 @@ export function parseCycleSettings(
     if (f.lateFee < f.regularFee)
       add("lateFee", "The late fee cannot be lower than the regular fee");
   }
-  if (Object.keys(errors).length > 0 || !window || !fees.success) {
+  if (Object.keys(errors).length > 0 || !window || !judging || !fees.success) {
     return { success: false, fieldErrors: errors };
   }
   return {
     success: true,
     data: {
       ...window,
+      ...judging,
       earlyFeeCents: fees.data.earlyFee * 100,
       regularFeeCents: fees.data.regularFee * 100,
       lateFeeCents: fees.data.lateFee * 100,
       finalistFeeCents: fees.data.finalistFee * 100,
     },
   };
+}
+
+function parseJudgingWindow(
+  v: { judgingOpensDate: string; judgingClosesDate: string },
+  finalDeadline: Date | undefined,
+  add: (field: string, message: string) => void,
+): JudgingWindow | null {
+  if (!v.judgingOpensDate && !v.judgingClosesDate)
+    return { judgingOpensAt: null, judgingClosesAt: null };
+  const day = /^\d{4}-\d{2}-\d{2}$/;
+  const opens = day.test(v.judgingOpensDate) ? zonedToUtc(v.judgingOpensDate) : null;
+  const closes = day.test(v.judgingClosesDate) ? endOfDayDeadline(v.judgingClosesDate) : null;
+  if (!opens) add("judgingOpensDate", "Enter the date judging opens, or clear both dates");
+  if (!closes) add("judgingClosesDate", "Enter the date judging closes, or clear both dates");
+  if (!opens || !closes) return null;
+  if (finalDeadline && opens < finalDeadline) {
+    add("judgingOpensDate", "Judging opens after the final deadline");
+    return null;
+  }
+  if (closes <= opens) {
+    add("judgingClosesDate", "Judging closes on or after the day it opens");
+    return null;
+  }
+  return { judgingOpensAt: opens, judgingClosesAt: closes };
+}
+
+interface JudgingWindow {
+  judgingOpensAt: Date | null;
+  judgingClosesAt: Date | null;
 }
 
 interface FeeCents {
@@ -104,7 +152,7 @@ interface FeeCents {
   finalistFeeCents: number;
 }
 
-export interface CycleSettings extends FeeCents {
+export interface CycleSettings extends FeeCents, JudgingWindow {
   nominationsOpenAt: Date;
   earlyDeadline: Date;
   regularDeadline: Date;

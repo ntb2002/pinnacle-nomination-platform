@@ -34,6 +34,13 @@ export const awardCycle = pgTable(
     regularFeeCents: integer().notNull(),
     lateFeeCents: integer().notNull(),
     finalistFeeCents: integer().notNull(),
+    /**
+     * The published round-one judging window (Eastern day start, exclusive end of the
+     * closing day). Shown on the public site and to admins; opening and closing round
+     * one stay explicit admin actions. Null until the program team confirms it.
+     */
+    judgingOpensAt: tz(),
+    judgingClosesAt: tz(),
     phase: cyclePhase().notNull().default("NOMINATION"),
     round1OpenedAt: tz(),
     finalistsAnnouncedAt: tz(),
@@ -52,6 +59,10 @@ export const awardCycle = pgTable(
     check(
       "award_cycle_deadline_order",
       sql`${t.nominationsOpenAt} < ${t.earlyDeadline} AND ${t.earlyDeadline} < ${t.regularDeadline} AND ${t.regularDeadline} < ${t.finalDeadline}`,
+    ),
+    check(
+      "award_cycle_judging_order",
+      sql`(${t.judgingOpensAt} IS NULL AND ${t.judgingClosesAt} IS NULL) OR (${t.judgingOpensAt} >= ${t.finalDeadline} AND ${t.judgingClosesAt} > ${t.judgingOpensAt})`,
     ),
     check(
       "award_cycle_fees_nonnegative",

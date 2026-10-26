@@ -137,7 +137,9 @@ Inside an issue, on its branch, you don't ask: edit, run tests / linters / build
 | What's next | GitHub Issues + `docs/status.md` |
 | Git / CI / review workflow | `docs/git-workflow.md` |
 | Decisions expensive to reverse | `DECISIONS.md` |
-| Launch gaps | `LAUNCH_READINESS.md` (written in #18) |
+| Launch gaps | `LAUNCH_READINESS.md` (interim after #12; final in #18) |
+| Demo walkthrough | `DEMO.md` |
+| Values awaiting CCE | `docs/open-questions.md` |
 
 <!-- BEGIN:nextjs-agent-rules -->
 

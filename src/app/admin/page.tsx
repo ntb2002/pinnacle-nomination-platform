@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
-import { formatDateTime, formatDeadline } from "@/lib/dates";
+import { formatDateTime, formatDayRange, formatDeadline } from "@/lib/dates";
 import { formatCents } from "@/lib/money";
 import { requireRole } from "@/server/auth/session";
 import { getAdminProgram } from "@/server/services/program-settings";
@@ -36,10 +36,17 @@ export default async function AdminHomePage() {
             ["Nominations open", formatDateTime(program.cycle.nominationsOpenAt)],
             ["Final deadline", formatDeadline(program.cycle.finalDeadline)],
             [
+              "Round one judging",
+              program.cycle.judgingOpensAt && program.cycle.judgingClosesAt
+                ? formatDayRange(program.cycle.judgingOpensAt, program.cycle.judgingClosesAt)
+                : "Not set",
+            ],
+            [
               "Fees",
               `${formatCents(program.cycle.earlyFeeCents)} / ${formatCents(program.cycle.regularFeeCents)} / ${formatCents(program.cycle.lateFeeCents)}`,
             ],
             ["Categories offered", String(program.categories.filter((c) => c.enabled).length)],
+            ["Finalist package fee", formatCents(program.cycle.finalistFeeCents)],
           ].map(([k, v]) => (
             <div key={k} className="bg-surface p-5">
               <dt className="text-sm text-slate">{k}</dt>
